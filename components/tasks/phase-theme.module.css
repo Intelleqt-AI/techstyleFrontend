@@ -1,0 +1,12 @@
+.phaseTheme {
+  /* Scoped phase colors for the timeline page.
+     Adjust to your brand palette if needed. */
+  --phase-discovery: #d97706; /* amber-600 */
+  --phase-design: #7c3aed; /* violet-600 */
+  --phase-procurement: #0284c7; /* sky-600 */
+  --phase-construction: #059669; /* emerald-600 */
+  --phase-install: #db2777; /* pink-600 */
+
+  /* Optional unscheduled (used for the left dot only) */
+  --phase-__unscheduled__: #6b7280; /* gray-500 */
+}

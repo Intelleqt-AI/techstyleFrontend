@@ -1,0 +1,177 @@
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Plus, MoreHorizontal, Grid3X3, List, Settings } from 'lucide-react'
+import { ProjectNavMain } from "@/components/project-nav-main"
+import Link from "next/link"
+
+const projects = [
+  {
+    id: "proj-001",
+    name: "Luxury Penthouse Redesign",
+    client: "Smith Family",
+    startDate: "25 Jul 25",
+    dueDate: "15 Dec 25",
+    tasks: { completed: 0, total: 0 },
+    hours: 0,
+    progress: 75,
+    status: "on-track",
+    image: "/images/luxury-penthouse.png",
+  },
+  {
+    id: "proj-002", 
+    name: "Modern Office Space",
+    client: "TechCorp Inc.",
+    startDate: "25 Jul 25",
+    dueDate: "24 Jul 25",
+    tasks: { completed: 0, total: 2 },
+    hours: 0,
+    progress: 45,
+    status: "at-risk",
+    image: "/images/modern-office.png",
+  },
+  {
+    id: "proj-003",
+    name: "Boutique Hotel Lobby", 
+    client: "Grandeur Hotels",
+    startDate: "4 Aug 25",
+    dueDate: "30 Sept 25",
+    tasks: { completed: 0, total: 7 },
+    hours: 0,
+    progress: 90,
+    status: "ahead",
+    image: "/images/hotel-lobby.png",
+  },
+]
+
+const getStatusBadge = (status: string) => {
+  switch (status) {
+    case "on-track":
+      return {
+        label: "On Track",
+        className: "bg-green-100 text-green-800 border-green-200"
+      }
+    case "at-risk":
+      return {
+        label: "At Risk", 
+        className: "bg-red-100 text-red-800 border-red-200"
+      }
+    case "ahead":
+      return {
+        label: "Ahead",
+        className: "bg-blue-100 text-blue-800 border-blue-200"
+      }
+    default:
+      return {
+        label: status,
+        className: "bg-gray-100 text-gray-800 border-gray-200"
+      }
+  }
+}
+
+export default function ProjectsPage() {
+  return (
+    <div className="flex-1 bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <ProjectNavMain activeTab="all" />
+        
+        {/* Toolbar */}
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 flex-1">
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+              <Grid3X3 className="w-4 h-4" />
+              Grid
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+              <List className="w-4 h-4" />
+              List
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+              <Settings className="w-4 h-4" />
+              Settings
+            </Button>
+          </div>
+          
+          <Button size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
+            <Plus className="w-4 h-4" />
+            Add Project
+          </Button>
+        </div>
+        
+        {/* Projects Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {projects.map((project) => {
+            const statusBadge = getStatusBadge(project.status)
+            
+            return (
+              <Link key={project.id} href={`/projects/${project.id}`}>
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-sm transition-all duration-200 cursor-pointer">
+                  {/* Project Image */}
+                  <div className="relative h-48 bg-gray-100">
+                    <img 
+                      src={project.image || "/placeholder.svg"}
+                      alt={project.name}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Status Badge */}
+                    <div className="absolute top-4 right-4">
+                      <Badge className={`${statusBadge.className} text-xs font-medium px-3 py-1 rounded-lg border`}>
+                        {statusBadge.label}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  {/* Project Content */}
+                  <div className="p-6">
+                    {/* Header with title and menu */}
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900 text-lg leading-tight">
+                        {project.name}
+                      </h3>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600 -mt-1 -mr-1"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    {/* Client */}
+                    <p className="text-sm text-gray-600 mb-4">{project.client}</p>
+                    
+                    {/* Dates */}
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                      <span>Start: {project.startDate}</span>
+                      <span>Due: {project.dueDate}</span>
+                    </div>
+                    
+                    {/* Stats */}
+                    <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
+                      <span>Tasks: {project.tasks.completed}/{project.tasks.total}</span>
+                      <span>Hours: {project.hours}</span>
+                    </div>
+                    
+                    {/* Progress */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Progress</span>
+                        <span className="font-medium text-gray-900">{project.progress}%</span>
+                      </div>
+                      {/* Updated: clay color for progress bar */}
+                      <Progress 
+                        value={project.progress} 
+                        className="h-1 [&>div]:bg-[#E07A57]" 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}

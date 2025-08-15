@@ -1,0 +1,98 @@
+// app/projects/page.tsx
+import React from 'react';
+import { ProgressBar } from 'components/progress-bar';
+
+const ProjectPage = () => {
+  return (
+    <div>
+      {/* Project details here */}
+      <ProgressBar className="h-1 [&>div]:bg-clay-500" />
+      {/* Other project components here */}
+    </div>
+  );
+};
+
+export default ProjectPage;
+
+// components/project-nav-main.tsx
+import React from 'react';
+import { Badge } from 'components/badge';
+
+const ProjectNavMain = ({ tabCount }) => {
+  return (
+    <nav>
+      {/* Navigation tabs here */}
+      <Badge className="bg-clay-500 text-white text-xs h-5 px-2 rounded-full font-medium">
+        {tabCount}
+      </Badge>
+      {/* Other navigation components here */}
+    </nav>
+  );
+};
+
+export default ProjectNavMain;
+
+// components/crm-nav.tsx
+import React from 'react';
+import { Badge } from 'components/badge';
+
+const CrmNav = ({ leadsCount }) => {
+  return (
+    <nav>
+      {/* Navigation tabs here */}
+      <Badge className="bg-clay-500 text-white text-xs h-5 px-2 rounded-full font-medium">
+        {leadsCount}
+      </Badge>
+      {/* Other navigation components here */}
+    </nav>
+  );
+};
+
+export default CrmNav;
+
+// app/crm/leads/page.tsx
+import React from 'react';
+import { Badge } from 'components/badge';
+
+const LeadsPage = ({ leads }) => {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "New":
+        return "bg-slatex-500/10 text-slatex-700 border border-slatex-500/30"
+      case "Contacted":
+        return "bg-ochre-300/20 text-ochre-700 border border-ochre-300/50"
+      case "Qualified":
+        return "bg-sage-300/30 text-sage-700 border border-sage-500/40"
+      case "Lost":
+        return "bg-terracotta-600/10 text-terracotta-700 border border-terracotta-600/30"
+      default:
+        return "bg-gray-50 text-gray-700 border border-gray-200"
+    }
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-sage-700"
+    if (score >= 70) return "text-clay-600"
+    return "text-terracotta-700"
+  }
+
+  return (
+    <div>
+      {/* Leads list here */}
+      {leads.map(lead => (
+        <div key={lead.id}>
+          <Badge className={getStatusBadge(lead.status)}>
+            {lead.status}
+          </Badge>
+          <span className={getScoreColor(lead.score)}>
+            {lead.score}
+          </span>
+          {/* Other lead details here */}
+        </div>
+      ))}
+      {/* Other CRM components here */}
+    </div>
+  );
+};
+
+export default LeadsPage;

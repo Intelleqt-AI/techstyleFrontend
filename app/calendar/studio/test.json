@@ -1,0 +1,63 @@
+projects = [
+  {
+    projectID: 1,
+    rooms: [
+      {
+        roomID: 101,
+        roomName: "Living Room",
+        products: [
+          {
+            productId: 1,
+            productName: "Sofa Set",
+            dimension: "200x90x80 cm",
+            supplier: "FurnitureCo",
+            delivery: "2025-08-20",
+            install: true,
+            qty:10
+          },
+          {
+            productId: 2,
+            productName: "Coffee Table",
+            dimension: "120x60x45 cm",
+            supplier: "WoodWorks",
+            delivery: "2025-08-21",
+            install: false
+          }
+        ]
+      },
+      {
+        roomID: 102,
+        roomName: "Bedroom",
+        products: [
+          {
+            productId: 3,
+            productName: "King Bed",
+            dimension: "200x180x50 cm",
+            supplier: "DreamBeds",
+            delivery: "2025-08-22",
+            install: true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    projectID: 2,
+    rooms: [
+      {
+        roomID: 201,
+        roomName: "Kitchen",
+        products: [
+          {
+            productId: 4,
+            productName: "Kitchen Cabinet",
+            dimension: "300x60x90 cm",
+            supplier: "KitchenPro",
+            delivery: "2025-09-01",
+            install: true
+          }
+        ]
+      }
+    ]
+  }
+];

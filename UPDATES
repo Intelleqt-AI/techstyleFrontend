@@ -1,0 +1,121 @@
+// app/reports/revenue/page.tsx
+import React from 'react';
+import { AreaChart, YAxis, ChartTooltip, ChartTooltipContent } from 'recharts';
+
+const fmtGBP = (n: number) => `£${Number(n ?? 0).toLocaleString()}`;
+
+const RevenuePage = () => {
+  return (
+    <div>
+      {/* Revenue vs Target AreaChart */}
+      <AreaChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </AreaChart>
+
+      {/* Revenue YoY BarChart */}
+      <AreaChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </AreaChart>
+
+      {/* Revenue by Project BarChart */}
+      <AreaChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </AreaChart>
+
+      {/* Revenue by Channel BarChart */}
+      <AreaChart data={[]}>
+        {/* rest of code here */}
+      </AreaChart>
+    </div>
+  );
+};
+
+export default RevenuePage;
+
+// app/reports/cost/page.tsx
+import React from 'react';
+import { BarChart, YAxis, ChartTooltip, ChartTooltipContent, XAxis } from 'recharts';
+
+const fmtGBP = (n: number) => `£${Number(n ?? 0).toLocaleString()}`;
+
+const CostPage = () => {
+  return (
+    <div>
+      {/* Cost by Category BarChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Monthly Cost vs Budget AreaChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Vendor Spend vertical BarChart */}
+      <BarChart data={[]}>
+        <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Cost Overruns BarChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+    </div>
+  );
+};
+
+export default CostPage;
+
+// app/reports/profitability/page.tsx
+import React from 'react';
+import { BarChart, YAxis, ChartTooltip, ChartTooltipContent } from 'recharts';
+
+const fmtGBP = (n: number) => `£${Number(n ?? 0).toLocaleString()}`;
+
+const ProfitabilityPage = () => {
+  return (
+    <div>
+      {/* Profit by Project BarChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Profit Trend AreaChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Revenue vs Cost BarChart */}
+      <BarChart data={[]}>
+        <YAxis tickLine={false} axisLine={false} tickFormatter={(v) => fmtGBP(v as number)} />
+        <ChartTooltip content={<ChartTooltipContent valueFormatter={(v) => fmtGBP(Number(v))} />} />
+        {/* rest of code here */}
+      </BarChart>
+
+      {/* Margin by Project BarChart */}
+      <BarChart data={[]}>
+        {/* rest of code here */}
+      </BarChart>
+    </div>
+  );
+};
+
+export default ProfitabilityPage;
