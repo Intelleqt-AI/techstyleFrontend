@@ -1,64 +1,65 @@
-"use client"
+'use client';
 
-import type React from "react"
+import type React from 'react';
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { Mic, Calendar, Clock, AlertTriangle, DollarSign, TrendingUp, TrendingDown, ArrowUp, Users } from "lucide-react"
-import { HomeNav } from "@/components/home-nav"
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Mic, Calendar, Clock, AlertTriangle, DollarSign, TrendingUp, TrendingDown, ArrowUp, Users } from 'lucide-react';
+import { HomeNav } from '@/components/home-nav';
+import useFetch from '@/hooks/useFetch';
 
 // Mock user data with role-based permissions
 const mockUser = {
-  firstName: "Jane",
-  role: "studio_owner", // "staff" | "studio_owner" | "finance_admin"
-  permissions: ["finance.read", "studio.view"],
-}
+  firstName: 'Jane',
+  role: 'studio_owner', // "staff" | "studio_owner" | "finance_admin"
+  permissions: ['finance.read', 'studio.view'],
+};
 
 // Scope toggle for owners/admins
 function ScopeToggle({ scope, onScopeChange, canSeeStudio }) {
-  if (!canSeeStudio) return null
+  if (!canSeeStudio) return null;
 
   return (
     <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
       <button
-        onClick={() => onScopeChange("my")}
+        onClick={() => onScopeChange('my')}
         className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-          scope === "my" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-700 hover:text-neutral-900"
+          scope === 'my' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-700 hover:text-neutral-900'
         }`}
       >
         My View
       </button>
       <button
-        onClick={() => onScopeChange("studio")}
+        onClick={() => onScopeChange('studio')}
         className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-          scope === "studio" ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-700 hover:text-neutral-900"
+          scope === 'studio' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-700 hover:text-neutral-900'
         }`}
       >
         Studio View
       </button>
     </div>
-  )
+  );
 }
 
 // Dashboard card components with role-based data
 function TodaysMeetingsCard({ scope, userRole }) {
   const myMeetings = [
-    { id: 1, title: "Client Review - Penthouse", time: "10:00 AM", client: "Smith Family", attendee: true },
-    { id: 2, title: "Material Selection", time: "2:30 PM", client: "TechCorp", attendee: true },
-    { id: 3, title: "Team Standup", time: "4:00 PM", client: "Internal", attendee: true },
-  ]
+    { id: 1, title: 'Client Review - Penthouse', time: '10:00 AM', client: 'Smith Family', attendee: true },
+    { id: 2, title: 'Material Selection', time: '2:30 PM', client: 'TechCorp', attendee: true },
+    { id: 3, title: 'Team Standup', time: '4:00 PM', client: 'Internal', attendee: true },
+  ];
 
   const studioMeetings = [
     ...myMeetings,
-    { id: 4, title: "Budget Review", time: "11:30 AM", client: "Grandeur Hotels", attendee: false },
-    { id: 5, title: "Contractor Check-in", time: "3:15 PM", client: "Modern Office", attendee: false },
-  ]
+    { id: 4, title: 'Budget Review', time: '11:30 AM', client: 'Grandeur Hotels', attendee: false },
+    { id: 5, title: 'Contractor Check-in', time: '3:15 PM', client: 'Modern Office', attendee: false },
+  ];
 
-  const meetings = scope === "studio" ? studioMeetings : myMeetings
+  const meetings = scope === 'studio' ? studioMeetings : myMeetings;
 
   return (
     <div className="h-full flex flex-col">
@@ -67,11 +68,9 @@ function TodaysMeetingsCard({ scope, userRole }) {
         <h3 className="font-semibold text-neutral-900">Today's Meetings</h3>
       </div>
       <div className="space-y-3 flex-1">
-        {meetings.slice(0, 3).map((meeting) => (
+        {meetings.slice(0, 3).map(meeting => (
           <div key={meeting.id} className="flex items-center gap-3">
-            <div
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? "bg-sage-500" : "bg-greige-500"}`}
-            ></div>
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? 'bg-sage-500' : 'bg-greige-500'}`}></div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-neutral-900 truncate">{meeting.title}</p>
               <p className="text-xs text-neutral-600">
@@ -82,69 +81,67 @@ function TodaysMeetingsCard({ scope, userRole }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function OverdueTasksCard({ scope, userRole }) {
   const myTasks = [
-    { id: 1, title: "Review fabric samples", project: "Luxury Penthouse", assignee: "me" },
-    { id: 2, title: "Client presentation prep", project: "Modern Office", assignee: "me" },
-  ]
+    { id: 1, title: 'Review fabric samples', project: 'Luxury Penthouse', assignee: 'me' },
+    { id: 2, title: 'Client presentation prep', project: 'Modern Office', assignee: 'me' },
+  ];
 
   const studioTasks = [
     ...myTasks,
-    { id: 3, title: "Budget approval request", project: "Boutique Hotel", assignee: "Mike Johnson" },
-    { id: 4, title: "Contract review", project: "Retail Space", assignee: "Sarah Wilson" },
-  ]
+    { id: 3, title: 'Budget approval request', project: 'Boutique Hotel', assignee: 'Mike Johnson' },
+    { id: 4, title: 'Contract review', project: 'Retail Space', assignee: 'Sarah Wilson' },
+  ];
 
-  const tasks = scope === "studio" ? studioTasks : myTasks
+  const tasks = scope === 'studio' ? studioTasks : myTasks;
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 mb-4">
         <AlertTriangle className="w-5 h-5 text-terracotta-600" />
         <h3 className="font-semibold text-neutral-900">Overdue Tasks</h3>
-        <Badge className="bg-terracotta-600/10 text-terracotta-600 border border-terracotta-600/30 text-xs">
-          {tasks.length}
-        </Badge>
+        <Badge className="bg-terracotta-600/10 text-terracotta-600 border border-terracotta-600/30 text-xs">{tasks.length}</Badge>
       </div>
       <div className="space-y-3 flex-1">
-        {tasks.slice(0, 3).map((task) => (
+        {tasks.slice(0, 3).map(task => (
           <div key={task.id} className="flex items-center gap-3">
             <div className="w-2 h-2 bg-terracotta-600 rounded-full flex-shrink-0"></div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-neutral-900 truncate">{task.title}</p>
               <p className="text-xs text-neutral-600">
-                {task.project} {scope === "studio" && task.assignee !== "me" && `• ${task.assignee}`}
+                {task.project} {scope === 'studio' && task.assignee !== 'me' && `• ${task.assignee}`}
               </p>
             </div>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function FinancialKPIsCard({ scope, userRole }) {
   const myKPIs = [
-    { label: "My Budget Util", value: "87%", trend: "up", change: "+5%" },
-    { label: "Hours This Week", value: "32.5h", trend: "up", change: "+2h" },
-    { label: "Projects Active", value: "4", trend: "neutral", change: "0" },
-  ]
+    { label: 'My Budget Util', value: '87%', trend: 'up', change: '+5%' },
+    { label: 'Hours This Week', value: '32.5h', trend: 'up', change: '+2h' },
+    { label: 'Projects Active', value: '4', trend: 'neutral', change: '0' },
+  ];
 
   const studioKPIs = [
-    { label: "Studio Profit", value: "£45.2k", trend: "up", change: "+12%" },
-    { label: "Utilisation", value: "89%", trend: "up", change: "+3%" },
-    { label: "Cash Flow", value: "£23.8k", trend: "down", change: "-8%" },
-  ]
+    { label: 'Studio Profit', value: '£45.2k', trend: 'up', change: '+12%' },
+    { label: 'Utilisation', value: '89%', trend: 'up', change: '+3%' },
+    { label: 'Cash Flow', value: '£23.8k', trend: 'down', change: '-8%' },
+  ];
 
-  const kpis = scope === "studio" ? studioKPIs : myKPIs
+  const kpis = scope === 'studio' ? studioKPIs : myKPIs;
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center gap-2 mb-4">
         <DollarSign className="w-5 h-5 text-slatex-600" />
-        <h3 className="font-semibold text-neutral-900">{scope === "studio" ? "Studio KPIs" : "My KPIs"}</h3>
+        <h3 className="font-semibold text-neutral-900">{scope === 'studio' ? 'Studio KPIs' : 'My KPIs'}</h3>
       </div>
       <div className="space-y-4 flex-1">
         {kpis.map((kpi, index) => (
@@ -154,20 +151,16 @@ function FinancialKPIsCard({ scope, userRole }) {
               <p className="text-xs text-neutral-600">{kpi.label}</p>
             </div>
             <div className="flex items-center gap-1">
-              {kpi.trend === "up" ? (
+              {kpi.trend === 'up' ? (
                 <TrendingUp className="w-4 h-4 text-olive-700" />
-              ) : kpi.trend === "down" ? (
+              ) : kpi.trend === 'down' ? (
                 <TrendingDown className="w-4 h-4 text-terracotta-600" />
               ) : (
                 <div className="w-4 h-4" />
               )}
               <span
                 className={`text-xs font-medium ${
-                  kpi.trend === "up"
-                    ? "text-olive-700"
-                    : kpi.trend === "down"
-                      ? "text-terracotta-600"
-                      : "text-neutral-500"
+                  kpi.trend === 'up' ? 'text-olive-700' : kpi.trend === 'down' ? 'text-terracotta-600' : 'text-neutral-500'
                 }`}
               >
                 {kpi.change}
@@ -177,25 +170,25 @@ function FinancialKPIsCard({ scope, userRole }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 function TimeTrackedCard({ scope, userRole }) {
   const myWeekData = [
-    { day: "Mon", hours: 8.5 },
-    { day: "Tue", hours: 7.2 },
-    { day: "Wed", hours: 9.1 },
-    { day: "Thu", hours: 6.8 },
-    { day: "Fri", hours: 8.0 },
-  ]
+    { day: 'Mon', hours: 8.5 },
+    { day: 'Tue', hours: 7.2 },
+    { day: 'Wed', hours: 9.1 },
+    { day: 'Thu', hours: 6.8 },
+    { day: 'Fri', hours: 8.0 },
+  ];
 
   const teamCapacity = [
-    { name: "Jane (You)", hours: 32.5, capacity: 40 },
-    { name: "Mike Johnson", hours: 38.0, capacity: 40 },
-    { name: "Sarah Wilson", hours: 35.5, capacity: 40 },
-  ]
+    { name: 'Jane (You)', hours: 32.5, capacity: 40 },
+    { name: 'Mike Johnson', hours: 38.0, capacity: 40 },
+    { name: 'Sarah Wilson', hours: 35.5, capacity: 40 },
+  ];
 
-  if (scope === "studio") {
+  if (scope === 'studio') {
     return (
       <div className="h-full flex flex-col">
         <div className="flex items-center gap-2 mb-4">
@@ -203,7 +196,7 @@ function TimeTrackedCard({ scope, userRole }) {
           <h3 className="font-semibold text-neutral-900">Team Capacity</h3>
         </div>
         <div className="space-y-3 flex-1">
-          {teamCapacity.map((member) => (
+          {teamCapacity.map(member => (
             <div key={member.name} className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-900">{member.name}</span>
@@ -216,10 +209,10 @@ function TimeTrackedCard({ scope, userRole }) {
           ))}
         </div>
       </div>
-    )
+    );
   }
 
-  const totalHours = Math.round(myWeekData.reduce((sum, day) => sum + day.hours, 0) * 10) / 10
+  const totalHours = Math.round(myWeekData.reduce((sum, day) => sum + day.hours, 0) * 10) / 10;
 
   return (
     <div className="h-full flex flex-col">
@@ -233,7 +226,7 @@ function TimeTrackedCard({ scope, userRole }) {
           <p className="text-xs text-neutral-600">This week</p>
         </div>
         <div className="space-y-2">
-          {myWeekData.map((day) => (
+          {myWeekData.map(day => (
             <div key={day.day} className="flex items-center justify-between">
               <span className="text-sm text-neutral-700">{day.day}</span>
               <div className="flex items-center gap-2 flex-1 ml-3">
@@ -245,35 +238,35 @@ function TimeTrackedCard({ scope, userRole }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function JumpBackInSection({ scope, userRole }) {
   const myProjects = [
     {
       id: 1,
-      title: "Luxury Penthouse - Living Room Design",
-      status: "In Progress",
-      lastActivity: "2 hours ago",
+      title: 'Luxury Penthouse - Living Room Design',
+      status: 'In Progress',
+      lastActivity: '2 hours ago',
       progress: 75,
     },
-    { id: 2, title: "Modern Office - Kitchen Concepts", status: "Review", lastActivity: "1 day ago", progress: 60 },
-    { id: 3, title: "Boutique Hotel - Lobby Design", status: "Planning", lastActivity: "3 days ago", progress: 25 },
-  ]
+    { id: 2, title: 'Modern Office - Kitchen Concepts', status: 'Review', lastActivity: '1 day ago', progress: 60 },
+    { id: 3, title: 'Boutique Hotel - Lobby Design', status: 'Planning', lastActivity: '3 days ago', progress: 25 },
+  ];
 
   const studioProjects = [
     ...myProjects,
-    { id: 4, title: "Retail Space - Store Layout", status: "In Progress", lastActivity: "4 hours ago", progress: 45 },
-    { id: 5, title: "Restaurant Design - Interior", status: "Planning", lastActivity: "1 day ago", progress: 15 },
-  ]
+    { id: 4, title: 'Retail Space - Store Layout', status: 'In Progress', lastActivity: '4 hours ago', progress: 45 },
+    { id: 5, title: 'Restaurant Design - Interior', status: 'Planning', lastActivity: '1 day ago', progress: 15 },
+  ];
 
-  const projects = scope === "studio" ? studioProjects : myProjects
+  const projects = scope === 'studio' ? studioProjects : myProjects;
 
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-neutral-900">Jump Back In</h3>
       <div className="grid gap-3">
-        {projects.slice(0, 4).map((project) => (
+        {projects.slice(0, 4).map(project => (
           <div
             key={project.id}
             className="flex items-center gap-4 p-4 bg-white rounded-lg border border-greige-500/30 hover:shadow-sm transition-shadow cursor-pointer"
@@ -295,58 +288,60 @@ function JumpBackInSection({ scope, userRole }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export default function DashboardPage() {
-  const [prompt, setPrompt] = useState("")
-  const [scope, setScope] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("dashboard-scope") || "my"
-    }
-    return "my"
-  })
+  const { data, isLoading } = useFetch('dashboard/summary/');
 
-  const canSeeStudio = mockUser.role === "studio_owner" || mockUser.role === "finance_admin"
-  const canSeeFinance = mockUser.permissions.includes("finance.read")
+  const [prompt, setPrompt] = useState('');
+  const [scope, setScope] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dashboard-scope') || 'my';
+    }
+    return 'my';
+  });
+
+  const canSeeStudio = mockUser.role === 'studio_owner' || mockUser.role === 'finance_admin';
+  const canSeeFinance = mockUser.permissions.includes('finance.read');
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("dashboard-scope", scope)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboard-scope', scope);
     }
-  }, [scope])
+  }, [scope]);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (prompt.trim()) {
-      console.log("Submitted prompt:", prompt)
-      setPrompt("")
+      console.log('Submitted prompt:', prompt);
+      setPrompt('');
     }
-  }
+  };
 
   const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return "Good morning"
-    if (hour < 17) return "Good afternoon"
-    return "Good evening"
-  }
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   const getSummary = () => {
-    if (scope === "studio") {
+    if (scope === 'studio') {
       return [
-        { color: "clay", text: "5 overdue tasks across 3 projects" },
-        { color: "sage", text: "Team utilisation at 89%" },
-        { color: "olive", text: "£45k profit this month" },
-      ]
+        { color: 'clay', text: '5 overdue tasks across 3 projects' },
+        { color: 'sage', text: 'Team utilisation at 89%' },
+        { color: 'olive', text: '£45k profit this month' },
+      ];
     }
     return [
-      { color: "sage", text: "3 meetings today" },
-      { color: "clay", text: "2 overdue tasks" },
-      { color: "olive", text: "Penthouse 75% complete" },
-    ]
-  }
+      { color: 'sage', text: '3 meetings today' },
+      { color: 'clay', text: '2 overdue tasks' },
+      { color: 'olive', text: 'Penthouse 75% complete' },
+    ];
+  };
 
-  const quickActions = ["Schedule client call", "Send invoice reminder", "Update project status", "Review proposals"]
+  const quickActions = ['Schedule client call', 'Send invoice reminder', 'Update project status', 'Review proposals'];
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">
@@ -361,10 +356,10 @@ export default function DashboardPage() {
                 {getGreeting()}, {mockUser.firstName} 👋
               </h1>
               <div className="text-sm text-neutral-600 font-medium">
-                {new Date().toLocaleDateString("en-GB", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
+                {new Date().toLocaleDateString('en-GB', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
                 })}
               </div>
             </div>
@@ -375,13 +370,13 @@ export default function DashboardPage() {
                 <div key={index} className="flex items-center gap-2">
                   <div
                     className={`w-2 h-2 rounded-full ${
-                      item.color === "clay"
-                        ? "bg-clay-500"
-                        : item.color === "sage"
-                          ? "bg-sage-500"
-                          : item.color === "olive"
-                            ? "bg-olive-600"
-                            : "bg-slatex-500"
+                      item.color === 'clay'
+                        ? 'bg-clay-500'
+                        : item.color === 'sage'
+                        ? 'bg-sage-500'
+                        : item.color === 'olive'
+                        ? 'bg-olive-600'
+                        : 'bg-slatex-500'
                     }`}
                   ></div>
                   <span className="text-sm text-neutral-700">{item.text}</span>
@@ -428,7 +423,7 @@ export default function DashboardPage() {
                 <Mic className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slatex-500" />
                 <Input
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={e => setPrompt(e.target.value)}
                   placeholder="Ask: What needs my attention?"
                   className="pl-10 pr-10 py-3 rounded-lg border-greige-500/30 text-sm"
                 />
@@ -459,5 +454,5 @@ export default function DashboardPage() {
         </section>
       </div>
     </div>
-  )
+  );
 }
