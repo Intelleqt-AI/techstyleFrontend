@@ -1,34 +1,42 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { Providers } from '@/lib/Providers';
+import PrivateRoute from '@/supabase/PrivateRoute';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopBar } from '@/components/top-bar';
-import { ReactNode } from 'react';
-import { Providers } from '@/lib/Providers';
+import { usePathname } from 'next/navigation';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata: Metadata = {
-  title: 'Techstyles - Interior Design Management',
-  description: 'AI-first business and project management for interior designers',
-  generator: 'v0.app',
-};
+const PUBLIC_ROUTES = ['/login', '/register'];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
+
   return (
     <html lang="en">
       <body className={`${inter.className} bg-white text-gray-900 antialiased`}>
         <Providers>
-          <SidebarProvider defaultOpen={true}>
-            <div className="flex min-h-screen w-full bg-white">
-              <AppSidebar />
-              <div className="flex-1 flex flex-col min-w-0 bg-white">
-                <TopBar />
-                <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>
-              </div>
-            </div>
-          </SidebarProvider>
+          {isPublic ? (
+            <>{children}</>
+          ) : (
+            <PrivateRoute>
+              <SidebarProvider defaultOpen={true}>
+                <div className="flex min-h-screen w-full bg-white">
+                  <AppSidebar />
+                  <div className="flex-1 flex flex-col min-w-0 bg-white">
+                    <TopBar />
+                    <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>
+                  </div>
+                </div>
+              </SidebarProvider>
+            </PrivateRoute>
+          )}
         </Providers>
       </body>
     </html>
