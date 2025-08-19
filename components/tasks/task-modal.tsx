@@ -161,9 +161,10 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
   );
 
-  const handleCloseModal = () => {
+  const handleCloseModal = e => {
     onOpenChange(false);
     setTaskValues(initialTask);
+    onOpenChange(false);
   };
 
   // Get Users
@@ -214,6 +215,10 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
 
   // Task submit
   const handleSubmit = () => {
+    if (taskValues?.name?.trim().length < 1) {
+      toast.error('Enter task name');
+      return;
+    }
     if (selectedMembers.length > 0 && taskToEdit) {
       selectedMembers.map(item => {
         if (item.email == user?.email) {
@@ -738,7 +743,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   // };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
       {/* Single rounded grey surface with balanced padding (28px top/side) */}
       <SheetContent
         onOpenAutoFocus={e => e.preventDefault()}
