@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useUser from '@/hooks/useUser';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import useProjects from '@/supabase/hook/useProject';
 
 type Day = { day: string; hours: number };
 
@@ -273,6 +274,7 @@ export default function HomeTimePage() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const queryClient = useQueryClient();
   const { user } = useUser();
+  const { data: project, isLoading } = useProjects();
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
     queryKey: ['Time Tracking'],
@@ -493,7 +495,8 @@ export default function HomeTimePage() {
               <div className="space-y-0.5">
                 <div className="text-lg font-semibold text-neutral-900">{activeTask?.task?.name || 'Studio Management'}</div>
                 <div className="text-sm text-neutral-500">
-                  {activeTask?.task?.projectID ? `Project ID: ${activeTask.task.projectID}` : 'Studio Task'}
+                  {/* {activeTask?.task?.projectID ? `Project ID: ${activeTask.task.projectID}` : 'Studio Task'} */}
+                  {(!isLoading && project.find(p => p.id === activeTask?.task?.projectID)?.name) || 'Studio Task'}
                 </div>
               </div>
 
@@ -590,7 +593,7 @@ export default function HomeTimePage() {
                     <div>
                       <div className="text-sm md:text-base font-semibold text-neutral-900">{task?.task?.name || 'Studio Management'}</div>
                       <div className="text-xs md:text-sm text-neutral-500">
-                        {task?.task?.projectID ? `Project ID: ${task.task.projectID}` : 'Studio Task'}
+                        {(!isLoading && project.find(p => p.id === task?.task?.projectID)?.name) || 'Studio Task'}
                       </div>
                     </div>
                   </div>
