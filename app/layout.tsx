@@ -9,6 +9,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { TopBar } from '@/components/top-bar';
 import { usePathname } from 'next/navigation';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <div className="flex min-h-screen w-full bg-white">
                   <AppSidebar />
                   <div className="flex-1 flex flex-col min-w-0 bg-white">
+                    <Toaster closeButton visibleToasts={3} duration={2000} position="bottom-right" />
                     <TopBar />
                     <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>
                   </div>

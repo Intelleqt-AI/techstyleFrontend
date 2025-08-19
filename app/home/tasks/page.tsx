@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import { useMemo, useState } from "react"
-import { HomeNav } from "@/components/home-nav"
-import { DataCardsGrid, type DataCardItem } from "@/components/data-cards"
+import React, { useEffect, useMemo, useState } from 'react';
+import { HomeNav } from '@/components/home-nav';
+import { DataCardsGrid, type DataCardItem } from '@/components/data-cards';
 import {
   CalendarIcon,
   AlertTriangle,
@@ -16,180 +16,247 @@ import {
   Hash,
   MoreHorizontal,
   Clock,
-} from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { TypeChip, StatusBadge } from "@/components/chip"
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { TypeChip, StatusBadge } from '@/components/chip';
+import useTask from '@/supabase/hook/useTask';
+import { fetchOnlyProject, fetchProjects, modifyTask } from '@/supabase/API';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import useUser from '@/supabase/hook/useUser';
+import { toast } from 'sonner';
+import { TaskModal } from '@/components/tasks/task-modal';
 
-type TaskStatus = "open" | "in_progress" | "blocked" | "done"
-type Task = {
-  id: number
-  title: string
-  project: string
-  dueDate: string // ISO
-  assignee: string
-  status: TaskStatus
-  completedAt?: string
-}
-
-const tasksSeed: Task[] = [
-  {
-    id: 1,
-    title: "Review material samples",
-    project: "Luxury Penthouse",
-    dueDate: new Date().toISOString(),
-    assignee: "You",
-    status: "open",
-  },
-  {
-    id: 2,
-    title: "Finalize kitchen layout",
-    project: "Modern Office",
-    dueDate: new Date(Date.now() + 86400000).toISOString(),
-    assignee: "You",
-    status: "in_progress",
-  },
-  {
-    id: 3,
-    title: "Send moodboard v2",
-    project: "Boutique Hotel",
-    dueDate: new Date(Date.now() - 86400000 * 2).toISOString(),
-    assignee: "You",
-    status: "open",
-  },
-  {
-    id: 4,
-    title: "Vendor call - lighting",
-    project: "Retail Space",
-    dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-    assignee: "You",
-    status: "blocked",
-  },
-  {
-    id: 5,
-    title: "Draft client presentation",
-    project: "Luxury Penthouse",
-    dueDate: new Date().toISOString(),
-    assignee: "You",
-    status: "open",
-  },
-  {
-    id: 6,
-    title: "Confirm fabric order",
-    project: "Boutique Hotel",
-    dueDate: new Date(Date.now() - 86400000).toISOString(),
-    assignee: "You",
-    status: "done",
-    completedAt: new Date().toISOString(),
-  },
-  {
-    id: 7,
-    title: "Upload CAD updates",
-    project: "Modern Office",
-    dueDate: new Date(Date.now() + 86400000 * 2).toISOString(),
-    assignee: "You",
-    status: "in_progress",
-  },
-  {
-    id: 8,
-    title: "QA site photos",
-    project: "Retail Space",
-    dueDate: new Date(Date.now() - 86400000 * 4).toISOString(),
-    assignee: "You",
-    status: "open",
-  },
-]
-
-function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
-
-// CRM-style stat cards
-const dataCards: DataCardItem[] = [
-  { title: "Total Tasks", value: "12", subtitle: "Across all assigned projects", icon: Hash },
-  { title: "Overdue Tasks", value: "3", subtitle: "Past due dates", icon: AlertTriangle },
-  { title: "Task Added Today", value: "0", subtitle: "Created today", icon: CalendarIcon },
-  { title: "Active Projects", value: "3", subtitle: "Assigned to you", icon: Hash },
-]
-
-// Original Kanban data (unchanged except chip)
-const taskColumns = [
-  {
-    title: "To Do",
-    count: 1,
-    icon: Circle,
-    color: "text-gray-600",
-    tasks: [
-      {
-        id: 1,
-        title: "Review fabric samples for living room",
-        assignee: "Jane Designer",
-        project: "Luxury Penthouse",
-        priority: "high",
-        dueDate: "Today",
-      },
-    ],
-  },
-  {
-    title: "In Progress",
-    count: 1,
-    icon: CircleDot,
-    color: "text-blue-600",
-    tasks: [
-      {
-        id: 2,
-        title: "Client presentation - Kitchen concepts",
-        assignee: "Mike Johnson",
-        project: "Modern Office Space",
-        priority: "medium",
-        dueDate: "Tomorrow",
-      },
-    ],
-  },
-  {
-    title: "In Review",
-    count: 1,
-    icon: Eye,
-    color: "text-orange-600",
-    tasks: [
-      {
-        id: 3,
-        title: "Source lighting fixtures",
-        assignee: "Sarah Wilson",
-        project: "Boutique Hotel",
-        priority: "low",
-        dueDate: "Friday",
-      },
-    ],
-  },
-  { title: "Done", count: 0, icon: CheckCircle2, color: "text-green-600", tasks: [] },
-]
+const updatetaskList = data => {
+  return [
+    {
+      name: 'To Do',
+      items: data?.filter(item => item.status == 'todo'),
+      status: 'To Do',
+      icon: Circle,
+      color: 'text-gray-600',
+    },
+    {
+      name: 'In Progress',
+      items: data?.filter(item => item.status == 'in-progress'),
+      status: 'In Progress',
+      icon: CircleDot,
+      color: 'text-blue-600',
+    },
+    {
+      name: 'In Review',
+      items: data?.filter(item => item.status == 'in-review'),
+      status: 'In Review',
+      color: 'text-orange-600',
+      icon: Eye,
+    },
+    {
+      name: 'Done',
+      items: data?.filter(item => item.status == 'done'),
+      status: 'Done',
+      icon: CheckCircle2,
+      color: 'text-green-600',
+    },
+  ];
+};
 
 export default function MyTasksPage() {
-  const [search, setSearch] = useState("")
-  const tasks = tasksSeed
+  const admins = [
+    'david.zeeman@intelleqt.ai',
+    'roxi.zeeman@souqdesign.co.uk',
+    'risalat.shahriar@intelleqt.ai',
+    'dev@intelleqt.ai',
+    'saif@intelleqt.ai',
+  ];
 
-  const { openCount, dueToday, overdue, completedThisWeek, filtered } = useMemo(() => {
-    const today = new Date()
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() - today.getDay())
+  const [myTask, setMyTask] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [editing, setEditing] = React.useState<UITask | null>(null);
+  const { data: taskData, isLoading: taskLoading } = useTask();
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
+  const { user } = useUser();
+  function openNewTask(listId?: string) {
+    setEditing(null);
+    setDefaultListId(listId);
+    setModalOpen(true);
+  }
 
-    const open = tasks.filter((t) => t.status !== "done").length
-    const dueT = tasks.filter((t) => t.status !== "done" && isSameDay(new Date(t.dueDate), today)).length
-    const over = tasks.filter(
-      (t) => t.status !== "done" && new Date(t.dueDate) < new Date(today.setHours(0, 0, 0, 0)),
-    ).length
-    const completedWk = tasks.filter(
-      (t) => t.status === "done" && t.completedAt && new Date(t.completedAt) >= startOfWeek,
-    ).length
+  function openEditTask(task) {
+    setEditing(task);
+    setDefaultListId(task.listId);
+    setModalOpen(true);
+  }
 
-    const f = tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(search.toLowerCase()) || t.project.toLowerCase().includes(search.toLowerCase()),
-    )
+  function handleSave(payload: Omit<Task, 'id'> & { id?: string }) {
+    // if (payload.id) {
+    //   setTasks(prev => prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t)));
+    // } else {
+    //   const newTask: UITask = { ...payload, id: crypto.randomUUID() } as UITask;
+    //   setTasks(prev => [newTask, ...prev]);
+    // }
+  }
 
-    return { openCount: open, dueToday: dueT, overdue: over, completedThisWeek: completedWk, filtered: f }
-  }, [tasks, search])
+  const queryClient = useQueryClient();
+
+  const { mutate, error: deleteError } = useMutation({
+    mutationFn: modifyTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tasks']);
+    },
+  });
+
+  // Projects
+  const {
+    data: project,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: fetchProjects,
+  });
+
+  useEffect(() => {
+    if (taskLoading) return;
+    setMyTask(taskData.data);
+    const myTask = myTaskList(taskData.data);
+    setTasks(taskData && taskData.data.length > 0 && updatetaskList(myTask));
+  }, [taskData, taskLoading, user?.email]);
+
+  const myRecentTask = tasks => {
+    const now = new Date();
+    return tasks?.filter(task => task.status !== 'done' && new Date(task.dueDate) < now);
+  };
+
+  const todayTasks = tasks => {
+    const now = new Date();
+    return tasks?.filter(task => {
+      const createdAt = new Date(task.created_at);
+      return (
+        createdAt.getDate() === now.getDate() && createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear()
+      );
+    });
+  };
+
+  const myTaskList = tasks => {
+    if (!tasks) return;
+    if (!user) return [];
+    if (admins.includes(user?.email)) {
+      return tasks;
+    }
+    return tasks?.filter(task => {
+      if (task.assigned && Array.isArray(task.assigned) && task.assigned.length > 0) {
+        return task.assigned.some(assignee => assignee.email === user.email);
+      }
+      return false;
+    });
+  };
+
+  const assignedProjectCount = project?.filter(item => item.assigned?.some(person => person.email == user?.email)).length;
+
+  const todayCreatedTask = todayTasks(myTask);
+  const overDueTask = myRecentTask(myTask);
+
+  // CRM-style stat cards
+  const dataCards: DataCardItem[] = [
+    { title: 'Total Tasks', value: myTask?.length, subtitle: 'Across all assigned projects', icon: Hash },
+    { title: 'Overdue Tasks', value: overDueTask?.length, subtitle: 'Past due dates', icon: AlertTriangle },
+    { title: 'Task Added Today', value: todayCreatedTask?.length, subtitle: 'Created today', icon: CalendarIcon },
+    {
+      title: 'Active Projects',
+      value: admins.some(item => item == user?.email) ? project?.length : assignedProjectCount,
+      subtitle: 'Assigned to you',
+      icon: Hash,
+    },
+  ];
+
+  // Task Drag and drop section
+  const handleDragStart = (e: React.DragEvent, taskId: string, sourceColumn: string) => {
+    e.dataTransfer.setData('taskId', taskId);
+    e.dataTransfer.setData('sourceColumn', sourceColumn);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('taskId');
+    const sourceColumn = e.dataTransfer.getData('sourceColumn');
+    if (!taskId || !sourceColumn || sourceColumn === targetColumn) return;
+
+    // Determine the new status
+    let status;
+    if (targetColumn === 'To Do') {
+      status = 'todo';
+    } else if (targetColumn === 'In Progress') {
+      status = 'in-progress';
+    } else if (targetColumn === 'In Review') {
+      status = 'in-review';
+    } else if (targetColumn === 'Done') {
+      status = 'done';
+    }
+
+    setTasks(prevColumns => {
+      // Find the source and target column indices
+      const sourceColumnIndex = prevColumns.findIndex(col => col.name === sourceColumn);
+      const targetColumnIndex = prevColumns.findIndex(col => col.name === targetColumn);
+
+      // Ensure columns exist
+      if (sourceColumnIndex === -1 || targetColumnIndex === -1) return prevColumns;
+
+      // Find the task within the source column
+      const taskIndex = prevColumns[sourceColumnIndex].items.findIndex(task => task.id === taskId);
+
+      // Ensure task exists
+      if (taskIndex === -1) return prevColumns;
+
+      // Get the task and remove it from the source column
+      const task = prevColumns[sourceColumnIndex].items[taskIndex];
+
+      // Create a new task object with the updated status
+      const updatedTask = {
+        ...task,
+        status: status, // Update the status property here
+      };
+
+      const newColumns = [...prevColumns];
+      newColumns[sourceColumnIndex] = {
+        ...newColumns[sourceColumnIndex],
+        items: newColumns[sourceColumnIndex].items.filter((_, idx) => idx !== taskIndex),
+      };
+
+      // Add the updated task to the target column
+      newColumns[targetColumnIndex] = {
+        ...newColumns[targetColumnIndex],
+        items: [...newColumns[targetColumnIndex].items, updatedTask],
+      };
+      toast.success(`Task moved to ${targetColumn}`);
+
+      return newColumns;
+    });
+
+    // Send update to server
+    let modifyInfo;
+    if (status === 'done') {
+      modifyInfo = {
+        status,
+        phase: 'complete-project',
+        id: taskId,
+      };
+    } else {
+      modifyInfo = {
+        status,
+        id: taskId,
+      };
+    }
+    // Update to DB
+    mutate({ newTask: modifyInfo });
+  };
+
+  console.log('rendered', editing);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -208,16 +275,11 @@ export default function MyTasksPage() {
             </Button>
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                className="pl-10 h-9"
-                placeholder="Search tasks..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <Input className="pl-10 h-9" placeholder="Search tasks..." />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
+            <Button onClick={() => openNewTask()} size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
               <Plus className="w-4 h-4" />
               Add Task
             </Button>
@@ -226,14 +288,20 @@ export default function MyTasksPage() {
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {taskColumns.map((column) => (
-            <div key={column.title} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          {tasks?.map(column => (
+            <div
+              onDragOver={e => handleDragOver(e)}
+              onDrop={e => handleDrop(e, column.name)}
+              key={column.name}
+              className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+            >
               {/* Column Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <column.icon className={`w-4 h-4 ${column.color}`} />
-                  <span className="font-medium text-gray-900">{column.title}</span>
-                  <TypeChip label={String(column.count)} />
+
+                  <span className="font-medium text-gray-900">{column.name}</span>
+                  <TypeChip label={String(column?.items?.length)} />
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
@@ -247,46 +315,46 @@ export default function MyTasksPage() {
 
               {/* Task Cards */}
               <div className="space-y-3 mb-4">
-                {column.tasks.map((task) => (
+                {column.items.map(task => (
                   <div
                     key={task.id}
-                    className="p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="p-3 h-[105px] flex flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    draggable
+                    onDragStart={e => handleDragStart(e, task.id, column.name)}
+                    onClick={() => openEditTask(task)}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm text-gray-900 leading-tight">{task.title}</h4>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
-                      >
-                        <Clock className="w-3 h-3" />
-                      </Button>
+                    <div>
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">{task.name}</h4>
+                        <Button variant="ghost" size="sm" className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
+                          <Clock className="w-3 h-3" />
+                        </Button>
+                      </div>
+
+                      <div className="text-xs truncate text-gray-600 mb-2">
+                        {(project && project.find(p => p.id === task?.projectID)?.name) || ''}
+                      </div>
                     </div>
-
-                    <div className="text-xs text-gray-600 mb-2">{task.assignee}</div>
-
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">0/0</span>
+                      <span className="text-gray-500">
+                        {task?.subtasks?.filter(subtask => subtask.selected === true).length}/{task?.subtasks?.length}
+                      </span>
                       <div className="flex items-center gap-1">
-                        <StatusBadge status="high" label="high" />
+                        <StatusBadge status={task?.priority} label={task?.priority} />
                       </div>
                     </div>
                   </div>
                 ))}
 
-                {column.tasks.length === 0 && column.title === "Done" && (
+                {/* {column.items.length === 0 && column.name === 'Done' && (
                   <div className="p-8 text-center">
                     <div className="text-gray-400 mb-2">+ Add Task</div>
                   </div>
-                )}
+                )} */}
               </div>
 
               {/* Add Task Button */}
-              <Button
-                variant="ghost"
-                className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
-                size="sm"
-              >
+              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center" size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>
@@ -294,6 +362,23 @@ export default function MyTasksPage() {
           ))}
         </div>
       </div>
+
+      <TaskModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        projectId={null}
+        team={null}
+        defaultListId={defaultListId}
+        taskToEdit={
+          editing
+            ? {
+                ...editing,
+                assignees: editing.assignees ?? editing.assigneeIds,
+              }
+            : undefined
+        }
+        onSave={handleSave}
+      />
     </div>
-  )
+  );
 }
