@@ -88,6 +88,14 @@ export default function MyTasksPage() {
     setModalOpen(true);
   }
 
+  const handleClose = e => {
+    if (!e) {
+      setEditing(null);
+      console.log('modal is close', e);
+    }
+    setModalOpen(e);
+  };
+
   function handleSave(payload: Omit<Task, 'id'> & { id?: string }) {
     // if (payload.id) {
     //   setTasks(prev => prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t)));
@@ -365,12 +373,13 @@ export default function MyTasksPage() {
 
       <TaskModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleClose}
         projectId={null}
         team={null}
         defaultListId={defaultListId}
         taskToEdit={editing}
         onSave={handleSave}
+        setEditing={setEditing}
       />
     </div>
   );

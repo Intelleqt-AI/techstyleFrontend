@@ -161,6 +161,11 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
   );
 
+  const handleCloseModal = () => {
+    onOpenChange(false);
+    setTaskValues(initialTask);
+  };
+
   // Get Users
   const {
     data: users,
@@ -341,14 +346,11 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
         ...prevValues,
         ...taskToEdit,
       }));
+    } else {
+      setTaskValues(prevValues => ({
+        ...initialTask,
+      }));
     }
-
-    // else {
-    //   setTaskValues(prevValues => ({
-    //     ...initialTask,
-    //     ...task,
-    //   }));
-    // }
   }, [taskToEdit, projectId]);
 
   // React.useEffect(() => {
@@ -522,10 +524,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
       };
     });
   }
-
-  React.useEffect(() => {
-    console.log('taskValues updated:', taskValues);
-  }, [taskValues]);
 
   // Label rail (160px) with small icon + label
   function Labeled({
@@ -1233,7 +1231,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
         {/* Sticky footer dock with aligned actions */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
           <div className="h-16 px-7 md:px-7 flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" className="h-10" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" className="h-10" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button

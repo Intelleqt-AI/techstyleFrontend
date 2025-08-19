@@ -599,9 +599,9 @@ export default function HomeTimePage() {
                   </div>
 
                   <div className="flex items-center gap-4">
-                    <div className="text-sm md:text-base font-semibold text-neutral-900">{formatTime(task.totalWorkTime)}</div>
+                    <div className="text-sm md:text-base font-semibold text-neutral-900">{formatTime(task?.totalWorkTime)}</div>
                     <div className="text-xs md:text-sm text-neutral-500">
-                      {new Date(task.timerStart).toLocaleDateString('en-US', {
+                      {new Date(task?.timerStart).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
