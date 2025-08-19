@@ -48,8 +48,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import useProjects from '@/supabase/hook/useProject';
 import useUser from '@/supabase/hook/useUser';
-import { addNewTask, createNotification, fetchProjects, getUsers, modifyTask } from '@/supabase/API';
+import { addNewTask, createNotification, fetchProjects, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
 import { toast } from 'sonner';
+import DraggableSubtasks2 from './DraggableSubtasks2';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const phases: Phase[] = [
   { id: 'phase-concept', name: 'Concept' },
@@ -141,6 +144,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [filteredUsers, setFilteredUsers] = React.useState(teamMembers);
   const textareaRef = React.useRef(null);
+  const [descriptionValue, setDescriptionValue] = React.useState(taskToEdit?.description || '');
 
   // set if a user mention another user in comment
   const [mention, setMention] = React.useState(null);
@@ -149,6 +153,13 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   // set if a user mention another user in subTask
   const [mentionSub, setMentionSub] = React.useState([]);
   const [subNotification, setSubNotification] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+  const [file, setFile] = React.useState(null);
+  const [totalDocs, setTotalDocs] = React.useState([]);
+
+  const [subtasks, setSubtasks] = React.useState<Subtask[]>(
+    taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
+  );
 
   // Get Users
   const {
@@ -253,24 +264,26 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
       // afterCloseModal();
     }, 1000);
   };
+  const handleCommentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent full page reload
 
-  const handleCommentSubmit = e => {
-    e.preventDefault();
-    // Add timestamp
+    if (!comment.value.trim()) return; // ignore empty comments
+
     const newComment = {
       ...comment,
       time: new Date().toLocaleString(),
-      name: user?.name,
-      profileImg: '',
+      name: user?.name || 'Anonymous',
+      profileImg: user?.photoURL || '',
     };
-    // send notification if mention available
+
+    // Update notifications if mention exists
     if (mention) {
       const notification = {
         id: Date.now(),
         link: '/my-task',
         type: 'comment',
-        itemID: taskToEdit?.id || taskValues?.id,
-        title: `${taskValues.name}`,
+        itemID: taskValues?.id || taskValues?.id,
+        title: taskValues?.name,
         isRead: false,
         message: newComment.value,
         timestamp: Date.now(),
@@ -278,26 +291,33 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
       };
       setNotification(notification);
     }
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      comments: [...prevTask.comments, newComment],
+
+    // Update local task state
+    setTaskValues(prev => ({
+      ...prev,
+      comments: [...(prev.comments || []), newComment],
     }));
 
+    // Send mutation to server
     mutation.mutate({
       newTask: {
         ...taskValues,
         comments: [...(taskValues?.comments || []), newComment],
       },
-      user: user,
+      user,
     });
 
-    setComment({
-      name: '',
-      value: '',
-      time: '',
-      profileImg: '',
-    });
+    // Clear input
+    setComment({ value: '', name: '', time: '', profileImg: '' });
   };
+
+  const handleDescriptionChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { value } = e.target;
+    setTaskValues(prevTask => ({
+      ...prevTask,
+      description: value,
+    }));
+  }, []);
 
   // Update taskValues with the values from task
   // React.useEffect(() => {
@@ -441,12 +461,15 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     }));
   };
 
-  const updateTask = e => {
+  const updateTask = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      [name]: value,
-    }));
+    setTaskValues(prevTask => {
+      const newValues = {
+        ...prevTask,
+        [name]: value,
+      };
+      return newValues;
+    });
 
     // Check if the status is done , then also change the phase to complete
     if (value == 'done') {
@@ -486,9 +509,23 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     }
   }, []);
 
-  function toggleAssignee(id: string) {
-    setAssignees(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  function toggleAssignee(member: any) {
+    console.log(member);
+    setTaskValues(prev => {
+      const alreadyAssigned = prev.assigned.some((a: any) => a.id === member.id);
+
+      return {
+        ...prev,
+        assigned: alreadyAssigned
+          ? prev.assigned.filter((a: any) => a.id !== member.id) // remove
+          : [...prev.assigned, member], // add object
+      };
+    });
   }
+
+  React.useEffect(() => {
+    console.log('taskValues updated:', taskValues);
+  }, [taskValues]);
 
   // Label rail (160px) with small icon + label
   function Labeled({
@@ -513,9 +550,23 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     );
   }
 
+  function initialsOf(name: string): string {
+    if (!name) return '';
+
+    const parts = name.trim().split(/\s+/);
+
+    if (parts.length > 1) {
+      // Take first char of first and last word
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+
+    // Only one word -> take first 2 letters
+    return name.substring(0, 2).toUpperCase();
+  }
+
   function AssigneesMultiSelect() {
     const [openPop, setOpenPop] = React.useState(false);
-    const selected = team?.filter(m => assignees.includes(m.id));
+    const selected = taskValues?.assigned || [];
 
     return (
       <div className="space-y-2">
@@ -537,7 +588,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                           <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
                             {/* @ts-ignore optional avatarUrl */}
                             <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
-                            <AvatarFallback className="text-[10px]">{initialsOf(m.name)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                         ))}
                       </div>
@@ -558,27 +609,26 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
               <Command>
                 <CommandInput
                   placeholder="Search teammates…"
-                  className="focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
+                  className=" focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
                 />
                 <CommandEmpty>No people found.</CommandEmpty>
                 <CommandList className="max-h-64">
                   <CommandGroup>
-                    {team?.map(m => {
-                      const checked = assignees.includes(m.id);
+                    {users?.data?.map(m => {
+                      const checked = taskValues?.assigned?.some(a => a.id === m.id);
                       return (
-                        <CommandItem key={m.id} value={m.name} className="flex items-center gap-2" onSelect={() => toggleAssignee(m.id)}>
+                        <CommandItem key={m.id} value={m.name} className="flex items-center gap-2">
                           <Checkbox
                             checked={checked}
-                            onCheckedChange={() => toggleAssignee(m.id)}
+                            onCheckedChange={() => toggleAssignee(m)}
                             className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                           />
                           <Avatar className="h-6 w-6">
-                            {/* @ts-ignore optional */}
-                            <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
-                            <AvatarFallback className="text-[10px]">{initialsOf(m.name)}</AvatarFallback>
+                            <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                           <span className="truncate">{m.name}</span>
-                          {checked && <Check className="ml-auto h-4 w-4 text-gray-500" />}
+                          {taskValues?.assigned?.some(a => a.id === m.id) && <Check className="ml-auto h-4 w-4 text-gray-500" />}
                         </CommandItem>
                       );
                     })}
@@ -588,16 +638,28 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
             </PopoverContent>
           </Popover>
           {selected?.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setAssignees([])}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setTaskValues(prev => ({
+                  ...prev,
+                  assigned: [],
+                }))
+              }
+            >
               Clear
             </Button>
           )}
         </div>
 
-        {selected?.length > 0 && (
+        {taskValues?.assigned?.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {selected.map(m => (
-              <TypeChip key={m.id} label={m.name} className="cursor-pointer" onClick={() => toggleAssignee(m.id)} />
+            {taskValues?.assigned?.map(m => (
+              <span onClick={() => toggleAssignee(m)}>
+                <TypeChip key={m.id} label={m.name} className="cursor-pointer" />
+              </span>
             ))}
           </div>
         )}
@@ -621,11 +683,60 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   }
 
   // handle Task Save
-
   const handleSave = e => {
     e.preventDefault();
     handleClickSave();
   };
+
+  // File Upload Handler
+
+  // Get All Files
+  const {
+    data: files,
+    isLoading: attachentLoading,
+    error: attachentError,
+    refetch: attachentRefetch,
+  } = useQuery({
+    queryKey: ['GetAllFiles', taskValues?.id],
+    queryFn: () => getAllFiles(taskValues?.id),
+    enabled: !!taskValues?.id,
+  });
+
+  // File Upload Function
+  const attachmentMutation = useMutation({
+    mutationFn: uploadDoc,
+    onMutate: () => {
+      toast.loading('Uploading...', { id: 'upload-toast' });
+    },
+    onSuccess: data => {
+      // queryClient.invalidateQueries(['tasks']);
+      attachentRefetch();
+      toast.dismiss('upload-toast');
+      toast.success(`Uploaded successfully!`);
+    },
+    onError: () => {
+      toast.dismiss('upload-toast');
+      toast.error('Failed to upload document.');
+    },
+  });
+
+  const handleFileChange = event => {
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        setFile(null);
+        toast('File size must be less than 5MB!');
+      } else {
+        setFile(selectedFile);
+        attachmentMutation.mutate({ file: selectedFile, id: taskValues?.id, projectID: taskValues?.projectID, task: taskValues });
+      }
+    }
+  };
+
+  // File Upload Button
+  // const handleButtonClick = () => {
+  //   fileInputRef.current.click();
+  // };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -791,7 +902,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
               </Select>
             </Labeled>
 
-            {/* <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Start Date">
+            <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Start Date">
               <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -800,32 +911,33 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                       variant="outline"
                       className={cn(
                         'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
-                        !startDate && 'text-muted-foreground'
+                        !taskValues?.startDate && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                      {startDate ? format(toDateFromYMD(startDate), 'PPP') : 'Pick start date'}
+                      {taskValues?.startDate ? format(toDateFromYMD(taskValues?.startDate), 'PPP') : 'Pick start date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                     <Calendar
                       mode="single"
-                      selected={startDate ? toDateFromYMD(startDate) : undefined}
-                      onSelect={d => setStartDate(d ? format(d, 'yyyy-MM-dd') : undefined)}
+                      selected={taskValues?.startDate ? toDateFromYMD(taskValues?.startDate) : null}
+                      onSelect={d => setTaskValues(prev => ({ ...prev, startDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
                       initialFocus
+                      // setStartDate(d ? format(d, 'yyyy-MM-dd') : undefined)
                     />
                   </PopoverContent>
                 </Popover>
-                {startDate && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setStartDate(undefined)}>
+                {taskValues?.startDate && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, startDate: null }))}>
                     Clear
                   </Button>
                 )}
               </div>
-            </Labeled> */}
+            </Labeled>
 
-            {/* <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Due Date">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Due Date">
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-2.5">
                 <div className="flex items-center gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -834,29 +946,29 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                         variant="outline"
                         className={cn(
                           'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
-                          !dueDate && 'text-muted-foreground'
+                          !taskValues?.dueDate && 'text-muted-foreground'
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                        {dueDate ? format(toDateFromYMD(dueDate), 'PPP') : 'Pick due date'}
+                        {taskValues?.dueDate ? format(toDateFromYMD(taskValues?.dueDate), 'PPP') : 'Pick due date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                       <Calendar
                         mode="single"
-                        selected={dueDate ? toDateFromYMD(dueDate) : undefined}
-                        onSelect={d => setDueDate(d ? format(d, 'yyyy-MM-dd') : undefined)}
+                        selected={taskValues?.dueDate ? toDateFromYMD(taskValues?.dueDate) : undefined}
+                        onSelect={d => setTaskValues(prev => ({ ...prev, dueDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
-                  {dueDate && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setDueDate(undefined)}>
+                  {taskValues?.dueDate && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, dueDate: null }))}>
                       Clear
                     </Button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     min={1}
@@ -875,9 +987,9 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                     aria-label="Duration (days)"
                   />
                   <span className="text-xs text-gray-500">Duration (days)</span>
-                </div>
+                </div> */}
               </div>
-            </Labeled> */}
+            </Labeled>
 
             {/* <Labeled icon={<TagIcon className="h-4 w-4" />} label="Tags">
               <div className="space-y-2">
@@ -923,28 +1035,29 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                 )}
               </div>
             </Labeled> */}
-            {/* 
+
             <Labeled icon={<Users className="h-4 w-4" />} label="Assignees">
               <AssigneesMultiSelect />
-            </Labeled> */}
+            </Labeled>
 
             <Labeled icon={<TypeIcon className="h-4 w-4" />} label="Description" alignTop>
               <Textarea
                 placeholder="Add details… use @ to mention teammates. Attach files below."
+                id="description"
                 name="description"
-                // defaultValue={taskValues?.description || ''}
-                value={taskValues?.description || ''}
-                onChange={updateTask}
+                rows={5}
+                value={taskValues?.description}
+                onChange={handleDescriptionChange}
                 className="min-h-[104px] bg-white text-sm rounded-xl"
               />
             </Labeled>
 
-            {/* <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
+            <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
               <div className="space-y-2">
-                <Input id="files" type="file" multiple onChange={onFilesChange} className="bg-white h-9 text-sm rounded-xl" />
-                {attachments.length > 0 && (
+                <Input id="files" type="file" multiple onChange={handleFileChange} className="bg-white h-9 text-sm rounded-xl" />
+                {files?.data?.length > 0 && (
                   <ul className="text-xs text-gray-600 list-disc pl-5">
-                    {attachments.map(a => (
+                    {files?.data?.map(a => (
                       <li key={a.name + a.size}>
                         {a.name} ({Math.round(a.size / 1024)} KB)
                       </li>
@@ -952,10 +1065,10 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   </ul>
                 )}
               </div>
-            </Labeled> */}
+            </Labeled>
 
-            {/* <Labeled icon={<ListTodo className="h-4 w-4" />} label="Sub Tasks" alignTop>
-              <div className="space-y-2">
+            <Labeled icon={<ListTodo className="h-4 w-4" />} label="Sub Tasks" alignTop>
+              {/* <div className="space-y-2">
                 {subtasks.map((s, idx) => (
                   <div
                     key={s.id}
@@ -966,19 +1079,19 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   >
                     <Checkbox
                       checked={s.done}
-                      onCheckedChange={v => updateSubtask(s.id, { done: Boolean(v) })}
+                      // onCheckedChange={v => updateSubtask(s.id, { done: Boolean(v) })}
                       className="mr-1 focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                       aria-label="Toggle subtask"
                     />
                     <Input
                       value={s.title}
-                      onChange={e => updateSubtask(s.id, { title: e.target.value })}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (s?.title?.trim() !== '') addSubtask();
-                        }
-                      }}
+                      // onChange={e => updateSubtask(s.id, { title: e.target.value })}
+                      // onKeyDown={e => {
+                      //   if (e.key === 'Enter') {
+                      //     e.preventDefault();
+                      //     if (s?.title?.trim() !== '') addSubtask();
+                      //   }
+                      // }}
                       placeholder={idx === subtasks?.length - 1 ? 'Subtask…' : ''}
                       className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent h-9 text-sm"
                     />
@@ -989,7 +1102,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-gray-700"
-                        onClick={() => removeSubtask(s.id)}
+                        // onClick={() => removeSubtask(s.id)}
                         aria-label="Remove subtask"
                         title="Remove"
                       >
@@ -999,12 +1112,18 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   </div>
                 ))}
                 <div className="flex justify-end">
-                  <Button type="button" variant="ghost" size="sm" onClick={addSubtask} className="gap-1">
+                  <Button type="button" variant="ghost" size="sm" className="gap-1">
                     <Plus className="h-4 w-4" /> Add subtask
                   </Button>
                 </div>
-              </div>
-            </Labeled> */}
+              </div> */}
+              <DraggableSubtasks2
+                member={teamMembers}
+                taskId={taskValues?.id}
+                subtasks={taskValues?.subtasks}
+                setTaskValues={setTaskValues}
+              />
+            </Labeled>
           </div>
 
           {/* Comments & Activity with rounded segmented tabs */}
@@ -1030,56 +1149,66 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
 
               <TabsContent value="comments" className="mt-4">
                 <div className="rounded-2xl border border-gray-200 bg-white">
-                  <form className="border relative rounded-xl py-3 px-4" onSubmit={handleCommentSubmit}>
-                    <div className="p-4 md:p-5">
-                      <Textarea
-                        placeholder="Add Comment..."
-                        ref={textareaRef}
-                        required
-                        value={comment.value}
-                        onChange={handleCommentChanges}
-                        className="min-h-[120px] text-[14px] focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between px-4 md:px-5 pb-4 md:pb-5">
-                      <Button type="submit" className="h-9 bg-gray-900 text-white hover:bg-gray-800">
-                        Comment
-                      </Button>
-                      <div className="flex items-center gap-3 text-gray-500">
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                          <Paperclip className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                          <Smile className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                          <ImageIcon className="h-4 w-4" />
-                        </Button>
+                  <form className="border relative rounded-xl py-3 px-4">
+                    <Textarea
+                      name="value"
+                      ref={textareaRef}
+                      value={comment.value}
+                      onChange={handleCommentChanges}
+                      required
+                      placeholder="Add Comment..."
+                      className="border-none bg-white outline-none focus:ring-0 focus:shadow-none"
+                    />
+
+                    {showDropdown && (
+                      <div
+                        ref={mentionRef}
+                        className="absolute w-[300px] max-h-[230px] overflow-auto bg-white z-[9999] top-[20%] left-[40%] border border-gray-200 shadow-lg rounded-lg mt-2"
+                      >
+                        <ul>
+                          {filteredUsers.map(user => (
+                            <li
+                              key={user.id}
+                              className="py-2 text-sm px-4 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleSelectUser(user)}
+                            >
+                              {user.name}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
+                    )}
+
+                    <div className="flex justify-between items-center mt-2">
+                      <button onClick={handleCommentSubmit} type="button" className="py-2 mt-3 px-4 bg-[#17181B] rounded-lg text-white">
+                        Comment
+                      </button>
+
+                      <div className="flex items-center gap-1">{/* Your additional buttons/icons here */}</div>
                     </div>
                   </form>
                 </div>
-                {/* 
-                {comments.length > 0 && (
+
+                {taskValues?.comments?.length > 0 && (
                   <ul className="mt-4 space-y-3">
-                    {comments.map(c => (
+                    {taskValues?.comments?.map(c => (
                       <li key={c.id} className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-[10px]">{initialsOf(c.author.name)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{initialsOf(c?.name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="font-medium text-gray-900">{c.author.name}</span>
-                              <span className="text-xs text-gray-500">{format(c.createdAt, 'PP p')}</span>
+                              <span className="font-medium text-gray-900">{c?.name}</span>
+                              <span className="text-xs text-gray-500">{c?.time}</span>
                             </div>
-                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{c.body}</p>
+                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{c?.value}</p>
                           </div>
                         </div>
                       </li>
                     ))}
                   </ul>
-                )} */}
+                )}
               </TabsContent>
 
               <TabsContent value="activity" className="mt-4">

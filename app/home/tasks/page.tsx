@@ -369,14 +369,7 @@ export default function MyTasksPage() {
         projectId={null}
         team={null}
         defaultListId={defaultListId}
-        taskToEdit={
-          editing
-            ? {
-                ...editing,
-                assignees: editing.assignees ?? editing.assigneeIds,
-              }
-            : undefined
-        }
+        taskToEdit={editing}
         onSave={handleSave}
       />
     </div>
