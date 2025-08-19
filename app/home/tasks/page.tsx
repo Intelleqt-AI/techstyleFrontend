@@ -89,10 +89,6 @@ export default function MyTasksPage() {
   }
 
   const handleClose = e => {
-    if (!e) {
-      setEditing(null);
-      console.log('modal is close', e);
-    }
     setModalOpen(e);
   };
 

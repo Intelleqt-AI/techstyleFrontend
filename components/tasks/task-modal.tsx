@@ -181,15 +181,16 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const mutation = useMutation({
     mutationFn: async input => {
       if (taskToEdit || taskValues?.id) {
+        console.log('modufying old task');
         return modifyTask(input);
       } else {
+        console.log('adding new task');
         return addNewTask(input);
       }
     },
     onSuccess: e => {
       toast.success('Task Updated');
       setSubTaskText('');
-      console.log('data from server', e?.data[0]);
       setTaskValues(e?.data[0]);
       queryClient.invalidateQueries(['tasks']);
     },
