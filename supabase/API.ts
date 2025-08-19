@@ -125,20 +125,14 @@ export const addNewTask = async ({ newTask, user }) => {
 };
 
 // Modify Task
-export const modifyTask = async ({ data }) => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}dashboard/tasks/${data?.id}/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      ...data,
-    }),
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+// Modify Task
+export const modifyTask = async ({ newTask, user }) => {
+  const { data, error } = await supabase.from('Task').update(newTask).eq('id', newTask.id).select();
+  if (error) {
+    console.log(error.message);
+    throw new Error(error.message);
   }
-  return await response.json();
+  return { data };
 };
 
 // Delete Task
@@ -154,9 +148,11 @@ export const deleteTask = async taskId => {
 //Fetch OnlyProject data
 export const fetchOnlyProject = async ({ projectID }) => {
   if (projectID) {
+    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
     return project;
   } else {
+    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*');
     return project;
   }
