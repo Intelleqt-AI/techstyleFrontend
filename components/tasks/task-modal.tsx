@@ -135,7 +135,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const [selectedMembers, setSelectedMembers] = React.useState([]);
   const form2 = useForm({});
   const lastInputRef = React.useRef(null);
-  const textArea = React.useRef(null);
   const { data, isLoading: projectLoading } = useProjects();
   const { user, isLoading: userLoading } = useUser();
 
@@ -144,7 +143,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [filteredUsers, setFilteredUsers] = React.useState(teamMembers);
   const textareaRef = React.useRef(null);
-  const [descriptionValue, setDescriptionValue] = React.useState(taskToEdit?.description || '');
 
   // set if a user mention another user in comment
   const [mention, setMention] = React.useState(null);
@@ -322,14 +320,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     setComment({ value: '', name: '', time: '', profileImg: '' });
   };
 
-  const handleDescriptionChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const { value } = e.target;
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      description: value,
-    }));
-  }, []);
-
   // Update taskValues with the values from task
   // React.useEffect(() => {
   //   if (phase) {
@@ -339,6 +329,15 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   //     }));
   //   }
   // }, [modalOpen, phase]);
+
+  // React.useEffect(() => {
+  //   if (projectId) {
+  //     setTaskValues(prevValues => ({
+  //       ...prevValues,
+  //       projectID: projectId,
+  //     }));
+  //   }
+  // }, [projectId]);
 
   React.useEffect(() => {
     if (projectId) {
@@ -425,16 +424,16 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
     }));
   };
 
-  const handleEnter = (e, id) => {
-    if (e.key === 'Enter') {
-      handleModifySubTask(e, id);
-      requestAnimationFrame(() => {
-        if (textArea.current) {
-          textArea.current.focus();
-        }
-      });
-    }
-  };
+  // const handleEnter = (e, id) => {
+  //   if (e.key === 'Enter') {
+  //     handleModifySubTask(e, id);
+  //     requestAnimationFrame(() => {
+  //       if (textArea.current) {
+  //         textArea.current.focus();
+  //       }
+  //     });
+  //   }
+  // };
 
   // Set users from DB
   React.useEffect(() => {
@@ -532,27 +531,29 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   }
 
   // Label rail (160px) with small icon + label
-  function Labeled({
-    icon,
-    label,
-    children,
-    alignTop = false,
-  }: {
-    icon: React.ReactNode;
-    label: string;
-    children: React.ReactNode;
-    alignTop?: boolean;
-  }) {
-    return (
-      <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
-        <div className={cn('flex items-center gap-2 text-[13px] text-gray-600', alignTop && 'self-start pt-1')}>
-          <span className="text-gray-500">{icon}</span>
-          <span className="truncate">{label}</span>
+  const Labeled = React.memo(
+    ({
+      icon,
+      label,
+      children,
+      alignTop = false,
+    }: {
+      icon: React.ReactNode;
+      label: string;
+      children: React.ReactNode;
+      alignTop?: boolean;
+    }) => {
+      return (
+        <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
+          <div className={cn('flex items-center gap-2 text-[13px] text-gray-600', alignTop && 'self-start pt-1')}>
+            <span className="text-gray-500">{icon}</span>
+            <span className="truncate">{label}</span>
+          </div>
+          <div>{children}</div>
         </div>
-        <div>{children}</div>
-      </div>
-    );
-  }
+      );
+    }
+  );
 
   function initialsOf(name: string): string {
     if (!name) return '';
@@ -776,7 +777,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   'bg-white h-10 text-[16px] md:text-[17px] font-medium rounded-xl',
                   !taskValues.name.trim() && touched && 'border-red-300 focus-visible:ring-red-200'
                 )}
-                // aria-invalid={!taskValues.name.trim() && touched}
+                aria-invalid={!taskValues.name.trim() && touched}
               />
             </div>
           </div>
@@ -1044,17 +1045,30 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
               <AssigneesMultiSelect />
             </Labeled>
 
-            <Labeled icon={<TypeIcon className="h-4 w-4" />} label="Description" alignTop>
-              <Textarea
-                placeholder="Add details… use @ to mention teammates. Attach files below."
-                id="description"
-                name="description"
-                rows={5}
-                value={taskValues?.description}
-                onChange={handleDescriptionChange}
-                className="min-h-[104px] bg-white text-sm rounded-xl"
-              />
-            </Labeled>
+            <div className="grid grid-cols-[160px_1fr] gap-4 items-start">
+              <div className="flex items-center gap-2 text-[13px] text-gray-600 self-start pt-1">
+                <span className="text-gray-500">
+                  <TypeIcon className="h-4 w-4" />
+                </span>
+                <span className="truncate">Description</span>
+              </div>
+              <div>
+                <Textarea
+                  placeholder="Add details… use @ to mention teammates. Attach files below."
+                  id="description"
+                  name="description"
+                  rows={5}
+                  value={taskValues?.description || ''}
+                  onChange={e => {
+                    setTaskValues(prev => ({
+                      ...prev,
+                      description: e.target.value,
+                    }));
+                  }}
+                  className="min-h-[104px] bg-white text-sm rounded-xl"
+                />
+              </div>
+            </div>
 
             <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
               <div className="space-y-2">
@@ -1121,12 +1135,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   </Button>
                 </div>
               </div> */}
-              <DraggableSubtasks2
+              {/* <DraggableSubtasks2
                 member={teamMembers}
                 taskId={taskValues?.id}
                 subtasks={taskValues?.subtasks}
                 setTaskValues={setTaskValues}
-              />
+              /> */}
             </Labeled>
           </div>
 

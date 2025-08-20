@@ -81,7 +81,7 @@ const SortableList = SortableContainer(({ subtasks, onCheck, onEdit, onDelete, i
   </div>
 ));
 
-const DraggableSubtasks2 = ({ subtasks, setTaskValues, taskId }) => {
+const DraggableSubtasks2 = React.forwardRef(({ subtasks, setTaskValues, taskId }, ref) => {
   console.log(subtasks);
   const { mutate, error: modifyError, isPending } = usePost();
   const { mutate: deleteMutation, error: deleteError, isPending: deletePending } = useDeleteData();
@@ -231,19 +231,35 @@ const DraggableSubtasks2 = ({ subtasks, setTaskValues, taskId }) => {
         ...(prev.subtasks || []),
         {
           id: newId,
-          name: '',
+          text: '',
           completed: false,
           order: maxOrder + 1,
           isOffline: true,
         },
       ],
     }));
+    // Focus on the new input after a short delay to ensure DOM is updated
     setTimeout(() => {
       if (inputRefs.current[newId]) {
         inputRefs.current[newId].focus();
       }
-    }, 0);
+    }, 100);
   };
+
+  // Method to focus on the last input (called from parent component)
+  const focusLastInput = useCallback(() => {
+    setTimeout(() => {
+      const lastSubtask = sortedSubtasks[sortedSubtasks.length - 1];
+      if (lastSubtask && inputRefs.current[lastSubtask.id]) {
+        inputRefs.current[lastSubtask.id].focus();
+      }
+    }, 100);
+  }, [sortedSubtasks]);
+
+  // Expose the focusLastInput method to parent component
+  React.useImperativeHandle(ref, () => ({
+    focusLastInput,
+  }));
 
   return (
     <div className="">
@@ -273,6 +289,6 @@ const DraggableSubtasks2 = ({ subtasks, setTaskValues, taskId }) => {
       </div>
     </div>
   );
-};
+});
 
 export default DraggableSubtasks2;
