@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -154,8 +155,6 @@ export default function ProjectSettingsPage() {
     mutation.mutate(selectedProject);
   }
 
-  console.log(selectedProject);
-
   return (
     <main className="flex-1 bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -214,10 +213,18 @@ export default function ProjectSettingsPage() {
               />
             )}
             {selected === 'contacts' && (
-              <ContactsForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('contacts', p)} />
+              <ContactsForm
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('contacts', p)}
+              />
             )}
             {selected === 'property' && (
-              <PropertyForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('property', p)} />
+              <PropertyForm
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('property', p)}
+              />
             )}
             {selected === 'rooms' && (
               <RoomsForm
@@ -227,7 +234,11 @@ export default function ProjectSettingsPage() {
               />
             )}
             {selected === 'delivery' && (
-              <DeliveryForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('delivery', p)} />
+              <DeliveryForm
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('delivery', p)}
+              />
             )}
             {selected === 'preferences' && (
               <PreferencesForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('preferences', p)} />
@@ -378,11 +389,11 @@ function ContactsForm({
             <Input
               className="mt-1"
               placeholder="Name"
-              value={value.contacts.primary?.name ?? ''}
+              value={value?.primaryClient?.name || ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: { ...value.contacts, primary: { ...(value.contacts.primary ?? {}), name: e.target.value } },
+                  primaryClient: { ...value?.primaryClient, name: e.target.value },
                 })
               }
             />
@@ -390,38 +401,32 @@ function ContactsForm({
               className="mt-2"
               type="email"
               placeholder="Email"
-              value={value.contacts.primary?.email ?? ''}
+              value={value?.primaryClient?.email ?? ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: {
-                    ...value.contacts,
-                    primary: { ...(value.contacts.primary ?? {}), email: e.target.value },
-                  },
+                  primaryClient: { ...value?.primaryClient, email: e.target.value },
                 })
               }
             />
             <Input
               className="mt-2"
               placeholder="Phone"
-              value={value.contacts.primary?.phone ?? ''}
+              value={value?.primaryClient?.phone ?? ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: {
-                    ...value.contacts,
-                    primary: { ...(value.contacts.primary ?? {}), phone: e.target.value },
-                  },
+                  primaryClient: { ...value?.primaryClient, phone: e.target.value },
                 })
               }
             />
             <div className="mt-3 flex items-center gap-2">
               <Switch
-                checked={!!value.contacts.primary?.portalAccess}
+                checked={!!value?.primaryClient?.portalAccess}
                 onCheckedChange={v =>
                   onChange({
                     ...value,
-                    contacts: { ...value.contacts, primary: { ...(value.contacts.primary ?? {}), portalAccess: v } },
+                    primaryClient: { ...value?.primaryClient, portalAccess: v },
                   })
                 }
               />
@@ -433,14 +438,11 @@ function ContactsForm({
             <Input
               className="mt-1"
               placeholder="Name"
-              value={value.contacts.secondary?.name ?? ''}
+              value={value?.secondaryClient?.name ?? ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: {
-                    ...value.contacts,
-                    secondary: { ...(value.contacts.secondary ?? {}), name: e.target.value },
-                  },
+                  secondaryClient: { ...value?.secondaryClient, name: e.target.value },
                 })
               }
             />
@@ -448,28 +450,22 @@ function ContactsForm({
               className="mt-2"
               type="email"
               placeholder="Email"
-              value={value.contacts.secondary?.email ?? ''}
+              value={value?.secondaryClient?.email ?? ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: {
-                    ...value.contacts,
-                    secondary: { ...(value.contacts.secondary ?? {}), email: e.target.value },
-                  },
+                  secondaryClient: { ...value?.secondaryClient, email: e.target.value },
                 })
               }
             />
             <Input
               className="mt-2"
               placeholder="Role (Client, Accountant, Site Contact)"
-              value={value.contacts.secondary?.role ?? ''}
+              value={value?.secondaryClient?.role ?? ''}
               onChange={e =>
                 onChange({
                   ...value,
-                  contacts: {
-                    ...value.contacts,
-                    secondary: { ...(value.contacts.secondary ?? {}), role: e.target.value as any },
-                  },
+                  secondaryClient: { ...value?.secondaryClient, role: e.target.value },
                 })
               }
             />
@@ -479,7 +475,7 @@ function ContactsForm({
         <Separator />
 
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.contacts)}>Save</Button>
+          <Button onClick={() => onSave(value)}>Save</Button>
         </div>
       </CardContent>
     </Card>
@@ -495,6 +491,58 @@ function PropertyForm({
   onChange: (v: OnboardingData) => void;
   onSave: (p: any) => void;
 }) {
+  type NominatimPlace = {
+    display_name: string;
+    lat: string;
+    lon: string;
+  };
+
+  const [addressQuery, setAddressQuery] = useState<string>(value?.property?.siteAddress ?? '');
+  const [addressLoading, setAddressLoading] = useState<boolean>(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<NominatimPlace[]>([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setAddressQuery(value?.property?.siteAddress ?? '');
+  }, [value?.property?.siteAddress]);
+
+  useEffect(() => {
+    if (!addressQuery || addressQuery.trim().length < 2) {
+      setAddressSuggestions([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(async () => {
+      try {
+        setAddressLoading(true);
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&q=${encodeURIComponent(
+          addressQuery.trim()
+        )}`;
+        const res = await fetch(url, {
+          signal: controller.signal,
+          headers: { Accept: 'application/json', 'Accept-Language': 'en' },
+        });
+        if (!res.ok) throw new Error('Failed to fetch suggestions');
+        const data: NominatimPlace[] = await res.json();
+        setAddressSuggestions(Array.isArray(data) ? data : []);
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') {
+          setAddressSuggestions([]);
+        }
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [addressQuery]);
+
+  const shouldOpenAddressPopover = addressQuery.trim().length >= 2 && (addressLoading || addressSuggestions.length > 0);
+
   return (
     <Card>
       <CardHeader>
@@ -503,12 +551,49 @@ function PropertyForm({
       <CardContent className="space-y-4">
         <div>
           <Label>Site address</Label>
-          <Input
-            className="mt-1"
-            placeholder="Search address…"
-            value={value.property.siteAddress ?? ''}
-            onChange={e => onChange({ ...value, property: { ...value.property, siteAddress: e.target.value } })}
-          />
+          <div className="relative">
+            <Input
+              className="mt-1"
+              placeholder="Search address…"
+              value={addressQuery}
+              onChange={e => {
+                const next = e.target.value;
+                setAddressQuery(next);
+                onChange({ ...value, property: { ...value.property, siteAddress: next } });
+                setOpen(true);
+              }}
+            />
+            {shouldOpenAddressPopover && open && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-64 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                <Command>
+                  <CommandList>
+                    {addressLoading ? (
+                      <div className="py-3 text-sm text-muted-foreground text-center">Searching…</div>
+                    ) : addressSuggestions.length === 0 ? (
+                      <div className="py-3 text-sm text-muted-foreground text-center">No addresses found</div>
+                    ) : (
+                      <CommandGroup>
+                        {addressSuggestions.map(place => (
+                          <CommandItem
+                            key={`${place.lat}-${place.lon}-${place.display_name}`}
+                            value={place.display_name}
+                            onSelect={() => {
+                              setAddressQuery(place.display_name);
+                              onChange({ ...value, property: { ...value.property, siteAddress: place.display_name } });
+                              setOpen(false);
+                              setAddressSuggestions([]);
+                            }}
+                          >
+                            {place.display_name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </div>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -516,7 +601,7 @@ function PropertyForm({
             <Textarea
               className="mt-1"
               rows={3}
-              value={value.property.accessNotes ?? ''}
+              value={value?.property?.accessNotes ?? ''}
               onChange={e => onChange({ ...value, property: { ...value.property, accessNotes: e.target.value } })}
             />
           </div>
@@ -525,13 +610,13 @@ function PropertyForm({
             <Textarea
               className="mt-1"
               rows={3}
-              value={value.property.restrictions ?? ''}
+              value={value?.property?.restrictions ?? ''}
               onChange={e => onChange({ ...value, property: { ...value.property, restrictions: e.target.value } })}
             />
           </div>
         </div>
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.property)}>Save</Button>
+          <Button onClick={() => onSave(value)}>Save</Button>
         </div>
       </CardContent>
     </Card>
@@ -628,16 +713,16 @@ function DeliveryForm({
           <Label>Billing address</Label>
           <Input
             className="mt-1"
-            value={value.deliveryBilling.billingAddress ?? ''}
-            onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, billingAddress: e.target.value } })}
+            value={value?.billingAddress ?? ''}
+            onChange={e => onChange({ ...value, billingAddress: e.target.value })}
           />
         </div>
         <div>
           <Label>Delivery address</Label>
           <Input
             className="mt-1"
-            value={value.deliveryBilling.deliveryAddress ?? ''}
-            onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryAddress: e.target.value } })}
+            value={value?.deliveryAddress ?? ''}
+            onChange={e => onChange({ ...value, deliveryAddress: e.target.value })}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -645,8 +730,8 @@ function DeliveryForm({
             <Label>On‑site contact</Label>
             <Input
               className="mt-1"
-              value={value.deliveryBilling.onsiteContact ?? ''}
-              onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, onsiteContact: e.target.value } })}
+              value={value?.onSiteContact ?? ''}
+              onChange={e => onChange({ ...value, onSiteContact: e.target.value })}
             />
           </div>
           <div>
@@ -654,13 +739,13 @@ function DeliveryForm({
             <Input
               className="mt-1"
               placeholder="e.g., Mon‑Fri 9–5"
-              value={value.deliveryBilling.deliveryWindows ?? ''}
-              onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryWindows: e.target.value } })}
+              value={value?.deliveryWindows ?? ''}
+              onChange={e => onChange({ ...value, deliveryWindows: e.target.value })}
             />
           </div>
         </div>
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.deliveryBilling)}>Save</Button>
+          <Button onClick={() => onSave(value)}>Save</Button>
         </div>
       </CardContent>
     </Card>
