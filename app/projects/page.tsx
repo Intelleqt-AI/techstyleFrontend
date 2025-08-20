@@ -168,9 +168,9 @@ export default function ProjectsPage() {
 
   // const filteredProjects = projects;
 
-  useEffect(() => {
-    console.log(clientData);
-  }, [clientData]);
+  // useEffect(() => {
+  //   console.log(clientData);
+  // }, [clientData]);
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -288,11 +288,10 @@ export default function ProjectsPage() {
                           (project?.client && (
                             <p className="text-sm text-ink-muted">
                               {project?.code} •{" "}
-                              {
+                              {clientData &&
                                 clientData?.data.find(
                                   (client) => client?.id == project?.client
-                                )?.name
-                              }
+                                )?.name}
                             </p>
                           ))}
                       </div>
@@ -462,11 +461,10 @@ export default function ProjectsPage() {
                         </Link>
                       </td>
                       <td className="py-4 px-4 text-sm text-ink">
-                        {
+                        {clientData &&
                           clientData?.data.find(
                             (client) => client?.id == project?.client
-                          )?.name
-                        }
+                          )?.name}
                       </td>
                       <td className="py-4 px-4">
                         <Badge
