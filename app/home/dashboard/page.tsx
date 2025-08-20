@@ -80,58 +80,124 @@ const mockUser = {
   permissions: ['finance.read', 'studio.view'],
 };
 
-function getFormattedTimeForCurrentWeek(tasks) {
-  if (!tasks) return;
-
+function getFormattedTimeFromMondayToSaturday(tasks) {
   const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-  // Get Monday of current week
-  const day = now.getDay(); // Sunday = 0, Monday = 1, ...
-  const diffToMonday = (day === 0 ? -6 : 1) - day;
+  // Get Monday of the current week
   const monday = new Date(now);
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   monday.setDate(now.getDate() + diffToMonday);
   monday.setHours(0, 0, 0, 0);
 
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  const weekdays = [];
-  let totalMsAll = 0;
+  // Get Friday of the same week
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4); // +4 days = Friday
+  friday.setHours(23, 59, 59, 999);
 
+  return tasks
+    .reduce((totalHours, task) => {
+      // 1. Check if the task was worked on this week (Mon–Fri)
+      const taskDate = new Date(task.timerStart);
+      if (taskDate < monday || taskDate > friday) {
+        return totalHours;
+      }
+
+      // 2. Calculate time from sessions
+      let sessionTime = 0;
+      if (Array.isArray(task.session)) {
+        sessionTime = task.session.reduce((sum, session) => {
+          const sessionDate = new Date(session.date);
+          if (sessionDate >= monday && sessionDate <= friday) {
+            if (session.endTime) {
+              // Completed session - always count
+              return sum + (Number(session.endTime) - Number(session.startTime));
+            } else if (session.startTime && task.isActive && !task.isPaused) {
+              // Active session - count current duration
+              return sum + (Date.now() - Number(session.startTime));
+            }
+          }
+          return sum;
+        }, 0);
+      }
+
+      // 3. Add saved totalWorkTime for paused/completed tasks
+      let additionalTime = 0;
+      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
+        additionalTime = Number(task.totalWorkTime);
+      }
+
+      // 4. Convert ms → hours and add to total
+      const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
+      return totalHours + taskHours;
+    }, 0)
+    .toFixed(1);
+}
+
+function getDailyBreakdown(tasks: any[]): Day[] {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+  // Calculate Monday of current week
+  const monday = new Date(now);
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+
+  // Days we want (Mon → Fri)
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const dailyHours: Day[] = [];
+
+  // Loop only Mon–Fri (5 days)
   for (let i = 0; i < 5; i++) {
-    const start = new Date(monday);
-    start.setDate(monday.getDate() + i);
-    start.setHours(0, 0, 0, 0);
+    const dayStart = new Date(monday);
+    dayStart.setDate(monday.getDate() + i);
+    dayStart.setHours(0, 0, 0, 0);
 
-    const end = new Date(start);
-    end.setHours(23, 59, 59, 999);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
 
-    const totalMs = tasks?.reduce((total, task) => {
-      if (!Array.isArray(task.session)) return total;
+    const dayName = daysOfWeek[i];
 
-      const sessionTime = task.session.reduce((sum, session) => {
-        const sessionDate = new Date(session.date);
-        if (sessionDate >= start && sessionDate <= end && typeof session.totalTime === 'number') {
-          return sum + session.totalTime;
-        }
-        return sum;
-      }, 0);
+    // Calculate hours for this day
+    const dayHours = tasks.reduce((totalHours, task) => {
+      const taskDate = new Date(task.timerStart);
+      if (taskDate < dayStart || taskDate > dayEnd) {
+        return totalHours;
+      }
 
-      return total + sessionTime;
+      // Sessions
+      let sessionTime = 0;
+      if (Array.isArray(task.session)) {
+        sessionTime = task.session.reduce((sum, session) => {
+          const sessionDate = new Date(session.date);
+          if (sessionDate >= dayStart && sessionDate <= dayEnd) {
+            if (session.endTime) {
+              return sum + (Number(session.endTime) - Number(session.startTime));
+            } else if (session.startTime && task.isActive && !task.isPaused) {
+              return sum + (Date.now() - Number(session.startTime));
+            }
+          }
+          return sum;
+        }, 0);
+      }
+
+      // Paused/completed tasks base time
+      let additionalTime = 0;
+      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
+        additionalTime = Number(task.totalWorkTime);
+      }
+
+      return totalHours + (sessionTime + additionalTime) / (1000 * 60 * 60);
     }, 0);
 
-    totalMsAll += totalMs;
-    const totalHours = totalMs / (1000 * 60 * 60);
-
-    // Always push day, even if it's 0
-    weekdays.push({
-      day: days[i],
-      hour: Number(totalHours.toFixed(2)),
+    dailyHours.push({
+      day: dayName,
+      hours: parseFloat(dayHours.toFixed(1)),
     });
   }
 
-  return {
-    Total: Number((totalMsAll / (1000 * 60 * 60)).toFixed(2)),
-    weekdays,
-  };
+  return dailyHours;
 }
 
 // Scope toggle for owners/admins
@@ -204,6 +270,7 @@ export default function DashboardPage() {
   const [myTask, setMyTask] = useState([]);
   const [tasks, setTasks] = useState([]);
   const { data: taskData, isLoading: taskLoading } = useTask();
+  const [tracking, setTracking] = useState([]);
   const admins = [
     'david.zeeman@intelleqt.ai',
     'roxi.zeeman@souqdesign.co.uk',
@@ -217,6 +284,12 @@ export default function DashboardPage() {
     queryFn: getTimeTracking,
   });
 
+  useEffect(() => {
+    if (trackingLoading || !user?.email) return;
+    const filterByEmail = trackingData?.data?.filter(item => item.creator === user.email);
+    setTracking(filterByEmail ?? []);
+  }, [trackingLoading, trackingData, user?.email]);
+
   // Projects
   const {
     data: project,
@@ -228,7 +301,7 @@ export default function DashboardPage() {
     queryFn: fetchProjects,
   });
 
-  const timeDisplay = getFormattedTimeForCurrentWeek(trackingData?.data);
+  const timeDisplay = getDailyBreakdown(tracking);
 
   function JumpBackInSection({ scope, userRole }) {
     const myProjects = project;
@@ -320,16 +393,16 @@ export default function DashboardPage() {
         </div>
         <div className="space-y-4 flex-1">
           <div>
-            <p className="text-xl font-semibold text-neutral-900">{timeDisplay?.Total} hr</p>
+            <p className="text-xl font-semibold text-neutral-900">{getFormattedTimeFromMondayToSaturday(tracking)} hr</p>
             <p className="text-xs text-neutral-600">This week</p>
           </div>
           <div className="space-y-2">
-            {timeDisplay?.weekdays?.map(day => (
+            {timeDisplay?.map(day => (
               <div key={day.day} className="flex items-center justify-between">
                 <span className="text-sm text-neutral-700">{day.day}</span>
                 <div className="flex items-center gap-2 flex-1 ml-3">
-                  <Progress value={(day.hour / 10) * 100} className="h-1 flex-1 [&>div]:bg-slatex-700" />
-                  <span className="text-sm font-medium text-neutral-900 w-8 text-right">{day.hour.toFixed(2)}h</span>
+                  <Progress value={(day.hours / 10) * 100} className="h-1 flex-1 [&>div]:bg-slatex-700" />
+                  <span className="text-sm font-medium text-neutral-900 w-8 text-right">{day.hours.toFixed(2)}h</span>
                 </div>
               </div>
             ))}

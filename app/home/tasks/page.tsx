@@ -81,12 +81,17 @@ export default function MyTasksPage() {
     setDefaultListId(listId);
     setModalOpen(true);
   }
+  const [searchText, setSearchText] = useState('');
 
   function openEditTask(task) {
     setEditing(task);
     setDefaultListId(task.listId);
     setModalOpen(true);
   }
+
+  const handleClose = e => {
+    setModalOpen(e);
+  };
 
   function handleSave(payload: Omit<Task, 'id'> & { id?: string }) {
     // if (payload.id) {
@@ -119,10 +124,15 @@ export default function MyTasksPage() {
 
   useEffect(() => {
     if (taskLoading) return;
-    setMyTask(taskData.data);
-    const myTask = myTaskList(taskData.data);
-    setTasks(taskData && taskData.data.length > 0 && updatetaskList(myTask));
-  }, [taskData, taskLoading, user?.email]);
+    setMyTask(taskData?.data);
+    let myTask = myTaskList(taskData?.data);
+
+    if (searchText.trim()) {
+      myTask = myTask.filter(task => task.name?.toLowerCase().includes(searchText.toLowerCase()));
+    }
+
+    setTasks(taskData && taskData.data.length > 0 ? updatetaskList(myTask) : []);
+  }, [taskData, taskLoading, user?.email, searchText]);
 
   const myRecentTask = tasks => {
     const now = new Date();
@@ -256,8 +266,6 @@ export default function MyTasksPage() {
     mutate({ newTask: modifyInfo });
   };
 
-  console.log('rendered', editing);
-
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -275,7 +283,7 @@ export default function MyTasksPage() {
             </Button>
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input className="pl-10 h-9" placeholder="Search tasks..." />
+              <Input value={searchText} onChange={e => setSearchText(e.target.value)} className="pl-10 h-9" placeholder="Search tasks..." />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -318,7 +326,7 @@ export default function MyTasksPage() {
                 {column.items.map(task => (
                   <div
                     key={task.id}
-                    className="p-3 h-[105px] flex flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="p-3 h-[105px] active:cursor-grabbing cursor-pointer flex flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
                     draggable
                     onDragStart={e => handleDragStart(e, task.id, column.name)}
                     onClick={() => openEditTask(task)}
@@ -365,19 +373,13 @@ export default function MyTasksPage() {
 
       <TaskModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleClose}
         projectId={null}
         team={null}
         defaultListId={defaultListId}
-        taskToEdit={
-          editing
-            ? {
-                ...editing,
-                assignees: editing.assignees ?? editing.assigneeIds,
-              }
-            : undefined
-        }
+        taskToEdit={editing}
         onSave={handleSave}
+        setEditing={setEditing}
       />
     </div>
   );

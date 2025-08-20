@@ -292,6 +292,7 @@ export const deleteCover = async ({ id, file, path = '' }) => {
 
 // Update upload function to support paths
 export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
+  console.log(file, id, (path = ''), projectID, task);
   if (!file) {
     throw new Error('No file provided.');
   }
@@ -312,7 +313,7 @@ export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
         ...(project.attachments || []),
         {
           time: new Date(),
-          link: `${import.meta.env.VITE_supabaseURl}/storage/v1/object/public/docs/${filePath}`,
+          link: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/docs/${filePath}`,
           taskID: task.id,
           taskName: task.name,
         },
