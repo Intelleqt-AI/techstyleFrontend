@@ -10,7 +10,8 @@ import { NewProjectDialog } from "@/components/project-wizard/new-project-dialog
 import { Plus, Calendar, Building, Store } from "lucide-react";
 import { ProjectNavMain } from "@/components/project-nav-main";
 import { useQuery } from "@tanstack/react-query";
-import { fetchProjects } from "@/supabase/API";
+import { fetchProjects, getTask } from "@/supabase/API";
+import useClient from "@/hooks/useClient";
 
 // Mock data
 const projects = [
@@ -113,6 +114,24 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const calculateProjectProgress = (
+  projectId: string,
+  tasks: Task[] | undefined,
+  isLoading: boolean
+): number => {
+  if (isLoading || !tasks) return 0;
+
+  const projectTasks = tasks.filter((item) => item.projectID === projectId);
+  if (projectTasks.length === 0) return 0;
+
+  const completedTasks = projectTasks.filter((task) => task.status === "done");
+  const progress = Math.floor(
+    (completedTasks.length / projectTasks.length) * 100
+  );
+
+  return progress;
+};
+
 export default function ProjectsPage() {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [viewMode, setViewMode] = useState<"board" | "table">("board");
@@ -125,6 +144,23 @@ export default function ProjectsPage() {
     queryFn: fetchProjects,
   });
 
+  const {
+    data: taskData,
+    isLoading: taskLoading,
+    error: taskError,
+    refetch: taskRefetch,
+  } = useQuery({
+    queryKey: ["task"],
+    queryFn: getTask,
+  });
+
+  // Get clients
+  const {
+    data: clientData,
+    isLoading: loadingClient,
+    refetch: refetchClient,
+  } = useClient();
+
   useEffect(() => {
     if (isLoading) return;
     setProject(data);
@@ -133,8 +169,8 @@ export default function ProjectsPage() {
   // const filteredProjects = projects;
 
   useEffect(() => {
-    setfilteredProjects(projects);
-  }, [projects]);
+    console.log(clientData);
+  }, [clientData]);
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -209,133 +245,162 @@ export default function ProjectsPage() {
       {viewMode === "board" ? (
         /* Projects Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <Link key={project?.id} href={`/projects/${project?.id}`}>
-              <Card className="border-borderSoft bg-white hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-0">
-                  {/* Project Image */}
-                  <div className="relative h-48 bg-greige-100 rounded-t-lg overflow-hidden">
-                    <img
-                      src={project?.image || "/placeholder.svg"}
-                      alt={project?.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-3 right-3">
-                      <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
-                        {project?.phase}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Project Details */}
-                  <div className="p-4 space-y-4">
-                    {/* Header */}
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-ink line-clamp-1">
-                          {project?.name}
-                        </h3>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${getTypeColor(project?.type)}`}>
-                          <div className="flex items-center">
-                            {getTypeIcon(project?.type)}
-                            {project?.type}
-                          </div>
+          {project &&
+            project.length > 0 &&
+            project.map((project) => (
+              <Link key={project?.id} href={`/projects/${project?.id}`}>
+                <Card className="border-borderSoft bg-white hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-0">
+                    {/* Project Image */}
+                    <div className="relative h-48 bg-greige-100 rounded-t-lg overflow-hidden">
+                      <img
+                        src={project?.image || "/placeholder.svg"}
+                        alt={project?.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-3 right-3">
+                        <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
+                          {project?.phase}
                         </Badge>
                       </div>
-                      <p className="text-sm text-ink-muted">
-                        {project?.code} • {project?.client}
-                      </p>
                     </div>
 
-                    {/* Progress */}
-                    <div className="space-y-2">
+                    {/* Project Details */}
+                    <div className="p-4 space-y-4">
+                      {/* Header */}
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <h3 className="font-semibold text-ink line-clamp-1">
+                            {project?.name}
+                          </h3>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${getTypeColor(
+                              project?.type
+                            )}`}>
+                            <div className="flex items-center">
+                              {getTypeIcon(project?.projectType)}
+                              {/* {project?.projectType} */}
+                            </div>
+                          </Badge>
+                        </div>
+                        {project?.code ||
+                          (project?.client && (
+                            <p className="text-sm text-ink-muted">
+                              {project?.code} •{" "}
+                              {
+                                clientData?.data.find(
+                                  (client) => client?.id == project?.client
+                                )?.name
+                              }
+                            </p>
+                          ))}
+                      </div>
+
+                      {/* Progress */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-ink-muted">Progress</span>
+                          <span className="font-medium text-ink">
+                            {calculateProjectProgress(
+                              project?.id,
+                              taskData?.data,
+                              isLoading
+                            )}
+                            %
+                          </span>
+                        </div>
+                        <div className="w-full bg-greige-200 rounded-full h-1">
+                          <div
+                            className="bg-sage-500 h-1 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${calculateProjectProgress(
+                                project?.id,
+                                taskData?.data,
+                                isLoading
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Date Range */}
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-ink-muted">Progress</span>
+                        <span className="text-ink-muted">Date</span>
                         <span className="font-medium text-ink">
-                          {project?.progress}%
+                          {formatDate(project?.startDate)} -{" "}
+                          {formatDate(project?.endDate)}
                         </span>
                       </div>
-                      <div className="w-full bg-greige-200 rounded-full h-1">
-                        <div
-                          className="bg-sage-500 h-1 rounded-full transition-all duration-300"
-                          style={{ width: `${project?.progress}%` }}
-                        />
-                      </div>
-                    </div>
 
-                    {/* Date Range */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-ink-muted">Date</span>
-                      <span className="font-medium text-ink">
-                        {formatDate(project?.startDate)} -{" "}
-                        {formatDate(project?.endDate)}
-                      </span>
-                    </div>
-
-                    {/* Budget */}
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-ink-muted">Budget</span>
-                      <div className="text-right">
-                        <div className="font-medium text-ink">
-                          {project?.budget}
-                        </div>
-                        <div className="text-xs text-ink-muted">
-                          {project?.spent} spent
+                      {/* Budget */}
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-muted">Budget</span>
+                        <div className="text-right">
+                          <div className="font-medium text-ink">
+                            {project?.budget}
+                          </div>
+                          <div className="text-xs text-ink-muted">
+                            {project?.spent} spent
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Team */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-ink-muted">Team</span>
-                      <div className="flex -space-x-2">
-                        {project?.team.slice(0, 3).map((member, index) => (
-                          <Avatar
-                            key={index}
-                            className="w-6 h-6 border-2 border-white">
-                            <AvatarImage
-                              src={member.avatar || "/placeholder.svg"}
-                            />
-                            <AvatarFallback className="text-xs bg-clay-200 text-clay-700">
-                              {member.name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                        {project?.team.length > 3 && (
-                          <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
-                            <span className="text-xs text-ink-muted">
-                              +{project?.team.length - 3}
+                      {/* Team */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-ink-muted">Team</span>
+                        <div className="flex -space-x-2">
+                          {project?.assigned &&
+                            project?.assigned
+                              .slice(0, 3)
+                              .map((member, index) => (
+                                <Avatar
+                                  key={index}
+                                  className="w-6 h-6 border-2 border-white">
+                                  <AvatarImage
+                                    src={member?.photoURL || "/placeholder.svg"}
+                                  />
+                                  <AvatarFallback className="text-xs bg-clay-200 text-clay-700">
+                                    {member?.name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                          {project?.assigned &&
+                            project?.assigned.length > 3 && (
+                              <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
+                                <span className="text-xs text-ink-muted">
+                                  +{project?.assigned.length - 3}
+                                </span>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+
+                      {/* Next Milestone */}
+                      {project?.nextMilestone && (
+                        <div className="pt-2 border-t border-borderSoft">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-ink-muted">
+                              Next milestone
                             </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Next Milestone */}
-                    {project?.nextMilestone && (
-                      <div className="pt-2 border-t border-borderSoft">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ink-muted">Next milestone</span>
-                          <div className="text-right">
-                            <div className="font-medium text-ink">
-                              {project?.nextMilestone}
-                            </div>
-                            <div className="text-xs text-ink-muted">
-                              {project?.daysUntilMilestone === 0
-                                ? "Due today"
-                                : `${project?.daysUntilMilestone} days`}
+                            <div className="text-right">
+                              <div className="font-medium text-ink">
+                                {project?.nextMilestone}
+                              </div>
+                              <div className="text-xs text-ink-muted">
+                                {project?.daysUntilMilestone === 0
+                                  ? "Due today"
+                                  : `${project?.daysUntilMilestone} days`}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
         </div>
       ) : (
         /* Projects Table */
@@ -371,111 +436,133 @@ export default function ProjectsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-sm">
-                {filteredProjects.map((project, index) => (
-                  <tr key={project?.id} className="hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <Link
-                        href={`/projects/${project?.id}`}
-                        className="flex items-center gap-3 hover:text-primary">
-                        <div className="w-10 h-10 bg-greige-100 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={project?.image || "/placeholder.svg"}
-                            alt={project?.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium text-ink">
-                            {project?.name}
-                          </div>
-                          <div className="text-sm text-ink-muted">
-                            {project?.code}
-                          </div>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-ink">
-                      {project?.client}
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${getTypeColor(project?.type)}`}>
-                        <div className="flex items-center">
-                          {getTypeIcon(project?.type)}
-                          {project?.type}
-                        </div>
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${
-                          project?.status === "In Progress"
-                            ? "bg-sage-50 text-sage-700 border-sage-200"
-                            : project?.status === "Planning"
-                            ? "bg-clay-50 text-clay-700 border-clay-200"
-                            : "bg-greige-50 text-greige-700 border-greige-200"
-                        }`}>
-                        {project?.status}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-greige-200 rounded-full h-1">
-                          <div
-                            className="bg-sage-500 h-1 rounded-full transition-all duration-300"
-                            style={{ width: `${project?.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-ink">
-                          {project?.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="text-sm">
-                        <div className="font-medium text-ink">
-                          {project.budget}
-                        </div>
-                        <div className="text-ink-muted">
-                          {project.spent} spent
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-sm text-ink">
-                      <div>
-                        <div>{formatDate(project.startDate)}</div>
-                        <div className="text-ink-muted">
-                          to {formatDate(project.endDate)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex -space-x-2">
-                        {project.team.slice(0, 3).map((member, memberIndex) => (
-                          <Avatar
-                            key={memberIndex}
-                            className="w-6 h-6 border-2 border-white">
-                            <AvatarImage
-                              src={member.avatar || "/placeholder.svg"}
+                {project &&
+                  project.length > 0 &&
+                  project.map((project, index) => (
+                    <tr key={project?.id} className="hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <Link
+                          href={`/projects/${project?.id}`}
+                          className="flex items-center gap-3 hover:text-primary">
+                          <div className="w-10 h-10 bg-greige-100 rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={project?.image || "/placeholder.svg"}
+                              alt={project?.name}
+                              className="w-full h-full object-cover"
                             />
-                            <AvatarFallback className="text-xs bg-clay-200 text-clay-700">
-                              {member.name[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                        ))}
-                        {project.team.length > 3 && (
-                          <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
-                            <span className="text-xs text-ink-muted">
-                              +{project.team.length - 3}
-                            </span>
                           </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <div>
+                            <div className="font-medium text-ink">
+                              {project?.name}
+                            </div>
+                            <div className="text-sm text-ink-muted">
+                              {project?.code}
+                            </div>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-ink">
+                        {
+                          clientData?.data.find(
+                            (client) => client?.id == project?.client
+                          )?.name
+                        }
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${getTypeColor(
+                            project?.projectType
+                          )}`}>
+                          <div className="flex items-center">
+                            {getTypeIcon(project?.projectType)}
+                            {project?.projectType}
+                          </div>
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            project?.status === "In Progress"
+                              ? "bg-sage-50 text-sage-700 border-sage-200"
+                              : project?.status === "Planning"
+                              ? "bg-clay-50 text-clay-700 border-clay-200"
+                              : "bg-greige-50 text-greige-700 border-greige-200"
+                          }`}>
+                          {project?.status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 bg-greige-200 rounded-full h-1">
+                            <div
+                              className="bg-sage-500 h-1 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${calculateProjectProgress(
+                                  project?.id,
+                                  taskData?.data,
+                                  isLoading
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium text-ink">
+                            {calculateProjectProgress(
+                              project?.id,
+                              taskData?.data,
+                              isLoading
+                            )}
+                            %
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-sm">
+                          <div className="font-medium text-ink">
+                            {project.budget}
+                          </div>
+                          <div className="text-ink-muted">
+                            {project.spent} spent
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-ink">
+                        <div>
+                          <div>{formatDate(project.startDate)}</div>
+                          <div className="text-ink-muted">
+                            to {formatDate(project.endDate)}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex -space-x-2">
+                          {project?.assigned &&
+                            project.assigned
+                              .slice(0, 3)
+                              .map((member, memberIndex) => (
+                                <Avatar
+                                  key={memberIndex}
+                                  className="w-6 h-6 border-2 border-white">
+                                  <AvatarImage
+                                    src={member.photoURL || "/placeholder.svg"}
+                                  />
+                                  <AvatarFallback className="text-xs bg-clay-200 text-clay-700">
+                                    {member.name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                              ))}
+                          {project?.assigned && project.assigned.length > 3 && (
+                            <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
+                              <span className="text-xs text-ink-muted">
+                                +{project.assigned.length - 3}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -483,7 +570,7 @@ export default function ProjectsPage() {
       )}
 
       {/* Empty State */}
-      {filteredProjects.length === 0 && (
+      {project.length === 0 && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-greige-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Calendar className="w-8 h-8 text-greige-400" />
