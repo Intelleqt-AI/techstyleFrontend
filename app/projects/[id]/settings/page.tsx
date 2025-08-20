@@ -1,22 +1,22 @@
-"use client"
+'use client';
 
-import { useMemo, useState } from "react"
-import { useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { InviteOnboardDialog } from "@/components/project-settings/invite-onboard-dialog"
-import { OnboardingWizard } from "@/components/project-settings/onboarding-wizard"
-import { computeMissingFields, computeProgressPct } from "@/components/project-settings/utils"
-import type { OnboardingData } from "@/components/project-settings/types"
-import { saveProjectSettings } from "./actions"
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { InviteOnboardDialog } from '@/components/project-settings/invite-onboard-dialog';
+import { OnboardingWizard } from '@/components/project-settings/onboarding-wizard';
+import { computeMissingFields, computeProgressPct } from '@/components/project-settings/utils';
+import type { OnboardingData } from '@/components/project-settings/types';
+import { saveProjectSettings } from './actions';
 import {
   Settings,
   Building2,
@@ -33,106 +33,128 @@ import {
   Globe,
   Clock,
   Plus,
-} from "lucide-react"
+} from 'lucide-react';
+import useProjects from '@/supabase/hook/useProject';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { modifyProject } from '@/supabase/API';
+import { toast } from 'sonner';
 
 type SectionKey =
-  | "overview"
-  | "contacts"
-  | "property"
-  | "rooms"
-  | "delivery"
-  | "preferences"
-  | "team"
-  | "phases"
-  | "contractors"
-  | "automation"
-  | "financial"
-  | "timeline"
+  | 'overview'
+  | 'contacts'
+  | 'property'
+  | 'rooms'
+  | 'delivery'
+  | 'preferences'
+  | 'team'
+  | 'phases'
+  | 'contractors'
+  | 'automation'
+  | 'financial'
+  | 'timeline';
 
 const sections: { key: SectionKey; label: string; icon: any }[] = [
-  { key: "overview", label: "Overview", icon: Settings },
-  { key: "contacts", label: "Contacts & Access", icon: Users },
-  { key: "property", label: "Property", icon: Building2 },
-  { key: "rooms", label: "Rooms", icon: ClipboardList },
-  { key: "delivery", label: "Delivery & Billing", icon: Truck },
-  { key: "preferences", label: "Preferences & Consent", icon: SlidersHorizontal },
-  { key: "team", label: "Team", icon: Users },
-  { key: "phases", label: "Phases", icon: Calendar },
-  { key: "contractors", label: "Contractors", icon: Building },
-  { key: "timeline", label: "Timeline", icon: Calendar },
-  { key: "financial", label: "Financial", icon: DollarSign },
-  { key: "automation", label: "Automation", icon: Sparkles },
-]
+  { key: 'overview', label: 'Overview', icon: Settings },
+  { key: 'contacts', label: 'Contacts & Access', icon: Users },
+  { key: 'property', label: 'Property', icon: Building2 },
+  { key: 'rooms', label: 'Rooms', icon: ClipboardList },
+  { key: 'delivery', label: 'Delivery & Billing', icon: Truck },
+  { key: 'preferences', label: 'Preferences & Consent', icon: SlidersHorizontal },
+  { key: 'team', label: 'Team', icon: Users },
+  { key: 'phases', label: 'Phases', icon: Calendar },
+  { key: 'contractors', label: 'Contractors', icon: Building },
+  { key: 'timeline', label: 'Timeline', icon: Calendar },
+  { key: 'financial', label: 'Financial', icon: DollarSign },
+  { key: 'automation', label: 'Automation', icon: Sparkles },
+];
 
 export default function ProjectSettingsPage() {
-  const params = useParams<{ id: string }>()
-  const projectId = params?.id ?? "project-1"
-  const [selected, setSelected] = useState<SectionKey>("overview")
-  const [wizardOpen, setWizardOpen] = useState(false)
+  const params = useParams<{ id: string }>();
+  const projectId = params?.id ?? 'project-1';
+  const [selected, setSelected] = useState<SectionKey>('overview');
+  const [wizardOpen, setWizardOpen] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     contacts: { additional: [] },
     property: {},
     rooms: [],
     deliveryBilling: {},
     preferencesConsent: {},
-  })
+  });
+  const [selectedProject, setSelectedProject] = useState(null);
+  const { data: project, isLoading: projectLoading } = useProjects();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: modifyProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projects']);
+      toast('Project Updated');
+    },
+    onError: error => {
+      console.log(error);
+      toast('Error! Try again');
+    },
+  });
+
+  useEffect(() => {
+    if (projectLoading) return;
+    setSelectedProject(project?.find(data => data.id == params?.id));
+  }, [project, projectLoading, params?.id]);
 
   // Mock project data that would normally come from an API or store
   const [projectData, setProjectData] = useState({
-    title: "Chelsea Penthouse",
-    code: "LUX-001",
-    summary: "Luxury penthouse redesign in Chelsea with focus on sustainable materials and modern aesthetics.",
-    type: "residential",
-    currency: "GBP",
-    timezone: "Europe/London",
-    budget: "850000",
-    taxRate: "20",
-    startDate: "2024-09-01",
-    endDate: "2025-03-15",
-    notes:
-      "Client prefers minimalist design with warm tones. Previous designer left detailed notes in the shared drive.",
+    title: 'Chelsea Penthouse',
+    code: 'LUX-001',
+    summary: 'Luxury penthouse redesign in Chelsea with focus on sustainable materials and modern aesthetics.',
+    type: 'residential',
+    currency: 'GBP',
+    timezone: 'Europe/London',
+    budget: '850000',
+    taxRate: '20',
+    startDate: '2024-09-01',
+    endDate: '2025-03-15',
+    notes: 'Client prefers minimalist design with warm tones. Previous designer left detailed notes in the shared drive.',
     team: [
-      { id: "1", name: "Jane Designer", role: "Lead Designer", avatar: "/avatars/jane.jpg" },
-      { id: "2", name: "Tom Manager", role: "Project Manager", avatar: "/avatars/tom.jpg" },
-      { id: "3", name: "Sarah Procurement", role: "Procurement Lead", avatar: "/avatars/sarah.jpg" },
+      { id: '1', name: 'Jane Designer', role: 'Lead Designer', avatar: '/avatars/jane.jpg' },
+      { id: '2', name: 'Tom Manager', role: 'Project Manager', avatar: '/avatars/tom.jpg' },
+      { id: '3', name: 'Sarah Procurement', role: 'Procurement Lead', avatar: '/avatars/sarah.jpg' },
     ],
     phases: [
-      { name: "Discovery & Planning", duration: "2 weeks", description: "Initial consultation and space assessment" },
-      { name: "Design Development", duration: "4 weeks", description: "Concept creation and design refinement" },
-      { name: "Documentation", duration: "3 weeks", description: "Technical drawings and specifications" },
-      { name: "Implementation", duration: "8 weeks", description: "Procurement and installation" },
+      { name: 'Discovery & Planning', duration: '2 weeks', description: 'Initial consultation and space assessment' },
+      { name: 'Design Development', duration: '4 weeks', description: 'Concept creation and design refinement' },
+      { name: 'Documentation', duration: '3 weeks', description: 'Technical drawings and specifications' },
+      { name: 'Implementation', duration: '8 weeks', description: 'Procurement and installation' },
     ],
     contractors: [
       {
-        id: "1",
-        name: "ABC Plumbing",
-        trade: "Plumbing",
-        contact: "John Smith",
-        email: "john@abcplumbing.com",
-        phone: "+44 20 1234 5678",
+        id: '1',
+        name: 'ABC Plumbing',
+        trade: 'Plumbing',
+        contact: 'John Smith',
+        email: 'john@abcplumbing.com',
+        phone: '+44 20 1234 5678',
         portalAccess: true,
       },
       {
-        id: "2",
-        name: "Elite Carpentry",
-        trade: "Carpentry",
-        contact: "Sarah Johnson",
-        email: "sarah@elitecarpentry.co.uk",
-        phone: "+44 20 8765 4321",
+        id: '2',
+        name: 'Elite Carpentry',
+        trade: 'Carpentry',
+        contact: 'Sarah Johnson',
+        email: 'sarah@elitecarpentry.co.uk',
+        phone: '+44 20 8765 4321',
         portalAccess: false,
       },
     ],
-  })
+  });
 
-  const missing = useMemo(() => computeMissingFields(onboardingData), [onboardingData])
-  const progressPct = useMemo(() => computeProgressPct(missing), [missing])
+  const missing = useMemo(() => computeMissingFields(onboardingData), [onboardingData]);
+  const progressPct = useMemo(() => computeProgressPct(missing), [missing]);
 
   async function handleSave(section: SectionKey, payload: unknown) {
-    await saveProjectSettings({ projectId, section, payload })
-    // In a real app, you would update the state with the response
-    // For now, we'll just simulate a successful save
-    console.log(`Saved ${section} settings:`, payload)
+    mutation.mutate(selectedProject);
   }
+
+  console.log(selectedProject);
 
   return (
     <main className="flex-1 bg-neutral-50 p-6">
@@ -142,8 +164,8 @@ export default function ProjectSettingsPage() {
           <div>
             <h1 className="text-xl font-semibold">Project Settings</h1>
             <div className="mt-1 flex items-center gap-2">
-              <Badge variant={missing.length === 0 ? "default" : "secondary"}>
-                {missing.length === 0 ? "Onboarding complete" : `${missing.length} fields remaining`}
+              <Badge variant={missing.length === 0 ? 'default' : 'secondary'}>
+                {missing.length === 0 ? 'Onboarding complete' : `${missing.length} fields remaining`}
               </Badge>
               <div className="w-40">
                 <Progress value={progressPct} />
@@ -162,20 +184,20 @@ export default function ProjectSettingsPage() {
               </CardHeader>
               <CardContent className="p-2">
                 <nav className="grid gap-1">
-                  {sections.map((s) => {
-                    const Icon = s.icon
-                    const active = selected === s.key
+                  {sections.map(s => {
+                    const Icon = s.icon;
+                    const active = selected === s.key;
                     return (
                       <Button
                         key={s.key}
-                        variant={active ? "secondary" : "ghost"}
-                        className={`justify-start ${active ? "bg-neutral-100" : ""}`}
+                        variant={active ? 'secondary' : 'ghost'}
+                        className={`justify-start ${active ? 'bg-neutral-100' : ''}`}
                         onClick={() => setSelected(s.key)}
                       >
                         <Icon className="w-4 h-4 mr-2" />
                         {s.label}
                       </Button>
-                    )
+                    );
                   })}
                 </nav>
               </CardContent>
@@ -184,80 +206,68 @@ export default function ProjectSettingsPage() {
 
           {/* Section form */}
           <section className="lg:col-span-9">
-            {selected === "overview" && (
+            {selected === 'overview' && (
               <OverviewForm
-                value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("overview", p)}
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('overview', p)}
               />
             )}
-            {selected === "contacts" && (
-              <ContactsForm
-                value={onboardingData}
-                onChange={setOnboardingData}
-                onSave={(p) => handleSave("contacts", p)}
+            {selected === 'contacts' && (
+              <ContactsForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('contacts', p)} />
+            )}
+            {selected === 'property' && (
+              <PropertyForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('property', p)} />
+            )}
+            {selected === 'rooms' && (
+              <RoomsForm
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('type', p)}
               />
             )}
-            {selected === "property" && (
-              <PropertyForm
-                value={onboardingData}
-                onChange={setOnboardingData}
-                onSave={(p) => handleSave("property", p)}
-              />
+            {selected === 'delivery' && (
+              <DeliveryForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('delivery', p)} />
             )}
-            {selected === "rooms" && (
-              <RoomsForm value={onboardingData} onChange={setOnboardingData} onSave={(p) => handleSave("rooms", p)} />
+            {selected === 'preferences' && (
+              <PreferencesForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('preferences', p)} />
             )}
-            {selected === "delivery" && (
-              <DeliveryForm
-                value={onboardingData}
-                onChange={setOnboardingData}
-                onSave={(p) => handleSave("delivery", p)}
-              />
-            )}
-            {selected === "preferences" && (
-              <PreferencesForm
-                value={onboardingData}
-                onChange={setOnboardingData}
-                onSave={(p) => handleSave("preferences", p)}
-              />
-            )}
-            {selected === "team" && (
+            {selected === 'team' && (
               <TeamForm
                 value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("team", p)}
+                onChange={data => setProjectData({ ...projectData, ...data })}
+                onSave={p => handleSave('team', p)}
               />
             )}
-            {selected === "phases" && (
+            {selected === 'phases' && (
               <PhasesForm
                 value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("phases", p)}
+                onChange={data => setProjectData({ ...projectData, ...data })}
+                onSave={p => handleSave('phases', p)}
               />
             )}
-            {selected === "contractors" && (
+            {selected === 'contractors' && (
               <ContractorsForm
                 value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("contractors", p)}
+                onChange={data => setProjectData({ ...projectData, ...data })}
+                onSave={p => handleSave('contractors', p)}
               />
             )}
-            {selected === "timeline" && (
+            {selected === 'timeline' && (
               <TimelineForm
                 value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("timeline", p)}
+                onChange={data => setProjectData({ ...projectData, ...data })}
+                onSave={p => handleSave('timeline', p)}
               />
             )}
-            {selected === "financial" && (
+            {selected === 'financial' && (
               <FinancialForm
                 value={projectData}
-                onChange={(data) => setProjectData({ ...projectData, ...data })}
-                onSave={(p) => handleSave("financial", p)}
+                onChange={data => setProjectData({ ...projectData, ...data })}
+                onSave={p => handleSave('financial', p)}
               />
             )}
-            {selected === "automation" && <AutomationForm onSave={(p) => handleSave("automation", p)} />}
+            {selected === 'automation' && <AutomationForm onSave={p => handleSave('automation', p)} />}
           </section>
         </div>
       </div>
@@ -273,16 +283,12 @@ export default function ProjectSettingsPage() {
         }}
       />
     </main>
-  )
+  );
 }
 
 /* Forms — lightweight, aligned to global UI */
 
-function OverviewForm({
-  value,
-  onChange,
-  onSave,
-}: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+function OverviewForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   return (
     <Card>
       <CardHeader>
@@ -295,24 +301,18 @@ function OverviewForm({
             id="title"
             className="mt-1"
             placeholder="Chelsea Penthouse"
-            value={value.title}
-            onChange={(e) => onChange({ title: e.target.value })}
+            value={value?.name}
+            onChange={e => onChange({ name: e.target.value })}
           />
         </div>
         <div>
           <Label htmlFor="code">Project code</Label>
-          <Input
-            id="code"
-            className="mt-1"
-            placeholder="LUX-001"
-            value={value.code}
-            onChange={(e) => onChange({ code: e.target.value })}
-          />
+          <Input id="code" className="mt-1" placeholder="LUX-001" value={value?.code} onChange={e => onChange({ code: e.target.value })} />
           <p className="text-xs text-ink-muted mt-1">Used in file names and POs.</p>
         </div>
         <div>
           <Label htmlFor="type">Project type</Label>
-          <Select value={value.type} onValueChange={(val) => onChange({ type: val })}>
+          <Select value={value?.projectType} onValueChange={val => onChange({ projectType: val })}>
             <SelectTrigger className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
               <SelectValue />
             </SelectTrigger>
@@ -345,8 +345,8 @@ function OverviewForm({
             className="mt-1"
             rows={4}
             placeholder="Short project summary…"
-            value={value.summary}
-            onChange={(e) => onChange({ summary: e.target.value })}
+            value={value?.description}
+            onChange={e => onChange({ description: e.target.value })}
           />
         </div>
         <div className="flex items-center justify-end">
@@ -354,7 +354,7 @@ function OverviewForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function ContactsForm({
@@ -362,9 +362,9 @@ function ContactsForm({
   onChange,
   onSave,
 }: {
-  value: OnboardingData
-  onChange: (v: OnboardingData) => void
-  onSave: (p: any) => void
+  value: OnboardingData;
+  onChange: (v: OnboardingData) => void;
+  onSave: (p: any) => void;
 }) {
   return (
     <Card>
@@ -378,8 +378,8 @@ function ContactsForm({
             <Input
               className="mt-1"
               placeholder="Name"
-              value={value.contacts.primary?.name ?? ""}
-              onChange={(e) =>
+              value={value.contacts.primary?.name ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: { ...value.contacts, primary: { ...(value.contacts.primary ?? {}), name: e.target.value } },
@@ -390,8 +390,8 @@ function ContactsForm({
               className="mt-2"
               type="email"
               placeholder="Email"
-              value={value.contacts.primary?.email ?? ""}
-              onChange={(e) =>
+              value={value.contacts.primary?.email ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: {
@@ -404,8 +404,8 @@ function ContactsForm({
             <Input
               className="mt-2"
               placeholder="Phone"
-              value={value.contacts.primary?.phone ?? ""}
-              onChange={(e) =>
+              value={value.contacts.primary?.phone ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: {
@@ -418,7 +418,7 @@ function ContactsForm({
             <div className="mt-3 flex items-center gap-2">
               <Switch
                 checked={!!value.contacts.primary?.portalAccess}
-                onCheckedChange={(v) =>
+                onCheckedChange={v =>
                   onChange({
                     ...value,
                     contacts: { ...value.contacts, primary: { ...(value.contacts.primary ?? {}), portalAccess: v } },
@@ -433,8 +433,8 @@ function ContactsForm({
             <Input
               className="mt-1"
               placeholder="Name"
-              value={value.contacts.secondary?.name ?? ""}
-              onChange={(e) =>
+              value={value.contacts.secondary?.name ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: {
@@ -448,8 +448,8 @@ function ContactsForm({
               className="mt-2"
               type="email"
               placeholder="Email"
-              value={value.contacts.secondary?.email ?? ""}
-              onChange={(e) =>
+              value={value.contacts.secondary?.email ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: {
@@ -462,8 +462,8 @@ function ContactsForm({
             <Input
               className="mt-2"
               placeholder="Role (Client, Accountant, Site Contact)"
-              value={value.contacts.secondary?.role ?? ""}
-              onChange={(e) =>
+              value={value.contacts.secondary?.role ?? ''}
+              onChange={e =>
                 onChange({
                   ...value,
                   contacts: {
@@ -483,7 +483,7 @@ function ContactsForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PropertyForm({
@@ -491,9 +491,9 @@ function PropertyForm({
   onChange,
   onSave,
 }: {
-  value: OnboardingData
-  onChange: (v: OnboardingData) => void
-  onSave: (p: any) => void
+  value: OnboardingData;
+  onChange: (v: OnboardingData) => void;
+  onSave: (p: any) => void;
 }) {
   return (
     <Card>
@@ -506,8 +506,8 @@ function PropertyForm({
           <Input
             className="mt-1"
             placeholder="Search address…"
-            value={value.property.siteAddress ?? ""}
-            onChange={(e) => onChange({ ...value, property: { ...value.property, siteAddress: e.target.value } })}
+            value={value.property.siteAddress ?? ''}
+            onChange={e => onChange({ ...value, property: { ...value.property, siteAddress: e.target.value } })}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -516,8 +516,8 @@ function PropertyForm({
             <Textarea
               className="mt-1"
               rows={3}
-              value={value.property.accessNotes ?? ""}
-              onChange={(e) => onChange({ ...value, property: { ...value.property, accessNotes: e.target.value } })}
+              value={value.property.accessNotes ?? ''}
+              onChange={e => onChange({ ...value, property: { ...value.property, accessNotes: e.target.value } })}
             />
           </div>
           <div>
@@ -525,8 +525,8 @@ function PropertyForm({
             <Textarea
               className="mt-1"
               rows={3}
-              value={value.property.restrictions ?? ""}
-              onChange={(e) => onChange({ ...value, property: { ...value.property, restrictions: e.target.value } })}
+              value={value.property.restrictions ?? ''}
+              onChange={e => onChange({ ...value, property: { ...value.property, restrictions: e.target.value } })}
             />
           </div>
         </div>
@@ -535,7 +535,7 @@ function PropertyForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function RoomsForm({
@@ -543,9 +543,9 @@ function RoomsForm({
   onChange,
   onSave,
 }: {
-  value: OnboardingData
-  onChange: (v: OnboardingData) => void
-  onSave: (p: any) => void
+  value: OnboardingData;
+  onChange: (v: OnboardingData) => void;
+  onSave: (p: any) => void;
 }) {
   return (
     <Card>
@@ -556,59 +556,57 @@ function RoomsForm({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Input
             placeholder="Room name"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const input = e.currentTarget as HTMLInputElement
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                const input = e.currentTarget as HTMLInputElement;
                 if (input.value.trim()) {
-                  const rooms = [...(value.rooms ?? []), { name: input.value.trim() }]
-                  onChange({ ...value, rooms })
-                  input.value = ""
+                  const type = [...(value.type ?? []), { text: input.value.trim(), id: crypto.randomUUID(), product: [] }];
+                  onChange({ ...value, type });
+                  input.value = '';
                 }
               }
             }}
           />
-          <div className="md:col-span-2 text-sm text-muted-foreground flex items-center">
-            {"Press Enter to add room"}
-          </div>
+          <div className="md:col-span-2 text-sm text-muted-foreground flex items-center">{'Press Enter to add room'}</div>
         </div>
         <div className="space-y-2">
-          {(value.rooms ?? []).map((room, idx) => (
+          {(value.type ?? []).map((room, idx) => (
             <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Input
-                value={room.name}
-                onChange={(e) => {
-                  const next = [...(value.rooms ?? [])]
-                  next[idx] = { ...next[idx], name: e.target.value }
-                  onChange({ ...value, rooms: next })
+                value={room.text}
+                onChange={e => {
+                  const next = [...(value.type ?? [])];
+                  next[idx] = { ...next[idx], text: e.target.value };
+                  onChange({ ...value, type: next });
                 }}
               />
               <Input
                 placeholder="Dimensions"
-                value={room.dimensions ?? ""}
-                onChange={(e) => {
-                  const next = [...(value.rooms ?? [])]
-                  next[idx] = { ...next[idx], dimensions: e.target.value }
-                  onChange({ ...value, rooms: next })
+                value={room.dimensions ?? ''}
+                onChange={e => {
+                  const next = [...(value.type ?? [])];
+                  next[idx] = { ...next[idx], dimensions: e.target.value };
+                  onChange({ ...value, type: next });
                 }}
               />
               <Input
                 placeholder="Delivery constraints"
-                value={room.constraints ?? ""}
-                onChange={(e) => {
-                  const next = [...(value.rooms ?? [])]
-                  next[idx] = { ...next[idx], constraints: e.target.value }
-                  onChange({ ...value, rooms: next })
+                value={room.constraints ?? ''}
+                onChange={e => {
+                  const next = [...(value.type ?? [])];
+                  next[idx] = { ...next[idx], constraints: e.target.value };
+                  onChange({ ...value, type: next });
                 }}
               />
             </div>
           ))}
         </div>
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.rooms)}>Save</Button>
+          <Button onClick={() => onSave(value.type)}>Save</Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function DeliveryForm({
@@ -616,9 +614,9 @@ function DeliveryForm({
   onChange,
   onSave,
 }: {
-  value: OnboardingData
-  onChange: (v: OnboardingData) => void
-  onSave: (p: any) => void
+  value: OnboardingData;
+  onChange: (v: OnboardingData) => void;
+  onSave: (p: any) => void;
 }) {
   return (
     <Card>
@@ -630,20 +628,16 @@ function DeliveryForm({
           <Label>Billing address</Label>
           <Input
             className="mt-1"
-            value={value.deliveryBilling.billingAddress ?? ""}
-            onChange={(e) =>
-              onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, billingAddress: e.target.value } })
-            }
+            value={value.deliveryBilling.billingAddress ?? ''}
+            onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, billingAddress: e.target.value } })}
           />
         </div>
         <div>
           <Label>Delivery address</Label>
           <Input
             className="mt-1"
-            value={value.deliveryBilling.deliveryAddress ?? ""}
-            onChange={(e) =>
-              onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryAddress: e.target.value } })
-            }
+            value={value.deliveryBilling.deliveryAddress ?? ''}
+            onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryAddress: e.target.value } })}
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -651,10 +645,8 @@ function DeliveryForm({
             <Label>On‑site contact</Label>
             <Input
               className="mt-1"
-              value={value.deliveryBilling.onsiteContact ?? ""}
-              onChange={(e) =>
-                onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, onsiteContact: e.target.value } })
-              }
+              value={value.deliveryBilling.onsiteContact ?? ''}
+              onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, onsiteContact: e.target.value } })}
             />
           </div>
           <div>
@@ -662,10 +654,8 @@ function DeliveryForm({
             <Input
               className="mt-1"
               placeholder="e.g., Mon‑Fri 9–5"
-              value={value.deliveryBilling.deliveryWindows ?? ""}
-              onChange={(e) =>
-                onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryWindows: e.target.value } })
-              }
+              value={value.deliveryBilling.deliveryWindows ?? ''}
+              onChange={e => onChange({ ...value, deliveryBilling: { ...value.deliveryBilling, deliveryWindows: e.target.value } })}
             />
           </div>
         </div>
@@ -674,7 +664,7 @@ function DeliveryForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PreferencesForm({
@@ -682,9 +672,9 @@ function PreferencesForm({
   onChange,
   onSave,
 }: {
-  value: OnboardingData
-  onChange: (v: OnboardingData) => void
-  onSave: (p: any) => void
+  value: OnboardingData;
+  onChange: (v: OnboardingData) => void;
+  onSave: (p: any) => void;
 }) {
   return (
     <Card>
@@ -697,15 +687,15 @@ function PreferencesForm({
           <Input
             className="mt-1"
             placeholder="modern, warm minimalism"
-            value={(value.preferencesConsent.styleTags ?? []).join(", ")}
-            onChange={(e) =>
+            value={(value.preferencesConsent.styleTags ?? []).join(', ')}
+            onChange={e =>
               onChange({
                 ...value,
                 preferencesConsent: {
                   ...value.preferencesConsent,
                   styleTags: e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
+                    .split(',')
+                    .map(s => s.trim())
                     .filter(Boolean),
                 },
               })
@@ -717,15 +707,15 @@ function PreferencesForm({
           <Input
             className="mt-1"
             placeholder="Vendor A, Vendor B"
-            value={(value.preferencesConsent.preferredVendors ?? []).join(", ")}
-            onChange={(e) =>
+            value={(value.preferencesConsent.preferredVendors ?? []).join(', ')}
+            onChange={e =>
               onChange({
                 ...value,
                 preferencesConsent: {
                   ...value.preferencesConsent,
                   preferredVendors: e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
+                    .split(',')
+                    .map(s => s.trim())
                     .filter(Boolean),
                 },
               })
@@ -736,7 +726,7 @@ function PreferencesForm({
           <div className="flex items-center gap-2">
             <Switch
               checked={!!value.preferencesConsent.consents?.marketing}
-              onCheckedChange={(v) =>
+              onCheckedChange={v =>
                 onChange({
                   ...value,
                   preferencesConsent: {
@@ -753,7 +743,7 @@ function PreferencesForm({
               <input
                 type="checkbox"
                 checked={!!value.preferencesConsent.consents?.terms}
-                onChange={(e) =>
+                onChange={e =>
                   onChange({
                     ...value,
                     preferencesConsent: {
@@ -764,7 +754,7 @@ function PreferencesForm({
                 }
               />
               <span>
-                {"Agree to "}
+                {'Agree to '}
                 <a href="#" className="underline">
                   Terms
                 </a>
@@ -774,7 +764,7 @@ function PreferencesForm({
               <input
                 type="checkbox"
                 checked={!!value.preferencesConsent.consents?.privacy}
-                onChange={(e) =>
+                onChange={e =>
                   onChange({
                     ...value,
                     preferencesConsent: {
@@ -785,7 +775,7 @@ function PreferencesForm({
                 }
               />
               <span>
-                {"Agree to "}
+                {'Agree to '}
                 <a href="#" className="underline">
                   Privacy
                 </a>
@@ -798,20 +788,16 @@ function PreferencesForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function TimelineForm({
-  value,
-  onChange,
-  onSave,
-}: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+function TimelineForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   // Format date for display in input
   const formatDateForInput = (dateString: string) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    return date.toISOString().split("T")[0] // YYYY-MM-DD format for input
-  }
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD format for input
+  };
 
   return (
     <Card>
@@ -827,7 +813,7 @@ function TimelineForm({
               type="date"
               className="mt-1"
               value={formatDateForInput(value.startDate)}
-              onChange={(e) => onChange({ startDate: e.target.value })}
+              onChange={e => onChange({ startDate: e.target.value })}
             />
           </div>
           <div>
@@ -837,17 +823,14 @@ function TimelineForm({
               type="date"
               className="mt-1"
               value={formatDateForInput(value.endDate)}
-              onChange={(e) => onChange({ endDate: e.target.value })}
+              onChange={e => onChange({ endDate: e.target.value })}
             />
           </div>
         </div>
         <div>
           <Label htmlFor="timezone">Timezone</Label>
-          <Select value={value.timezone} onValueChange={(val) => onChange({ timezone: val })}>
-            <SelectTrigger
-              id="timezone"
-              className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft"
-            >
+          <Select value={value.timezone} onValueChange={val => onChange({ timezone: val })}>
+            <SelectTrigger id="timezone" className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-white border-borderSoft">
@@ -877,14 +860,10 @@ function TimelineForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function FinancialForm({
-  value,
-  onChange,
-  onSave,
-}: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   return (
     <Card>
       <CardHeader>
@@ -899,7 +878,7 @@ function FinancialForm({
               className="mt-1"
               placeholder="850000"
               value={value.budget}
-              onChange={(e) => onChange({ budget: e.target.value })}
+              onChange={e => onChange({ budget: e.target.value })}
             />
           </div>
           <div>
@@ -909,17 +888,14 @@ function FinancialForm({
               className="mt-1"
               placeholder="20"
               value={value.taxRate}
-              onChange={(e) => onChange({ taxRate: e.target.value })}
+              onChange={e => onChange({ taxRate: e.target.value })}
             />
           </div>
         </div>
         <div>
           <Label htmlFor="currency">Currency</Label>
-          <Select value={value.currency} onValueChange={(val) => onChange({ currency: val })}>
-            <SelectTrigger
-              id="currency"
-              className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft"
-            >
+          <Select value={value.currency} onValueChange={val => onChange({ currency: val })}>
+            <SelectTrigger id="currency" className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-white border-borderSoft">
@@ -949,7 +925,7 @@ function FinancialForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
@@ -962,11 +938,11 @@ function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="border rounded-lg p-3">
             <div className="text-sm font-medium">Kickoff Pack</div>
-            <p className="text-sm text-muted-foreground mt-1">{"Auto‑generate tasks when onboarding completes."}</p>
+            <p className="text-sm text-muted-foreground mt-1">{'Auto‑generate tasks when onboarding completes.'}</p>
           </div>
           <div className="border rounded-lg p-3">
             <div className="text-sm font-medium">Notifications</div>
-            <p className="text-sm text-muted-foreground mt-1">{"Notify team when clients join the portal."}</p>
+            <p className="text-sm text-muted-foreground mt-1">{'Notify team when clients join the portal.'}</p>
           </div>
         </div>
         <div className="flex items-center justify-end">
@@ -974,31 +950,31 @@ function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   const addTeamMember = () => {
     const newMember = {
       id: Date.now().toString(),
-      name: "",
-      role: "",
-      avatar: "",
-    }
-    onChange({ team: [...(value.team || []), newMember] })
-  }
+      name: '',
+      role: '',
+      avatar: '',
+    };
+    onChange({ team: [...(value.team || []), newMember] });
+  };
 
   const updateTeamMember = (index: number, updates: any) => {
-    const updatedTeam = [...(value.team || [])]
-    updatedTeam[index] = { ...updatedTeam[index], ...updates }
-    onChange({ team: updatedTeam })
-  }
+    const updatedTeam = [...(value.team || [])];
+    updatedTeam[index] = { ...updatedTeam[index], ...updates };
+    onChange({ team: updatedTeam });
+  };
 
   const removeTeamMember = (index: number) => {
-    const updatedTeam = [...(value.team || [])]
-    updatedTeam.splice(index, 1)
-    onChange({ team: updatedTeam })
-  }
+    const updatedTeam = [...(value.team || [])];
+    updatedTeam.splice(index, 1);
+    onChange({ team: updatedTeam });
+  };
 
   return (
     <Card>
@@ -1019,23 +995,19 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
                 <span className="text-sm font-medium text-clay-600">
                   {member.name
                     ? member.name
-                        .split(" ")
+                        .split(' ')
                         .map((n: string) => n[0])
-                        .join("")
+                        .join('')
                         .toUpperCase()
-                    : "TM"}
+                    : 'TM'}
                 </span>
               </div>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input
-                  placeholder="Full name"
-                  value={member.name}
-                  onChange={(e) => updateTeamMember(index, { name: e.target.value })}
-                />
+                <Input placeholder="Full name" value={member.name} onChange={e => updateTeamMember(index, { name: e.target.value })} />
                 <Input
                   placeholder="Role (e.g., Lead Designer)"
                   value={member.role}
-                  onChange={(e) => updateTeamMember(index, { role: e.target.value })}
+                  onChange={e => updateTeamMember(index, { role: e.target.value })}
                 />
               </div>
               <Button
@@ -1049,9 +1021,7 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
             </div>
           ))}
           {(!value.team || value.team.length === 0) && (
-            <div className="text-center py-8 text-muted-foreground">
-              No team members assigned yet. Click "Add Member" to get started.
-            </div>
+            <div className="text-center py-8 text-muted-foreground">No team members assigned yet. Click "Add Member" to get started.</div>
           )}
         </div>
         <div className="flex items-center justify-end">
@@ -1059,30 +1029,30 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   const addPhase = () => {
     const newPhase = {
-      name: "",
-      duration: "",
-      description: "",
-    }
-    onChange({ phases: [...(value.phases || []), newPhase] })
-  }
+      name: '',
+      duration: '',
+      description: '',
+    };
+    onChange({ phases: [...(value.phases || []), newPhase] });
+  };
 
   const updatePhase = (index: number, updates: any) => {
-    const updatedPhases = [...(value.phases || [])]
-    updatedPhases[index] = { ...updatedPhases[index], ...updates }
-    onChange({ phases: updatedPhases })
-  }
+    const updatedPhases = [...(value.phases || [])];
+    updatedPhases[index] = { ...updatedPhases[index], ...updates };
+    onChange({ phases: updatedPhases });
+  };
 
   const removePhase = (index: number) => {
-    const updatedPhases = [...(value.phases || [])]
-    updatedPhases.splice(index, 1)
-    onChange({ phases: updatedPhases })
-  }
+    const updatedPhases = [...(value.phases || [])];
+    updatedPhases.splice(index, 1);
+    onChange({ phases: updatedPhases });
+  };
 
   return (
     <Card>
@@ -1121,7 +1091,7 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
                         className="mt-1"
                         placeholder="e.g., Discovery & Planning"
                         value={phase.name}
-                        onChange={(e) => updatePhase(index, { name: e.target.value })}
+                        onChange={e => updatePhase(index, { name: e.target.value })}
                       />
                     </div>
                     <div>
@@ -1130,7 +1100,7 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
                         className="mt-1"
                         placeholder="e.g., 2 weeks"
                         value={phase.duration}
-                        onChange={(e) => updatePhase(index, { duration: e.target.value })}
+                        onChange={e => updatePhase(index, { duration: e.target.value })}
                       />
                     </div>
                   </div>
@@ -1140,7 +1110,7 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
                       className="mt-1"
                       placeholder="Brief description of this phase..."
                       value={phase.description}
-                      onChange={(e) => updatePhase(index, { description: e.target.value })}
+                      onChange={e => updatePhase(index, { description: e.target.value })}
                       rows={2}
                     />
                   </div>
@@ -1159,61 +1129,57 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function ContractorsForm({
-  value,
-  onChange,
-  onSave,
-}: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+function ContractorsForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   const addContractor = () => {
     const newContractor = {
       id: Date.now().toString(),
-      name: "",
-      trade: "",
-      contact: "",
-      email: "",
-      phone: "",
+      name: '',
+      trade: '',
+      contact: '',
+      email: '',
+      phone: '',
       portalAccess: false,
-    }
-    onChange({ contractors: [...(value.contractors || []), newContractor] })
-  }
+    };
+    onChange({ contractors: [...(value.contractors || []), newContractor] });
+  };
 
   const updateContractor = (index: number, updates: any) => {
-    const updatedContractors = [...(value.contractors || [])]
-    updatedContractors[index] = { ...updatedContractors[index], ...updates }
-    onChange({ contractors: updatedContractors })
-  }
+    const updatedContractors = [...(value.contractors || [])];
+    updatedContractors[index] = { ...updatedContractors[index], ...updates };
+    onChange({ contractors: updatedContractors });
+  };
 
   const removeContractor = (index: number) => {
-    const updatedContractors = [...(value.contractors || [])]
-    updatedContractors.splice(index, 1)
-    onChange({ contractors: updatedContractors })
-  }
+    const updatedContractors = [...(value.contractors || [])];
+    updatedContractors.splice(index, 1);
+    onChange({ contractors: updatedContractors });
+  };
 
   const inviteToPortal = (contractor: any) => {
     // This would trigger the contractor portal invitation
-    console.log(`Inviting ${contractor.name} to contractor portal`)
+    console.log(`Inviting ${contractor.name} to contractor portal`);
     // Update portal access status
-    const index = value.contractors.findIndex((c: any) => c.id === contractor.id)
+    const index = value.contractors.findIndex((c: any) => c.id === contractor.id);
     if (index !== -1) {
-      updateContractor(index, { portalAccess: true })
+      updateContractor(index, { portalAccess: true });
     }
-  }
+  };
 
   const commonTrades = [
-    "Plumbing",
-    "Electrical",
-    "Carpentry",
-    "Painting",
-    "Flooring",
-    "HVAC",
-    "Roofing",
-    "Masonry",
-    "Glazing",
-    "Landscaping",
-  ]
+    'Plumbing',
+    'Electrical',
+    'Carpentry',
+    'Painting',
+    'Flooring',
+    'HVAC',
+    'Roofing',
+    'Masonry',
+    'Glazing',
+    'Landscaping',
+  ];
 
   return (
     <Card>
@@ -1238,7 +1204,7 @@ function ContractorsForm({
                         <Building className="w-5 h-5 text-clay-600" />
                       </div>
                       <div>
-                        <div className="font-medium">{contractor.name || "New Contractor"}</div>
+                        <div className="font-medium">{contractor.name || 'New Contractor'}</div>
                         <div className="text-sm text-muted-foreground">{contractor.trade}</div>
                       </div>
                     </div>
@@ -1248,11 +1214,7 @@ function ContractorsForm({
                           Portal Access
                         </Badge>
                       ) : (
-                        <Button
-                          size="sm"
-                          onClick={() => inviteToPortal(contractor)}
-                          className="bg-clay-600 text-white hover:bg-clay-700"
-                        >
+                        <Button size="sm" onClick={() => inviteToPortal(contractor)} className="bg-clay-600 text-white hover:bg-clay-700">
                           Invite to Portal
                         </Button>
                       )}
@@ -1274,17 +1236,17 @@ function ContractorsForm({
                         className="mt-1"
                         placeholder="e.g., ABC Plumbing Ltd"
                         value={contractor.name}
-                        onChange={(e) => updateContractor(index, { name: e.target.value })}
+                        onChange={e => updateContractor(index, { name: e.target.value })}
                       />
                     </div>
                     <div>
                       <Label className="text-sm">Trade</Label>
-                      <Select value={contractor.trade} onValueChange={(val) => updateContractor(index, { trade: val })}>
+                      <Select value={contractor.trade} onValueChange={val => updateContractor(index, { trade: val })}>
                         <SelectTrigger className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
                           <SelectValue placeholder="Select trade" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border-borderSoft">
-                          {commonTrades.map((trade) => (
+                          {commonTrades.map(trade => (
                             <SelectItem key={trade} value={trade} className="focus:bg-greige-50 focus:text-ink">
                               {trade}
                             </SelectItem>
@@ -1304,7 +1266,7 @@ function ContractorsForm({
                         className="mt-1"
                         placeholder="Primary contact name"
                         value={contractor.contact}
-                        onChange={(e) => updateContractor(index, { contact: e.target.value })}
+                        onChange={e => updateContractor(index, { contact: e.target.value })}
                       />
                     </div>
                     <div>
@@ -1314,7 +1276,7 @@ function ContractorsForm({
                         type="email"
                         placeholder="contact@company.com"
                         value={contractor.email}
-                        onChange={(e) => updateContractor(index, { email: e.target.value })}
+                        onChange={e => updateContractor(index, { email: e.target.value })}
                       />
                     </div>
                     <div>
@@ -1323,7 +1285,7 @@ function ContractorsForm({
                         className="mt-1"
                         placeholder="+44 20 1234 5678"
                         value={contractor.phone}
-                        onChange={(e) => updateContractor(index, { phone: e.target.value })}
+                        onChange={e => updateContractor(index, { phone: e.target.value })}
                       />
                     </div>
                   </div>
@@ -1331,7 +1293,7 @@ function ContractorsForm({
                   <div className="flex items-center gap-2 pt-2 border-t border-borderSoft">
                     <Switch
                       checked={contractor.portalAccess}
-                      onCheckedChange={(checked) => updateContractor(index, { portalAccess: checked })}
+                      onCheckedChange={checked => updateContractor(index, { portalAccess: checked })}
                     />
                     <span className="text-sm">Grant contractor portal access</span>
                   </div>
@@ -1352,5 +1314,5 @@ function ContractorsForm({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
