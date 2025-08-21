@@ -1,0 +1,835 @@
+import { addProduct, uploadDoc } from "@/supabase/API";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
+import Modal from "react-modal";
+import { Label } from "@/components/ui/label";
+import { Check, Loader, Sparkles, Upload, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { v1 as uuidv1 } from "uuid";
+import { Textarea } from "../ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import CustomSelect from "./CustomSelect";
+import useSupplier from "@/hooks/useSupplier";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+  CommandEmpty,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import AddSupplier from "../contacts/AddSupplier";
+// import component 👇
+import Drawer from "react-modern-drawer";
+
+import {
+  CSSTransition,
+  SwitchTransition,
+  TransitionGroup,
+} from "react-transition-group";
+import { usePostData } from "@/lib/PostURl";
+import { motion, AnimatePresence } from "framer-motion";
+
+const initial = {
+  id: "",
+  name: "",
+  supplier: "",
+  priceMember: 0,
+  priceRegular: 0,
+  description: "",
+  measurements: "",
+  materials: "",
+  dimensions: "",
+  weight: "",
+  boxedDimensions: "",
+  boxedWeight: "",
+  assemblyRequired: "",
+  instructions: "",
+  composition: "",
+  construction: "",
+  feet: 0,
+  filling: "",
+  frame: "",
+  removableCushions: "",
+  removableLegs: "",
+  seatDepth: "",
+  seatHeight: "",
+  seatWidth: "",
+  type: "",
+  product_url: "",
+  status: "pending",
+  initialStatus: "Draft",
+};
+
+const AddProductModal = ({ closeModal, modalOpen }) => {
+  const [files, setFiles] = useState([]);
+  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const [product, setProduct] = useState(initial);
+  const [open, setOpen] = useState(false);
+
+  const {
+    data,
+    isLoading: loadingClient,
+    refetch: refetchSupplier,
+  } = useSupplier();
+
+  const [selectedSupplier, setselectedSupplier] = useState(null);
+  const [fetchUrl, setFetchUrl] = useState("");
+
+  const {
+    mutate,
+    data: FetchData,
+    isPending,
+    isSuccess,
+    isError,
+  } = usePostData();
+
+  useEffect(() => {
+    if (isSuccess && FetchData) {
+      if (Object.keys(FetchData).length === 0) {
+        toast.error("Server busy. Try Again!");
+        return;
+      }
+
+      let isSupplier = false;
+
+      if (data?.data) {
+        const supplierMatch = data?.data?.some(
+          (supplier) => supplier.company === FetchData.supplier
+        );
+
+        if (supplierMatch) {
+          console.log("Product Fetched");
+          isSupplier = true;
+        } else {
+          toast.error(`Supplier "${FetchData.supplier}" not found!`);
+        }
+      }
+
+      toast.success(`Product Fetched`);
+
+      setProduct((prevTask) => ({
+        ...prevTask,
+        name: FetchData.product_name,
+        priceMember: FetchData.member_price,
+        priceRegular: FetchData.actual_price,
+        description: FetchData.description,
+        supplier: isSupplier ? FetchData.supplier : null,
+        product_url: fetchUrl,
+        dimensions: FetchData.dimension,
+        imageURL: [FetchData?.main_product_picture],
+      }));
+      setFetchUrl("");
+    }
+
+    if (isError && modalOpen && fetchUrl.length > 0) {
+      mutate({ url: fetchUrl });
+    }
+  }, [FetchData, isSuccess, isPending, isError]);
+
+  // select Supplier
+  const handleSelect = (value) => {
+    setselectedSupplier(value);
+    const e = {
+      target: {
+        name: "supplier",
+        value: value?.company,
+      },
+    };
+    updateProduct(e);
+    setOpen(false);
+  };
+
+  const afterCloseModal = () => {
+    setProduct(initial);
+    setFiles([]);
+    closeModal();
+  };
+
+  // Create Product
+  const mutation = useMutation({
+    mutationFn: addProduct,
+    onSuccess: () => {
+      queryClient.refetchQueries(["GetAllProduct"]);
+      toast("Product Added");
+      closeModal();
+      setProduct(initial);
+    },
+    onError: () => {
+      toast("Error! Try again");
+    },
+  });
+
+  // Image Upload Function
+  // const attachmentMutation = useMutation({
+  //   mutationFn: async ({ fileList, uuid }) => {
+  //     toast.loading("Uploading...", { id: "upload-toast" });
+  //     try {
+  //       const uploadPromises = fileList.map((file) =>
+  //         uploadDoc({ file: file, id: uuid })
+  //       );
+  //       const results = await Promise.all(uploadPromises);
+  //       toast.dismiss("upload-toast"); // Dismiss loading toast
+  //       toast.success("Uploaded successfully!");
+  //       setFiles([]); // Clear selected images after upload
+  //       return results;
+  //     } catch (err) {
+  //       toast.dismiss("upload-toast"); // Dismiss in case of error
+  //       toast.error(`Upload failed: ${err.message}`);
+  //       throw err; // Ensure error is still handled by `onError`
+  //     }
+  //   },
+  // });
+
+  const { getRootProps, getInputProps } = useDropzone({
+    accept: {
+      "image/png": [],
+      "image/jpeg": [],
+      "image/jpg": [],
+      "image/gif": [],
+      "image/webp": [],
+    },
+    maxSize: 5 * 1024 * 1024,
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      const validFiles = acceptedFiles.filter((file) =>
+        file.type.startsWith("image/")
+      );
+      if (
+        rejectedFiles.length > 0 ||
+        validFiles.length !== acceptedFiles.length
+      ) {
+        setError(
+          "Only image files (PNG, JPG, JPEG, GIF, WEBP) are allowed (max: 5MB)."
+        );
+        return;
+      }
+      if (files.length + validFiles.length > 5) {
+        setError("You can upload a maximum of 5 images.");
+        return;
+      }
+      setError("");
+      setFiles((prevFiles) => [
+        ...prevFiles,
+        ...validFiles.map((file) =>
+          Object.assign(file, { preview: URL.createObjectURL(file) })
+        ),
+      ]);
+    },
+  });
+
+  const removeImage = (fileName) => {
+    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
+  };
+
+  const updateProduct = (e) => {
+    const { name, value } = e.target;
+    setProduct((prevTask) => ({
+      ...prevTask,
+      [name]: value,
+    }));
+  };
+
+  // Handle Form Submit
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // if (files.length === 0) {
+    //   toast.error('No images to upload.');
+    //   return;
+    // }
+
+    // if (files.length > 0) {
+    //   attachmentMutation.mutate({ fileList: files, uuid: product.id });
+    // }
+    mutation.mutate(product);
+  };
+
+  useEffect(() => {
+    if (product.id.length < 1) {
+      const id = uuidv1();
+      setProduct((prev) => ({ ...prev, id }));
+    }
+  }, [product]);
+
+  // handle Fetch URl
+  const handleFetchURl = () => {
+    mutate({ url: fetchUrl });
+  };
+
+  // useEffect(() => {
+  //   console.log(loadingClient);
+  // }, [loadingClient]);
+
+  return (
+    <AnimatePresence>
+      {/* <Modal
+        overlayClassName="drawer-overlay"
+        closeTimeoutMS={300}
+        isOpen={modalOpen}
+        onRequestClose={afterCloseModal}
+        contentLabel="Example Modal"
+      > */}
+      <Drawer
+        lockBackgroundScroll={true}
+        size={550}
+        open={modalOpen}
+        onClose={afterCloseModal}
+        direction="right"
+        className="bla bla bla">
+        <motion.div
+          className="drawer-content relative p-6 overflow-scroll"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{
+            type: "spring",
+            stiffness: 300,
+            damping: 30,
+            duration: 0.3,
+          }}>
+          <div className="navbar  mb-9 flex items-center flex-col gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-center font-semibold flex justify-center items-center gap-2">
+                <p className="text-center text-xl font-medium mb-3">
+                  Add Product
+                </p>
+              </div>
+            </div>
+            {/* Delete and Close Modal Section */}
+            <div className="buttons  flex items-center gap-3 !mt-0 px-2">
+              {/* Save and cancel button */}
+              <SwitchTransition mode="out-in">
+                <CSSTransition
+                  key={product?.name?.length > 0 ? "buttons" : "empty"}
+                  timeout={250}
+                  classNames="slide">
+                  {product?.name?.length > 0 ? (
+                    <div className="flex justify-between text-sm gap-2 items-center">
+                      <button
+                        disabled={product?.name?.length < 1}
+                        onClick={handleSubmit}
+                        className={`${
+                          product?.name?.length < 1 &&
+                          "cursor-not-allowed opacity-40"
+                        } rounded-[8px] bg-black px-4 py-2 text-white`}>
+                        Save Product
+                      </button>
+                      <button
+                        onClick={afterCloseModal}
+                        className="rounded-[8px] bg-gray-200 px-4 py-2 text-gray-500">
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-[430px] relative">
+                      <Input
+                        onChange={(e) => setFetchUrl(e.target.value)}
+                        value={fetchUrl}
+                        className="w-full pr-[115px] ring-0 outline-0 focus:ring-0 focus-within:outline-none"
+                        placeholder="Fetch product using AI"
+                        type="text"
+                      />
+                      <button
+                        onClick={() => handleFetchURl()}
+                        disabled={fetchUrl.length < 1 || isPending}
+                        className={`${
+                          fetchUrl.length < 1
+                            ? "cursor-not-allowed opacity-55"
+                            : ""
+                        }  text-sm absolute right-0 top-1/2 -translate-y-1/2 rounded-r-lg flex items-center gap-2 px-3 h-full border-black border bg-black text-white  `}>
+                        <Sparkles strokeWidth={1.4} className="w-4 h-4" />
+                        {isPending ? (
+                          <>
+                            <span>Fetching..</span>
+                            <Loader className="w-4 h-4 animate-spin" />
+                          </>
+                        ) : (
+                          <span> Clipper AI</span>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </CSSTransition>
+              </SwitchTransition>
+
+              <button
+                onClick={() => afterCloseModal()}
+                className="close absolute top-5 left-5 text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {/*Upload Content */}
+          <div
+            {...getRootProps()}
+            className="border mb-5 flex flex-col gap-5 items-center justify-center py-5 rounded-2xl cursor-pointer">
+            <input {...getInputProps()} />
+            <div className="bg-[#ECEFEC] w-12 h-12 flex items-center justify-center rounded-full">
+              <Upload size={18} />
+            </div>
+            <div className="text-center">
+              <p className="text-[16px] mb-1 font-medium">
+                Drag and drop or click here
+              </p>
+              <p className="text-xs">
+                to upload your image (max: 5MB, max: 5 images)
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <p className="text-red-500 text-xs font-semibold">{error}</p>
+            )}
+
+            {/* Preview Uploaded Images */}
+            {files.length > 0 && (
+              <div className="flex gap-4 mt-2">
+                {files.map((file) => (
+                  <div key={file.name} className="relative group">
+                    <img
+                      src={file.preview}
+                      alt="Preview"
+                      className="w-20 h-20 rounded-lg object-cover"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImage(file.name);
+                      }}
+                      className="absolute top-[-8px] right-[-8px] bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Preview For Fetched Images */}
+            {FetchData?.main_product_picture &&
+              product?.imageURL?.length > 0 && (
+                <div className="flex gap-4 mt-2">
+                  <div className="relative group">
+                    <img
+                      src={product?.imageURL[0]}
+                      alt="Preview"
+                      className="w-20 h-20 rounded-lg object-cover"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProduct((prevTask) => ({
+                          ...prevTask,
+                          imageURL: [],
+                        }));
+                      }}
+                      className="absolute top-[-8px] right-[-8px] bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition">
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+          </div>
+          {/* Form */}
+          <form>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="name">Product Name</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.name}
+                  className="bg-white rounded-lg"
+                  id="name"
+                  name="name"
+                  placeholder="Enter Product Name"
+                  required
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="supplier">Supplier</Label>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-lg  hover:bg-transparent justify-between text-sm font-medium bg-transparent  focus:ring-0 focus:outline-none">
+                      {product?.supplier
+                        ? product?.supplier
+                        : "Select Supplier"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0 bg-white !z-[999]">
+                    <Command>
+                      <CommandInput placeholder="Search Supplier..." />
+                      <CommandList>
+                        <CommandEmpty>No results found.</CommandEmpty>
+                        {!loadingClient &&
+                          data?.data?.map((item) => (
+                            <CommandItem
+                              className=" cursor-pointer"
+                              key={item.id}
+                              value={item}
+                              onSelect={() => handleSelect(item)}>
+                              <Check
+                                className={`mr-2 h-4 w-4 ${
+                                  selectedSupplier?.company == item.company
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                }`}
+                              />
+                              {item?.company}
+                            </CommandItem>
+                          ))}
+                      </CommandList>
+                    </Command>
+                    <AddSupplier refetchSupplier={refetchSupplier} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-3">
+              <Label htmlFor="product_url">Product URL</Label>
+              <Input
+                onChange={updateProduct}
+                value={product?.product_url}
+                className="bg-white rounded-lg"
+                id="product_url"
+                name="product_url"
+                type="url"
+                placeholder="Enter Product URL"
+              />
+            </div>
+            {/* Description */}
+            <div className="space-y-2 mt-3">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                rows={5}
+                onChange={updateProduct}
+                value={product?.description}
+                className="bg-white rounded-lg"
+                id="description"
+                name="description"
+                placeholder="Enter Product Description"
+              />
+            </div>
+            {/* Price */}
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="priceMember">Trade Price</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.priceMember}
+                  className="bg-white rounded-lg"
+                  id="priceMember"
+                  name="priceMember"
+                  placeholder="Enter Product Name"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="priceRegular">Regular Price</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.priceRegular}
+                  className="bg-white rounded-lg"
+                  id="priceRegular"
+                  name="priceRegular"
+                  placeholder="Enter Supplier Name"
+                />
+              </div>
+            </div>
+            {/* Mesurement */}
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="measurements">Measurements</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.measurements}
+                  className="bg-white rounded-lg"
+                  id="measurements"
+                  name="measurements"
+                  placeholder="Enter Measurements"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="materials">Materials</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.materials}
+                  className="bg-white rounded-lg"
+                  id="materials"
+                  name="materials"
+                  placeholder="Materials"
+                />
+              </div>
+            </div>
+            {/* Weight */}
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="dimensions">Dimensions</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.dimensions}
+                  className="bg-white rounded-lg"
+                  id="dimensions"
+                  name="dimensions"
+                  placeholder="Enter Dimensions"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="weight">Weight</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.weight}
+                  className="bg-white rounded-lg"
+                  id="weight"
+                  name="weight"
+                  placeholder="Enter Weight"
+                />
+              </div>
+            </div>
+            {/* Dimention */}
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="boxedDimensions">Box Dimensions</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.boxedDimensions}
+                  className="bg-white rounded-lg"
+                  id="boxedDimensions"
+                  name="boxedDimensions"
+                  placeholder="Box Dimensions"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="boxedWeight">Box Weight</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.boxedWeight}
+                  className="bg-white rounded-lg"
+                  id="boxedWeight"
+                  name="boxedWeight"
+                  placeholder="Enter Weight"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className={`space-y-2  col-span-2`}>
+                <Label htmlFor="assemblyRequired"> Assembly Required</Label>
+                <Select
+                  value={product?.assemblyRequired || "none"}
+                  onValueChange={(value) => {
+                    const e = {
+                      target: {
+                        name: "assemblyRequired",
+                        value: value,
+                      },
+                    };
+                    updateProduct(e);
+                  }}>
+                  <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-[999]">
+                    {/* Default option */}
+                    <SelectItem disabled value="none">
+                      Select Status
+                    </SelectItem>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="seatWidth">Seat Width</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.seatWidth}
+                  className="bg-white rounded-lg"
+                  id="seatWidth"
+                  name="seatWidth"
+                  placeholder="Seat Width"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="composition">Composition</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.composition}
+                  className="bg-white rounded-lg"
+                  id="composition"
+                  name="composition"
+                  placeholder="Write composition"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="construction">Construction</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.construction}
+                  className="bg-white rounded-lg"
+                  id="construction"
+                  name="construction"
+                  placeholder="Write construction"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="feet">Feet</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.feet}
+                  className="bg-white rounded-lg"
+                  id="feet"
+                  name="feet"
+                  type="number"
+                  placeholder="Height (in feet)"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="filling">Filling</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.filling}
+                  className="bg-white rounded-lg"
+                  id="filling"
+                  name="filling"
+                  placeholder="Write filling"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className={`space-y-2  col-span-2`}>
+                <Label htmlFor="removableCushions"> Removable Cushions ?</Label>
+                <Select
+                  value={product?.removableCushions || "none"}
+                  onValueChange={(value) => {
+                    const e = {
+                      target: {
+                        name: "removableCushions",
+                        value: value,
+                      },
+                    };
+                    updateProduct(e);
+                  }}>
+                  <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-[999]">
+                    {/* Default option */}
+                    <SelectItem disabled value="none">
+                      Select
+                    </SelectItem>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className={`space-y-2  col-span-2`}>
+                <Label htmlFor="removableLegs"> Removable Legs?</Label>
+                <Select
+                  value={product?.removableLegs || "none"} // Default value can be "none"
+                  onValueChange={(value) => {
+                    const e = {
+                      target: {
+                        name: "removableLegs",
+                        value: value,
+                      },
+                    };
+                    updateProduct(e);
+                  }}>
+                  <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-[999]">
+                    {/* Default option */}
+                    <SelectItem disabled value="none">
+                      Select
+                    </SelectItem>
+                    <SelectItem value="true">Yes</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="seatDepth">Seat Depth</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.seatDepth}
+                  className="bg-white rounded-lg"
+                  id="seatDepth"
+                  name="seatDepth"
+                  placeholder="Seat Depth"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="seatHeight">Seat Height</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.seatHeight}
+                  className="bg-white rounded-lg"
+                  id="seatHeight"
+                  name="seatHeight"
+                  placeholder="Seat Height"
+                />
+              </div>
+            </div>
+            <div className="grid gap-3 mt-3 grid-cols-4">
+              <div className="space-y-2 col-span-2 mt-3">
+                <Label htmlFor="frame">Frame</Label>
+                <Input
+                  onChange={updateProduct}
+                  value={product?.frame}
+                  className="bg-white rounded-lg"
+                  id="frame"
+                  name="frame"
+                  placeholder="Frame"
+                />
+              </div>
+              <CustomSelect product={product} updateProduct={updateProduct} />
+            </div>
+            <div className="space-y-2 mt-3">
+              <Label htmlFor="instructions">Instructions</Label>
+              <Textarea
+                onChange={updateProduct}
+                value={product?.instructions}
+                className="bg-white rounded-lg"
+                id="instructions"
+                rows={5}
+                name="instructions"
+                placeholder="Instructions"
+              />
+            </div>
+          </form>
+        </motion.div>
+      </Drawer>
+      {/* </Modal> */}
+    </AnimatePresence>
+  );
+};
+
+export default AddProductModal;
