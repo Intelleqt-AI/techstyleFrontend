@@ -5,21 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Modal from "react-modal";
+import {
   Plus,
   Search,
   Filter,
   Heart,
   MoreHorizontal,
   Package,
+  ChevronDown,
 } from "lucide-react";
 import { LibraryNav } from "@/components/library-nav";
 import { StatusBadge, TypeChip } from "@/components/chip";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   ProductDetailSheet,
   type ProductDetails,
 } from "@/components/product-detail-sheet";
-import { useQuery } from "@tanstack/react-query";
-import { getProduct } from "@/supabase/API";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getProduct, modifyProjectForTypeProduct } from "@/supabase/API";
 import {
   Popover,
   PopoverTrigger,
@@ -32,6 +41,8 @@ import {
   CommandItem,
 } from "@/components/ui/command";
 import AddProductModal from "@/components/product/AddProductModal";
+import useProjects from "@/supabase/hook/useProject";
+import { toast } from "sonner";
 
 // Mock user permissions
 const mockUser = { permissions: ["product.write"] };
@@ -49,13 +60,31 @@ export default function ProductsPage() {
   const [selected, setSelected] = useState<ProductDetails | undefined>(
     undefined
   );
+  const [addProductmodalOpen, setAddProductModalOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [productTypes, setProductTypes] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [selectedType, setSelectedType] = useState(null);
+  const [confirmText, setConfirmText] = useState(
+    "Are you sure you want to delete ?"
+  );
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [selectedProductId, setSelectedProductId] = useState(null);
+
   const itemsPerPage = 12;
+  const queryClient = useQueryClient();
 
   const canAddProduct = hasPerm("product.write");
+
+  const {
+    data: projectsData,
+    isLoading: projectsLoading,
+    error: projectsError,
+    refetch,
+  } = useProjects();
 
   // Fetch products using React Query
   const { data, isLoading, error } = useQuery({
@@ -77,12 +106,24 @@ export default function ProductsPage() {
       }),
   });
 
+  const typeMutation = useMutation({
+    mutationFn: modifyProjectForTypeProduct,
+    onSuccess: () => {
+      toast("Product Added");
+      queryClient.invalidateQueries(["getProductByProjectID"]);
+    },
+    onError: (error) => {
+      console.log(error);
+      toast(error.message);
+    },
+  });
+
   // Function to handle adding a new product
   const handleAddProduct = (newProduct) => {
     // This would typically call an API to add the product
     console.log("Adding new product:", newProduct);
     // In a real implementation, we would update the state or refetch products
-    setModalOpen(false);
+    setAddProductModalOpen(false);
   };
 
   const openDetails = useCallback((product) => {
@@ -122,13 +163,56 @@ export default function ProductsPage() {
     if (!isLoading) setProducts(data?.products);
   }, [data, isLoading]);
 
+  const handleOpenTypeModal = (project) => {
+    setTypes(project);
+    setModalOpen(true);
+  };
+
+  function closeModal() {
+    setModalOpen(false);
+    setTypes([]);
+    setSelectedType(null);
+    setQty(1);
+  }
+
+  const afterCloseModal = () => {
+    closeModal();
+    setQty(1);
+  };
+
+  const handleAddToProject = (id: string) => {
+    toast.warning("No Room ! Please Add Room");
+  };
+
+  // Submit types
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const finalProduct = {
+      id: selectedProductId,
+      qty: qty,
+      status: "pending",
+      install: null,
+      delivery: null,
+      sendToClient: false,
+      initialStatus: "Draft",
+    };
+    if (selectedType) {
+      typeMutation.mutate({
+        finalProduct,
+        projectID: types.id,
+        typeID: selectedType,
+      });
+      closeModal();
+    }
+  };
+
   // useEffect(() => {
   //   console.log(products.find((product) => product?.type));
   // }, [products]);
 
-  // useEffect(() => {
-  //   console.log(first)
-  // }, [data, isLoading]);
+  useEffect(() => {
+    console.log(types.type);
+  }, [types]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -196,7 +280,9 @@ export default function ProductsPage() {
             </Popover> */}
 
             {canAddProduct && (
-              <Button className="h-9 gap-2" onClick={() => setModalOpen(true)}>
+              <Button
+                className="h-9 gap-2"
+                onClick={() => setAddProductModalOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Product
               </Button>
@@ -270,11 +356,11 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Stock Status */}
-                    {!product.inStock && (
+                    {/* {!product.inStock && (
                       <div className="absolute left-3 top-3">
                         <StatusBadge status="Out of Stock" />
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   <CardContent className="p-4">
@@ -302,20 +388,126 @@ export default function ProductsPage() {
                         <TypeChip label={product.type} />
                       </div>
 
-                      <Button
+                      {/* <Button
                         variant="outline"
                         size="sm"
-                        className="mt-3 w-full bg-transparent opacity-0 transition-opacity group-hover:opacity-100"
-                        disabled={!product.inStock}>
+                        className="mt-3 w-full bg-transparent opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer">
                         <Plus className="mr-2 h-4 w-4" />
                         Add to Project
-                      </Button>
+                      </Button> */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="mt-2 w-full py-2 px-4 border  rounded-[8px] text-[#0E121B] hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2">
+                          Add to <ChevronDown className="h-4 w-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="max-w-[300px] max-h-[300px] overflow-scroll bg-white">
+                          {!projectsLoading &&
+                            projectsData?.map((project) => (
+                              <DropdownMenuItem
+                                key={project?.id}
+                                onClick={() => {
+                                  setSelectedProductId(product?.id);
+                                  if (
+                                    Array.isArray(project?.type) &&
+                                    project.type.length > 0
+                                  ) {
+                                    handleOpenTypeModal(project);
+                                  } else {
+                                    handleAddToProject(project?.id);
+                                  }
+                                }}
+                                className="cursor-pointer">
+                                {project.name}
+                              </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
               ))}
             </div>
           )}
+
+          <Modal
+            className="!max-w-[500px] flex flex-col  !h-[80vh] py-6"
+            isOpen={modalOpen}
+            onRequestClose={afterCloseModal}
+            contentLabel="Example Modal">
+            <div className="navbar flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-semibold flex items-center gap-2"></div>
+              </div>
+              {/* Delete and Close Modal Section */}
+              <div className="buttons flex items-center gap-3 !mt-0 px-2">
+                <button
+                  onClick={() => closeModal()}
+                  className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {/* Content */}
+
+            <div className="h-full">
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-4 flex-col flex w-full h-full">
+                <div className=" flex-1 flex items-center justify-center">
+                  <RadioGroup
+                    value={selectedType}
+                    onValueChange={setSelectedType}>
+                    <p className="text-[24px] font-semibold mb-2">
+                      Select Project Room
+                    </p>
+                    {Array.isArray(types?.type) &&
+                      types?.type.length > 0 &&
+                      types?.type.map((type) => (
+                        <div
+                          key={type?.id}
+                          className="flex items-center space-x-3">
+                          <RadioGroupItem
+                            value={type?.id}
+                            id={type?.id}
+                            className="w-6 h-6"
+                          />
+                          <label
+                            htmlFor={type?.id}
+                            className="text-[20px] cursor-pointer">
+                            {type?.text}
+                          </label>
+                        </div>
+                      ))}
+                  </RadioGroup>
+                </div>
+
+                {selectedType && (
+                  <div className="mb-10">
+                    <p className="mb-2">Quantity</p>
+                    <Input
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                      placeholder="Enter Product Quantity"
+                    />
+                  </div>
+                )}
+                {/* Submit Button */}
+                <div className="flex justify-between items-center">
+                  <Button onClick={() => closeModal()}>Cancel</Button>
+                  <Button type="submit" disabled={!selectedType}>
+                    Confirm
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Modal>
         </div>
       </div>
 
@@ -328,8 +520,8 @@ export default function ProductsPage() {
 
       {/* Add Product Modal - You would need to create this component */}
       <AddProductModal
-        closeModal={() => setModalOpen(false)}
-        modalOpen={modalOpen}
+        closeModal={() => setAddProductModalOpen(false)}
+        modalOpen={addProductmodalOpen}
         onAddProduct={handleAddProduct}
       />
     </div>
