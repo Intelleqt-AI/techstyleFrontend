@@ -1,74 +1,245 @@
-"use client"
+"use client";
 
-import { ProjectNav } from "@/components/project-nav"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { StatusBadge } from "@/components/chip"
-import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ProjectNav } from "@/components/project-nav";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { StatusBadge } from "@/components/chip";
+import {
+  FileText,
+  ShoppingCart,
+  Plus,
+  RefreshCw,
+  Search,
+  Filter,
+  MoreHorizontal,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
+import {
+  fetchOnlyProject,
+  getInvoices,
+  getPurchaseOrder,
+} from "@/supabase/API";
+import { useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { createInvoice } from "@/supabase/API";
+import { toast } from "sonner";
+// import { useNavigate } from 'react-router-dom'
+import { useRouter } from "next/navigation";
+import { Checkbox } from "@/components/ui/checkbox";
+import Link from "next/link";
 
-const gbp = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" })
+const gbp = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+});
 
 function parseGBP(amount: string): number {
-  // Removes currency symbol and thousands separators, keeps decimals
-  return Number(amount.replace(/[^0-9.]/g, ""))
+  return Number(amount.replace(/[^0-9.]/g, ""));
 }
 
-const sampleData = [
-  {
-    id: 1,
-    number: "INV-001",
-    supplier: "West Elm",
-    type: "Invoice",
-    dateIssued: "2024-02-05",
-    dueDate: "2024-03-05",
-    amount: "£2,450.00",
-    status: "pending",
-  },
-  {
-    id: 2,
-    number: "PO-002",
-    supplier: "John Lewis",
-    type: "Purchase Order",
-    dateIssued: "2024-02-03",
-    dueDate: "2024-02-17",
-    amount: "£1,890.00",
-    status: "approved",
-  },
-  {
-    id: 3,
-    number: "INV-003",
-    supplier: "Habitat",
-    type: "Invoice",
-    dateIssued: "2024-02-01",
-    dueDate: "2024-03-01",
-    amount: "£3,200.00",
-    status: "paid",
-  },
-]
+export default function ProjectFinancePage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const [purchaseOrder, setPurchaseOrder] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [checkedItems, setCheckedItems] = useState([]);
+  const [buttonLoadingPO, setButtonLoadingPO] = useState(false);
+  const [customLoading, setCustomLoading] = useState(false);
+  // const navigate = useNavigate()
+  const router = useRouter();
+  const id = params.id;
 
-export default function ProjectFinancePage({ params }: { params: { id: string } }) {
-  const invoiceItems = sampleData.filter((i) => i.type === "Invoice")
-  const poItems = sampleData.filter((i) => i.type === "Purchase Order")
+  const { data: project } = useQuery({
+    queryKey: [`project ${id}`],
+    queryFn: () => fetchOnlyProject({ projectID: id }),
+    enabled: !!id,
+  });
 
-  const invoiceTotal = invoiceItems.reduce((sum, i) => sum + parseGBP(i.amount), 0)
-  const poTotal = poItems.reduce((sum, i) => sum + parseGBP(i.amount), 0)
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["pruchaseOrder"],
+    queryFn: getPurchaseOrder,
+  });
+
+  const {
+    data: InvoiceData,
+    isLoading: InvoiceLoading,
+    refetch: InvoiceRefetch,
+  } = useQuery({
+    queryKey: ["invoices"],
+    queryFn: getInvoices,
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    setPurchaseOrder(data?.data.filter((item) => item.projectID == id));
+  }, [isLoading, data?.data, id]);
+
+  useEffect(() => {
+    if (InvoiceLoading) return;
+    setInvoices(InvoiceData?.data.filter((item) => item.projectID == id));
+  }, [InvoiceLoading, InvoiceData?.data, id]);
+
+  const handleRefetch = () => {
+    refetch();
+    InvoiceRefetch();
+  };
+
+  const handleSync = () => {
+    setCustomLoading(true);
+    setTimeout(() => {
+      handleRefetch();
+      setCustomLoading(false);
+    }, 2000);
+  };
+
+  const createPurchase = useMutation({
+    mutationFn: createInvoice,
+    onSuccess: (e) => {
+      setTimeout(() => {
+        setCheckedItems([]);
+        toast.success("Invoice Created!");
+        setButtonLoadingPO(false);
+        // navigate(`/finances/invoice/${id}`, {
+        //   state: {
+        //     purchaseOrders: checkedItems,
+        //     printMultiple: true,
+        //   },
+        // })
+        router.push(
+          `/finances/invoice/${id}?printMultiple=true&purchaseOrders=${encodeURIComponent(
+            JSON.stringify(checkedItems)
+          )}`
+        );
+      }, 1000);
+    },
+    onError: (e) => {
+      toast.error(e.message);
+      setButtonLoadingPO(false);
+    },
+  });
+
+  // Check all PO
+  const handleCheckAll = (e) => {
+    let allProducts = [];
+    if (purchaseOrder && Array.isArray(purchaseOrder)) {
+      allProducts = [...purchaseOrder];
+    }
+    setCheckedItems(e.target.checked ? allProducts : []);
+  };
+
+  // Handle single PO
+  const handleChange = (e, po) => {
+    const { checked } = e;
+    setCheckedItems((prev) => {
+      if (checked) {
+        return [...prev, po];
+      } else {
+        return prev.filter((item) => item.id !== po.id);
+      }
+    });
+  };
+
+  // Handle Create Invoice
+  const handleInvoice = () => {
+    setButtonLoadingPO(true);
+    createPurchase.mutate({
+      invoice: {
+        projectID: id,
+        status: "Pending",
+        clientName: purchaseOrder[0]?.clientName,
+        clientEmail: purchaseOrder[0]?.clientEmail,
+        clientPhone: purchaseOrder[0]?.clientPhone,
+        clientAddress: purchaseOrder[0]?.clientAddress,
+        delivery_charge: checkedItems.reduce(
+          (acc, sum) => acc + sum?.delivery_charge,
+          0
+        ),
+        poNumber: checkedItems.map((item) => item.poNumber),
+        products: checkedItems.flatMap((item) => item.products),
+      },
+    });
+  };
+
+  // Calculate totals for stats
+  let totalPurchaseOrder = 0;
+  let totalInvoiceOrder = 0;
+
+  invoices.forEach((item) => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ""));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalInvoiceOrder += temp;
+  });
+
+  purchaseOrder.forEach((item) => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ""));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalPurchaseOrder += temp;
+  });
 
   const financeStats = [
     {
       title: "Total Invoices",
-      value: gbp.format(invoiceTotal),
-      subtitle: `${invoiceItems.length} ${invoiceItems.length === 1 ? "Invoice" : "Invoices"}`,
+      value: project?.currency?.symbol
+        ? project.currency.symbol +
+          totalInvoiceOrder.toLocaleString("en-US", {
+            maximumFractionDigits: 2,
+          })
+        : gbp.format(totalInvoiceOrder),
+      subtitle: `${invoices?.length} ${
+        invoices?.length === 1 ? "Invoice" : "Invoices"
+      }`,
       icon: FileText,
     },
     {
       title: "Total Purchase Orders",
-      value: gbp.format(poTotal),
-      subtitle: `${poItems.length} ${poItems.length === 1 ? "Purchase Order" : "Purchase Orders"}`,
+      value: project?.currency?.symbol
+        ? project.currency.symbol +
+          totalPurchaseOrder.toLocaleString("en-US", {
+            maximumFractionDigits: 2,
+          })
+        : gbp.format(totalPurchaseOrder),
+      subtitle: `${purchaseOrder?.length} ${
+        purchaseOrder?.length === 1 ? "Purchase Order" : "Purchase Orders"
+      }`,
       icon: ShoppingCart,
     },
-  ]
+  ];
+
+  const getStatusStyle = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "paid":
+        return "bg-[#A8E2EC] text-[#2C96A8]";
+      case "pending":
+        return "bg-orange-100 text-orange-900";
+      case "sent":
+        return "bg-[#DAEAFD] text-[#3556BB]";
+      case "received":
+        return "bg-[#C5E7D9] text-green-900";
+      default:
+        return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  useEffect(() => {
+    console.log(InvoiceData);
+  }, [InvoiceData]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -83,8 +254,12 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                 <div className="flex items-center gap-3">
                   <stat.icon className="w-4 h-4 text-gray-500" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-lg font-semibold text-gray-900">{stat.value}</p>
+                    <p className="text-sm font-medium text-gray-600">
+                      {stat.title}
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {stat.value}
+                    </p>
                     <p className="text-xs text-gray-500">{stat.subtitle}</p>
                   </div>
                 </div>
@@ -98,7 +273,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input placeholder="Search invoices and POs..." className="pl-10 w-64" />
+              <Input
+                placeholder="Search invoices and POs..."
+                className="pl-10 w-64"
+              />
             </div>
             <Button variant="outline" size="sm">
               <Filter className="w-4 h-4 mr-2" />
@@ -107,13 +285,19 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
           </div>
 
           <div className="flex items-center gap-2">
-            <Button className="bg-gray-900 text-white hover:bg-gray-800">
+            <Button
+              className="bg-gray-900 text-white hover:bg-gray-800"
+              onClick={handleInvoice}
+              disabled={checkedItems.length === 0 || buttonLoadingPO}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Invoice
+              {buttonLoadingPO ? "Creating..." : "Create Invoice"}
             </Button>
-            <Button variant="outline">
+            <Button
+              variant="outline"
+              onClick={handleSync}
+              disabled={InvoiceLoading || isLoading || customLoading}>
               <RefreshCw className="w-4 h-4 mr-2" />
-              Sync with Xero
+              {customLoading ? "Syncing..." : "Sync with Xero"}
             </Button>
           </div>
         </div>
@@ -137,69 +321,241 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                 <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
-                      <input type="checkbox" className="rounded border-gray-300" aria-label="Select all" />
+                      <Checkbox
+                        onCheckedChange={(checked) =>
+                          handleCheckAll({ target: { checked } })
+                        }
+                        className="rounded border-gray-300"
+                        aria-label="Select all"
+                      />
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap">
                       PO/IN Number
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Supplier</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                      Supplier
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                      Type
+                    </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap">
                       Date Issued
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap">
                       Due Date
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Amount</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                    <th className="px-2 pr-4 py-3 text-right text-sm font-medium text-gray-600 w-16">Actions</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                      Amount
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                      Status
+                    </th>
+                    <th className="px-2 pr-4 py-3 text-right text-sm font-medium text-gray-600 w-16">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 text-sm">
-                  {sampleData.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <input
-                          type="checkbox"
-                          className="rounded border-gray-300"
-                          aria-label={`Select ${item.number}`}
-                        />
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{item.number}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{item.supplier}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{item.type}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{item.dateIssued}</td>
-                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{item.dueDate}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{item.amount}</td>
-                      <td className="px-4 py-3">
-                        <StatusBadge
-                          status={item.status}
-                          label={item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                        />
-                      </td>
-                      <td className="px-2 pr-4 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                              aria-label={`Actions for ${item.number}`}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Download PDF</DropdownMenuItem>
-                            <DropdownMenuItem>Send Email</DropdownMenuItem>
-                            <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
+                  {(isLoading || InvoiceLoading || customLoading) &&
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <div className="w-5 h-5 bg-gray-200 rounded border animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-24 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-32 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-20 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-16 h-4 bg-gray-200 rounded animate-pulse"></div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="w-16 h-6 bg-gray-200 rounded-full animate-pulse"></div>
+                        </td>
+                        <td className="px-2 pr-4 py-3 text-right">
+                          <div className="w-8 h-8 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </td>
+                      </tr>
+                    ))}
+
+                  <>
+                    {purchaseOrder.map((po) => (
+                      <tr key={po.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            checked={
+                              !!checkedItems.find(
+                                (checkItem) => checkItem.id == po.id
+                              )
+                            }
+                            onCheckedChange={(checked) =>
+                              handleChange(checked, po)
+                            }
+                            className="rounded border-gray-300"
+                            aria-label={`Select ${po.poNumber}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                          {po.poNumber}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {po?.supplier?.company || "-"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          Purchase Order
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {po.issueDate
+                            ? new Date(po.issueDate).toLocaleDateString("en-GB")
+                            : new Date(po.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {po?.dueDate
+                            ? new Date(po.dueDate).toLocaleDateString("en-GB")
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                          {project?.currency?.symbol
+                            ? project?.currency?.symbol
+                            : "£"}
+                          {(
+                            po?.products?.reduce((total, product) => {
+                              return (
+                                total +
+                                parseFloat(
+                                  product.amount.replace(/[^0-9.-]+/g, "")
+                                ) *
+                                  product.QTY
+                              );
+                            }, 0) || 0
+                          ).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge
+                            status={po.status}
+                            label={po.status}
+                            className={getStatusStyle(po.status)}
+                          />
+                        </td>
+                        <td className="px-2 pr-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                aria-label={`Actions for ${po.poNumber}`}>
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>View Details</DropdownMenuItem>
+                              <DropdownMenuItem>Download PDF</DropdownMenuItem>
+                              <DropdownMenuItem>Send Email</DropdownMenuItem>
+                              <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {invoices.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <Checkbox
+                            disabled
+                            className="rounded border-gray-300"
+                            aria-label={`Select ${inv.inNumber}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                          {inv.inNumber}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          -
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          Invoice
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {inv.issueDate
+                            ? new Date(inv.issueDate).toLocaleDateString(
+                                "en-GB"
+                              )
+                            : new Date(inv.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {inv?.dueDate
+                            ? new Date(inv.dueDate).toLocaleDateString("en-GB")
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                          {project?.currency?.symbol
+                            ? project?.currency?.symbol
+                            : "£"}
+                          {Number(
+                            (
+                              (inv?.products?.reduce((total, product) => {
+                                return (
+                                  total +
+                                  parseFloat(
+                                    product.amount.replace(/[^0-9.-]+/g, "")
+                                  ) *
+                                    product.QTY
+                                );
+                              }, 0) || 0) + Number(inv.delivery_charge)
+                            ).toFixed(2)
+                          ).toLocaleString("en-US", {
+                            maximumFractionDigits: 2,
+                          })}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusBadge
+                            status={inv.status}
+                            label={inv.status}
+                            className={getStatusStyle(inv.status)}
+                          />
+                        </td>
+                        <td className="px-2 pr-4 py-3 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                aria-label={`Actions for ${inv.inNumber}`}>
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>View Details</DropdownMenuItem>
+                              <DropdownMenuItem>Download PDF</DropdownMenuItem>
+                              <DropdownMenuItem>Send Email</DropdownMenuItem>
+                              <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                              <DropdownMenuItem>Edit</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </>
+                  {/* {!isLoading && !InvoiceLoading && !customLoading && (
+                  )} */}
                 </tbody>
               </table>
             </div>
@@ -207,5 +563,5 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
         </Card>
       </div>
     </div>
-  )
+  );
 }
