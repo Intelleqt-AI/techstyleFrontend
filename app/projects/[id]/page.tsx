@@ -19,6 +19,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import useProjects from "@/supabase/hook/useProject";
+import { useQuery } from "@tanstack/react-query";
+import { getTask } from "@/supabase/API";
 
 const kpiStats = [
   {
@@ -142,6 +144,61 @@ const recentFiles = [
   },
 ];
 
+const formatTodayDate = () => {
+  const date = new Date();
+  const month = date.toLocaleString("en-US", { month: "short" });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${month} ${day}, ${year}`;
+};
+
+const calculateProjectProgress = (
+  projectId: string,
+  tasks: Task[] | undefined,
+  isLoading: boolean
+): number => {
+  if (isLoading || !tasks) return 0;
+
+  const projectTasks = tasks.filter((item) => item.projectID === projectId);
+  if (projectTasks.length === 0) return 0;
+
+  const completedTasks = projectTasks.filter((task) => task.status === "done");
+  const progress = Math.floor(
+    (completedTasks.length / projectTasks.length) * 100
+  );
+
+  return progress;
+};
+
+// Helper functions
+const getCompletedTasks = (tasks, projectId) => {
+  return (
+    tasks?.filter(
+      (task) => task.projectID === projectId && task.status === "done"
+    ).length || 0
+  );
+};
+
+const getInProgressTasks = (tasks, projectId) => {
+  return (
+    tasks?.filter(
+      (task) =>
+        task.projectID === projectId &&
+        (task.status === "in-progress" || task.status === "in-review")
+    ).length || 0
+  );
+};
+
+const getRemainingTasks = (tasks, projectId) => {
+  return (
+    tasks?.filter(
+      (task) =>
+        task.projectID === projectId &&
+        (task.status === "todo" || task.status === "" || !task.status)
+    ).length || 0
+  );
+};
+
 export default function ProjectOverviewPage({
   params,
 }: {
@@ -154,27 +211,21 @@ export default function ProjectOverviewPage({
 
   const { data: project, isLoading: projectLoading } = useProjects();
 
-  // function openModal() {
-  //   setModalOpen(true);
-  // }
-
-  // function closeModal() {
-  //   setModalOpen(false);
-  //   // Refresh selected project after modal closes
-  //   if (id) {
-  //     setSelectedProject(project?.find(data => data.id == id));
-  //   }
-  // }
+  const {
+    data: taskData,
+    isLoading: taskLoading,
+    error: taskError,
+    refetch: taskRefetch,
+  } = useQuery({
+    queryKey: ["task"],
+    queryFn: getTask,
+  });
 
   useEffect(() => {
     if (projectLoading || !params?.id) return;
 
     const foundProject = project?.find((data) => data.id == params?.id);
     setSelectedProject(foundProject);
-
-    if (foundProject) {
-      setTitle(foundProject.name);
-    }
   }, [project, projectLoading]);
 
   useEffect(() => {
@@ -232,7 +283,7 @@ export default function ProjectOverviewPage({
         </Card>
 
         {/* KPI Rail */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {kpiStats.map((stat) => (
             <Card
               key={stat.title}
@@ -254,6 +305,146 @@ export default function ProjectOverviewPage({
               </CardContent>
             </Card>
           ))}
+        </div> */}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* Budget Utilization Card */}
+          <Card className="border border-greige-500/30 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <DollarSign className="w-4 h-4 text-slatex-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700">
+                    Budget Utilization
+                  </p>
+                  <p className="text-lg font-semibold text-neutral-900">
+                    {selectedProject?.currency?.symbol || "£"}
+                    {selectedProject?.budget || 0}
+                  </p>
+                  <p className="text-xs text-neutral-600">
+                    {(() => {
+                      // Calculate utilization based on payment schedule
+                      let utilizedPercentage = 0;
+                      let utilizedAmount = 0;
+
+                      if (selectedProject?.paymentSchedule === "50-50") {
+                        utilizedPercentage = 50;
+                        utilizedAmount = (selectedProject?.budget || 0) * 0.5;
+                      } else if (
+                        selectedProject?.paymentSchedule === "33-33-33"
+                      ) {
+                        utilizedPercentage = 33;
+                        utilizedAmount = (selectedProject?.budget || 0) * 0.33;
+                      } else if (
+                        selectedProject?.paymentSchedule === "25-25-25-25"
+                      ) {
+                        utilizedPercentage = 25;
+                        utilizedAmount = (selectedProject?.budget || 0) * 0.25;
+                      } else {
+                        // Default to 0% if payment schedule is unknown
+                        utilizedPercentage = 0;
+                        utilizedAmount = 0;
+                      }
+
+                      return `${utilizedPercentage}% of ${
+                        selectedProject?.currency?.symbol || "£"
+                      }${selectedProject?.budget || 0} utilized`;
+                    })()}
+                  </p>
+                  <p className="text-xs mt-1 text-olive-700">
+                    {selectedProject?.paymentSchedule
+                      ? `Schedule: ${selectedProject.paymentSchedule}`
+                      : "No schedule set"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Profit Margin Card */}
+          <Card className="border border-greige-500/30 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-4 h-4 text-slatex-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700">
+                    Profit Margin
+                  </p>
+                  <p className="text-lg font-semibold text-neutral-900">23%</p>
+                  <p className="text-xs text-neutral-600">£28,750 projected</p>
+                  <p className="text-xs mt-1 text-olive-700">+2% vs estimate</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tasks Complete Card */}
+          <Card className="border border-greige-500/30 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-4 h-4 text-slatex-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700">
+                    Tasks Complete
+                  </p>
+                  <p className="text-lg font-semibold text-neutral-900">
+                    {taskData?.data?.filter(
+                      (task) =>
+                        task.projectID === selectedProject?.id &&
+                        task.status === "done"
+                    ).length || 0}
+                    /
+                    {taskData?.data?.filter(
+                      (task) => task.projectID === selectedProject?.id
+                    ).length || 0}
+                  </p>
+                  <p className="text-xs text-neutral-600">
+                    {Math.round(
+                      ((taskData?.data?.filter(
+                        (task) =>
+                          task.projectID === selectedProject?.id &&
+                          task.status === "done"
+                      ).length || 0) /
+                        (taskData?.data?.filter(
+                          (task) => task.projectID === selectedProject?.id
+                        ).length || 1)) *
+                        100
+                    )}
+                    % completion
+                  </p>
+                  <p className="text-xs mt-1 text-ochre-700">
+                    {taskData?.data?.filter(
+                      (task) =>
+                        task.projectID === selectedProject?.id &&
+                        task.dueDate ===
+                          new Date().toISOString().split("T")[0] &&
+                        task.status !== "done"
+                    ).length || 0}{" "}
+                    due today
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* POs Delayed Card */}
+          <Card className="border border-greige-500/30 shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-4 h-4 text-slatex-600" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-neutral-700">
+                    POs Delayed
+                  </p>
+                  <p className="text-lg font-semibold text-neutral-900">5</p>
+                  <p className="text-xs text-neutral-600">2 need approval</p>
+                  <p className="text-xs mt-1 text-terracotta-600">
+                    Action required
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Timeline Stripe */}
@@ -265,7 +456,7 @@ export default function ProjectOverviewPage({
               </h3>
               <div className="flex items-center gap-2 text-sm text-neutral-700">
                 <Calendar className="w-4 h-4" />
-                <span>Today: Aug 12, 2025</span>
+                <span>Today: {formatTodayDate()}</span>
               </div>
             </div>
             <div className="relative">
@@ -350,29 +541,47 @@ export default function ProjectOverviewPage({
                 <h3 className="text-sm font-medium text-neutral-900">
                   Task Progress
                 </h3>
-                <span className="text-sm text-neutral-700">67% Complete</span>
+                <span className="text-sm text-neutral-700">
+                  {calculateProjectProgress(
+                    selectedProject?.id,
+                    taskData?.data,
+                    taskLoading
+                  )}
+                  % Complete
+                </span>
               </div>
-              <Progress value={67} className="[&>div]:bg-clay-500 mb-4" />
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-lg font-semibold text-neutral-900">
-                    24
+
+              <Progress
+                value={calculateProjectProgress(
+                  selectedProject?.id,
+                  taskData?.data,
+                  taskLoading
+                )}
+                className="[&>div]:bg-clay-500 mb-4"
+              />
+
+              {taskData?.data && (
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-lg font-semibold text-neutral-900">
+                      {getCompletedTasks(taskData.data, selectedProject?.id)}
+                    </div>
+                    <div className="text-xs text-neutral-600">Completed</div>
                   </div>
-                  <div className="text-xs text-neutral-600">Completed</div>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-neutral-900">
-                    8
+                  <div>
+                    <div className="text-lg font-semibold text-neutral-900">
+                      {getInProgressTasks(taskData.data, selectedProject?.id)}
+                    </div>
+                    <div className="text-xs text-neutral-600">In Progress</div>
                   </div>
-                  <div className="text-xs text-neutral-600">In Progress</div>
-                </div>
-                <div>
-                  <div className="text-lg font-semibold text-neutral-900">
-                    4
+                  <div>
+                    <div className="text-lg font-semibold text-neutral-900">
+                      {getRemainingTasks(taskData.data, selectedProject?.id)}
+                    </div>
+                    <div className="text-xs text-neutral-600">Remaining</div>
                   </div>
-                  <div className="text-xs text-neutral-600">Remaining</div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
