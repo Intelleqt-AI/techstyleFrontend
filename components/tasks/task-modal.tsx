@@ -1,18 +1,18 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
-import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Separator } from "@/components/ui/separator"
+import * as React from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   CalendarIcon,
   Check,
@@ -33,253 +33,545 @@ import {
   Smile,
   ImageIcon,
   Clock3,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { TypeChip } from "@/components/chip"
-import type {
-  ListColumn,
-  Phase,
-  TeamMember,
-  Task,
-  Subtask,
-  Priority,
-  Status,
-  Attachment,
-} from "@/components/tasks/types"
+  Palette,
+  FileText,
+  Eye,
+  Circle,
+  Hammer,
+  CheckCircle2,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { TypeChip } from '@/components/chip';
+import type { ListColumn, Phase, TeamMember, Task, Subtask, Priority, Status, Attachment } from '@/components/tasks/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import useProjects from '@/supabase/hook/useProject';
+import useUser from '@/supabase/hook/useUser';
+import { addNewTask, createNotification, fetchProjects, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
+import { toast } from 'sonner';
+import DraggableSubtasks2 from './DraggableSubtasks2';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const phases: Phase[] = [
+  { id: 'phase-concept', name: 'Concept' },
+  { id: 'phase-design-dev', name: 'Design Development' },
+  { id: 'phase-technical', name: 'Technical Drawings' },
+  { id: 'phase-review', name: 'Client Review' },
+  { id: 'phase-procurement', name: 'Procurement' },
+  { id: 'phase-site', name: 'Site / Implementation' },
+];
+
+const initialTask: Task = {
+  name: '',
+  tag: '',
+  progress: 0,
+  dueDate: '',
+  subtasks: [],
+  attachments: [],
+  priority: '',
+  description: '',
+  status: 'todo',
+  assignee: '',
+  phase: 'initial',
+  projectID: '',
+  comments: [],
+  assigned: [],
+  startTime: 0,
+  endTime: 0,
+  isActive: false,
+  isPaused: false,
+  totalWorkTime: 0,
+  note: '',
+};
+
+const lists: (ListColumn & { icon: any; colorClass: string; id: string })[] = [
+  { id: 'concept', title: 'Design Concepts', icon: Palette, colorClass: 'text-purple-600' },
+  { id: 'design-dev', title: 'Design Development', icon: CircleDot, colorClass: 'text-amber-600' },
+  { id: 'technical', title: 'Technical Drawings', icon: FileText, colorClass: 'text-orange-600' },
+  { id: 'review', title: 'Client Review', icon: Eye, colorClass: 'text-rose-600' },
+  { id: 'procurement', title: 'Procurement', icon: Circle, colorClass: 'text-emerald-600' },
+  { id: 'site', title: 'Site / Implementation', icon: Hammer, colorClass: 'text-slate-600' },
+  { id: 'complete', title: 'Complete', icon: CheckCircle2, colorClass: 'text-gray-600' },
+];
 
 type Props = {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  projectId: string
-  projectName?: string
-  lists: ListColumn[]
-  phases: Phase[]
-  team: TeamMember[]
-  defaultListId?: string
-  taskToEdit?: (Omit<Task, "assigneeIds"> & { assignees?: string[] }) | null
-  onSave: (payload: Omit<Task, "id"> & { id?: string }) => void
-}
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  projectId: string;
+  projectName?: string;
+  lists: ListColumn[];
+  phases: Phase[];
+  team: TeamMember[];
+  defaultListId?: string;
+  taskToEdit?: (Omit<Task, 'assigneeIds'> & { assignees?: string[] }) | null;
+  onSave: (payload: Omit<Task, 'id'> & { id?: string }) => void;
+};
 
 const PRIORITIES: { value: Priority; label: string }[] = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-]
+  { value: 'Low', label: 'Low' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'High', label: 'High' },
+];
 
-type Comment = {
-  id: string
-  author: { id: string; name: string }
-  body: string
-  createdAt: number
-}
-
-type ActivityItem = {
-  id: string
-  text: string
-  createdAt: number
-}
-
-export function TaskModal({
-  open,
-  onOpenChange,
-  projectId,
-  projectName,
-  lists,
-  phases,
-  team,
-  defaultListId,
-  taskToEdit,
-  onSave,
-}: Props) {
+export function TaskModal({ open, onOpenChange, projectId, projectName, team, defaultListId, taskToEdit, onSave }: Props) {
   // Core form state
-  const [title, setTitle] = React.useState(taskToEdit?.title ?? "")
-  const [listId, setListId] = React.useState(taskToEdit?.listId ?? defaultListId ?? lists[0]?.id ?? "")
-  const [phaseId, setPhaseId] = React.useState<string | undefined>(taskToEdit?.phaseId)
-  const [priority, setPriority] = React.useState<Priority>(taskToEdit?.priority ?? "medium")
-  const [status, setStatus] = React.useState<Status>(taskToEdit?.status ?? "todo")
-  const [assignees, setAssignees] = React.useState<string[]>(taskToEdit?.assignees ?? taskToEdit?.assigneeIds ?? [])
-  const [dueDate, setDueDate] = React.useState<string | undefined>(taskToEdit?.dueDate)
-  const [startDate, setStartDate] = React.useState<string | undefined>(taskToEdit?.startDate)
-  // Duration (days) stored in estimateHours for compatibility
-  const [estimateHours, setEstimateHours] = React.useState<number | undefined>(taskToEdit?.estimateHours ?? 1)
-  const [tags, setTags] = React.useState<string[]>(taskToEdit?.tags ?? [])
-  const [tagInput, setTagInput] = React.useState("")
-  const [description, setDescription] = React.useState(taskToEdit?.description ?? "")
-  const [attachments, setAttachments] = React.useState<Attachment[]>(taskToEdit?.attachments ?? [])
+  const [taskValues, setTaskValues] = React.useState(taskToEdit ? taskToEdit : initialTask);
+  const [activeTab, setActiveTab] = React.useState(1);
+  const [subTaskText, setSubTaskText] = React.useState('');
+  const [comment, setComment] = React.useState({
+    name: '',
+    value: '',
+    time: '',
+    profileImg: '',
+  });
+
+  const queryClient = useQueryClient();
+  // Users Dropdown
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef(null);
+  const [teamMembers, setTeamMembers] = React.useState([]);
+  const [selectedMembers, setSelectedMembers] = React.useState([]);
+  const form2 = useForm({});
+  const lastInputRef = React.useRef(null);
+  const { data, isLoading: projectLoading } = useProjects();
+  const { user, isLoading: userLoading } = useUser();
+
+  // Mention dropdown
+  const mentionRef = React.useRef(null);
+  const [showDropdown, setShowDropdown] = React.useState(false);
+  const [filteredUsers, setFilteredUsers] = React.useState(teamMembers);
+  const textareaRef = React.useRef(null);
+
+  // set if a user mention another user in comment
+  const [mention, setMention] = React.useState(null);
+  const [notification, setNotification] = React.useState(null);
+
+  // set if a user mention another user in subTask
+  const [mentionSub, setMentionSub] = React.useState([]);
+  const [subNotification, setSubNotification] = React.useState(null);
+  const fileInputRef = React.useRef(null);
+  const [file, setFile] = React.useState(null);
+  const [totalDocs, setTotalDocs] = React.useState([]);
+
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(
-    taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: "", done: false }],
-  )
-  const [touched, setTouched] = React.useState(false)
+    taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
+  );
 
-  // Comments / Activity (local only in UI for now)
-  const [comments, setComments] = React.useState<Comment[]>((taskToEdit as any)?.comments ?? [])
-  const [newComment, setNewComment] = React.useState("")
-  const [activity, setActivity] = React.useState<ActivityItem[]>(() => {
-    const base: ActivityItem[] = []
-    if (taskToEdit?.id) {
-      base.push({
-        id: "created",
-        text: `Task created${taskToEdit?.title ? `: ${taskToEdit.title}` : ""}`,
-        createdAt: (taskToEdit as any)?.createdAt ?? Date.now(),
-      })
+  const handleCloseModal = e => {
+    onOpenChange(false);
+    setTaskValues(initialTask);
+    onOpenChange(false);
+  };
+
+  // Get Users
+  const {
+    data: users,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  });
+
+  // Define the mutation
+  const mutation = useMutation({
+    mutationFn: async input => {
+      if (taskToEdit || taskValues?.id) {
+        console.log('modufying old task');
+        return modifyTask(input);
+      } else {
+        console.log('adding new task');
+        return addNewTask(input);
+      }
+    },
+    onSuccess: e => {
+      toast.success('Task Updated');
+      setSubTaskText('');
+      setTaskValues(e?.data[0]);
+      queryClient.invalidateQueries(['tasks']);
+    },
+    onError: e => {
+      toast.error('Error! Try again');
+    },
+  });
+
+  // Create nofitioan
+  const notificationMutation = useMutation({
+    mutationFn: createNotification,
+    onSuccess: () => {
+      setMention(null);
+      setMentionSub([]);
+      setNotification(null);
+    },
+    onError: () => {
+      toast('Error! Try again');
+    },
+  });
+
+  // Task submit
+  const handleSubmit = () => {
+    if (taskValues?.name?.trim().length < 1) {
+      toast.error('Enter task name');
+      return;
     }
-    return base
-  })
-
-  const formRef = React.useRef<HTMLFormElement>(null)
-  const titleRef = React.useRef<HTMLInputElement>(null)
-
-  // Reset state on open
-  React.useEffect(() => {
-    if (open) {
-      setTitle(taskToEdit?.title ?? "")
-      setListId(taskToEdit?.listId ?? defaultListId ?? lists[0]?.id ?? "")
-      setPhaseId(taskToEdit?.phaseId)
-      setPriority(taskToEdit?.priority ?? "medium")
-      setStatus(taskToEdit?.status ?? "todo")
-      setAssignees(taskToEdit?.assignees ?? taskToEdit?.assigneeIds ?? [])
-      setDueDate(taskToEdit?.dueDate)
-      setStartDate(taskToEdit?.startDate)
-      setEstimateHours(taskToEdit?.estimateHours ?? 1)
-      setTags(taskToEdit?.tags ?? [])
-      setTagInput("")
-      setDescription(taskToEdit?.description ?? "")
-      setAttachments(taskToEdit?.attachments ?? [])
-      setSubtasks(
-        taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: "", done: false }],
-      )
-      setTouched(false)
-      setNewComment("")
-      // Focus for quick entry after mount
-      setTimeout(() => {
-        const input = titleRef.current
-        if (input) {
-          // Focus without scrolling and avoid full-text selection highlight
-          input.focus({ preventScroll: true })
-          const len = input.value.length
-          // Place caret at the end so nothing appears selected/blue
-          try {
-            input.setSelectionRange(len, len)
-          } catch {}
+    if (selectedMembers.length > 0 && taskToEdit) {
+      selectedMembers.map(item => {
+        if (item.email == user?.email) {
+          return;
+        } else {
+          const notification = {
+            id: Date.now(),
+            link: '/my-task',
+            type: 'task',
+            itemID: taskToEdit?.id,
+            title: `${taskValues.name}`,
+            isRead: false,
+            message: `${taskValues.name}`,
+            timestamp: Date.now(),
+            creator: user,
+          };
+          notificationMutation.mutate({ email: item.email, notification });
         }
-      }, 20)
+      });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, taskToEdit, defaultListId, lists?.[0]?.id])
+    if (mentionSub.length > 0) {
+      mentionSub.map(item => {
+        if (item.email == user.email) {
+          return;
+        } else {
+          const notification = {
+            id: Date.now(),
+            link: '/my-task',
+            type: 'subtask',
+            itemID: taskToEdit?.id,
+            title: `${user.name}`,
+            isRead: false,
+            message: `${taskValues.name}`,
+            timestamp: Date.now(),
+            creator: user,
+          };
+          notificationMutation.mutate({ email: item.email, notification });
+        }
+      });
+    }
+    // This will trigger if comment submitted
+    if (notification) {
+      notificationMutation.mutate({ email: mention.email, notification });
+    }
+    mutation.mutate({ newTask: taskValues, user: user });
+    onOpenChange(false);
+    // customCloseHandle();
+  };
+
+  // Handle Click Save
+  const handleClickSave = () => {
+    handleSubmit();
+    setTimeout(() => {
+      // afterCloseModal();
+    }, 1000);
+  };
+  const handleCommentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent full page reload
+
+    if (!comment.value.trim()) return; // ignore empty comments
+
+    const newComment = {
+      ...comment,
+      time: new Date().toLocaleString(),
+      name: user?.name || 'Anonymous',
+      profileImg: user?.photoURL || '',
+    };
+
+    // Update notifications if mention exists
+    if (mention) {
+      const notification = {
+        id: Date.now(),
+        link: '/my-task',
+        type: 'comment',
+        itemID: taskValues?.id || taskValues?.id,
+        title: taskValues?.name,
+        isRead: false,
+        message: newComment.value,
+        timestamp: Date.now(),
+        creator: user,
+      };
+      setNotification(notification);
+    }
+
+    // Update local task state
+    setTaskValues(prev => ({
+      ...prev,
+      comments: [...(prev.comments || []), newComment],
+    }));
+
+    // Send mutation to server
+    mutation.mutate({
+      newTask: {
+        ...taskValues,
+        comments: [...(taskValues?.comments || []), newComment],
+      },
+      user,
+    });
+
+    // Clear input
+    setComment({ value: '', name: '', time: '', profileImg: '' });
+  };
+
+  // Update taskValues with the values from task
+  // React.useEffect(() => {
+  //   if (phase) {
+  //     setTaskValues(prevValues => ({
+  //       ...prevValues,
+  //       phase: phase,
+  //     }));
+  //   }
+  // }, [modalOpen, phase]);
+
+  // React.useEffect(() => {
+  //   if (projectId) {
+  //     setTaskValues(prevValues => ({
+  //       ...prevValues,
+  //       projectID: projectId,
+  //     }));
+  //   }
+  // }, [projectId]);
+
+  React.useEffect(() => {
+    if (projectId) {
+      setTaskValues(prevValues => ({
+        ...prevValues,
+        projectID: projectId,
+      }));
+    }
+    if (taskToEdit) {
+      setTaskValues(prevValues => ({
+        ...prevValues,
+        ...taskToEdit,
+      }));
+    } else {
+      setTaskValues(prevValues => ({
+        ...initialTask,
+      }));
+    }
+  }, [taskToEdit, projectId]);
+
+  // React.useEffect(() => {
+  //   setTaskValues(prevValues => ({
+  //     ...prevValues,
+  //     ...(taskToEdit || initialTask),
+  //     projectID: projectId || prevValues.projectID,
+  //   }));
+  // }, [taskToEdit, projectId]);
+
+  // Handle changes in the textarea
+  const handleCommentChanges = e => {
+    const { value } = e.target;
+    setComment(prev => ({ ...prev, value: value }));
+    if (value.includes('@')) {
+      const cursorPosition = e.target.selectionStart;
+      const textBeforeCursor = value.slice(0, cursorPosition);
+      const lastAtSymbolIndex = textBeforeCursor.lastIndexOf('@');
+      if (lastAtSymbolIndex !== -1) {
+        const searchText = textBeforeCursor.slice(lastAtSymbolIndex + 1);
+        const filtered = teamMembers.filter(user => user.name.toLowerCase().includes(searchText.toLowerCase()));
+        setFilteredUsers(filtered);
+        setShowDropdown(true);
+      } else {
+        setShowDropdown(false);
+      }
+    } else {
+      setShowDropdown(false);
+    }
+  };
+
+  // Handle selecting a user from the dropdown
+  const handleSelectUser = user => {
+    const { value } = comment;
+    const cursorPosition = textareaRef.current.selectionStart;
+    const textBeforeCursor = value.slice(0, cursorPosition);
+    const textAfterCursor = value.slice(cursorPosition);
+    const lastAtSymbolIndex = textBeforeCursor.lastIndexOf('@');
+    const newText = textBeforeCursor.slice(0, lastAtSymbolIndex) + `@${user.name}` + textAfterCursor;
+    setComment(prev => ({ ...prev, value: newText }));
+    setShowDropdown(false);
+    textareaRef.current.focus();
+    const newCursorPosition = lastAtSymbolIndex + user.name.length + 1;
+    textareaRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
+    setMention(user);
+  };
+
+  const draggableSubtasksRef = React.useRef(null);
+  // create new Subtask
+  const handleCreateSubTask = () => {
+    setTaskValues(prevTask => ({
+      ...prevTask,
+      subtasks: [...prevTask.subtasks, { order: taskValues.subtasks.length + 1 || 1, id: Date.now(), text: subTaskText }],
+    }));
+    // Focus on the last input in the DraggableSubtasks component
+    if (draggableSubtasksRef.current) {
+      draggableSubtasksRef.current.focusLastInput();
+    }
+  };
+
+  const handleModifySubTask = (e, id) => {
+    const newText = e.target.value;
+    setTaskValues(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.map(subtask => (subtask.id === id ? { ...subtask, text: newText } : subtask)),
+    }));
+  };
+
+  // const handleEnter = (e, id) => {
+  //   if (e.key === 'Enter') {
+  //     handleModifySubTask(e, id);
+  //     requestAnimationFrame(() => {
+  //       if (textArea.current) {
+  //         textArea.current.focus();
+  //       }
+  //     });
+  //   }
+  // };
+
+  // Set users from DB
+  React.useEffect(() => {
+    if (isLoading) return;
+    setTeamMembers(users?.data);
+  }, [isLoading, users]);
+
+  const handleSubTaskSelect = (id: number) => {
+    const updatedSubTasks = taskValues?.subtasks?.map(item => (item?.id === id ? { ...item, selected: !item.selected } : item));
+    setTaskValues(prevTask => ({
+      ...prevTask,
+      subtasks: updatedSubTasks,
+    }));
+  };
+
+  const handleMemberSelect = member => {
+    setSelectedMembers([...selectedMembers, member]);
+    setTeamMembers(teamMembers.filter(m => m.email !== member.email));
+    setTaskValues(prev => ({
+      ...prev,
+      assigned: prev.assigned ? [...prev.assigned, member] : [member],
+    }));
+    setIsOpen(false);
+  };
+
+  const handleMemberRemove = member => {
+    setSelectedMembers(prev => prev.filter(m => m.email !== member.email));
+    setTeamMembers(prev => [...prev, member]);
+    setTaskValues(prev => ({
+      ...prev,
+      assigned: prev.assigned ? prev.assigned.filter(m => m.email !== member.email) : [],
+    }));
+  };
+
+  const updateTask = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setTaskValues(prevTask => {
+      const newValues = {
+        ...prevTask,
+        [name]: value,
+      };
+      return newValues;
+    });
+
+    // Check if the status is done , then also change the phase to complete
+    if (value == 'done') {
+      setTaskValues(prevTask => ({
+        ...prevTask,
+        phase: 'complete-project',
+      }));
+    }
+  };
+
+  // Submit Task after enter name
+  const handleSubmitOnBlur = () => {
+    if (taskValues?.name.length < 1) {
+      toast.error('Enter Task Name');
+      return;
+    }
+    mutation.mutate({ newTask: taskValues, user: user });
+  };
+
+  const handleDeleteSubTask = (e, id) => {
+    e.stopPropagation();
+    setTaskValues(prevTask => ({
+      ...prevTask,
+      subtasks: prevTask.subtasks.filter(subtask => subtask.id !== id),
+    }));
+  };
+
+  const [touched, setTouched] = React.useState(false);
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const titleRef = React.useRef<HTMLInputElement>(null);
 
   // Cmd/Ctrl + Enter to save
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLFormElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault()
-      formRef.current?.requestSubmit()
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
     }
-  }, [])
+  }, []);
 
-  function toggleAssignee(id: string) {
-    setAssignees((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
-  }
+  function toggleAssignee(member: any) {
+    console.log(member);
+    setTaskValues(prev => {
+      const alreadyAssigned = prev.assigned.some((a: any) => a.id === member.id);
 
-  function addTagFromInput() {
-    const v = tagInput.trim()
-    if (v && !tags.includes(v)) setTags((prev) => [...prev, v])
-    setTagInput("")
-  }
-  function removeTag(tag: string) {
-    setTags((prev) => prev.filter((t) => t !== tag))
-  }
-
-  function updateSubtask(id: string, patch: Partial<Subtask>) {
-    setSubtasks((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
-  }
-  function addSubtask() {
-    setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), title: "", done: false }])
-  }
-  function removeSubtask(id: string) {
-    setSubtasks((prev) => prev.filter((s) => s.id !== id))
-  }
-
-  // Always keep one empty subtask as a trailing row
-  React.useEffect(() => {
-    if (subtasks.length === 0 || subtasks[subtasks.length - 1].title.trim() !== "") {
-      setSubtasks((prev) => [...prev, { id: crypto.randomUUID(), title: "", done: false }])
-    }
-  }, [subtasks])
-
-  function onFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files
-    if (!files) return
-    const mapped = Array.from(files).map((f) => ({ name: f.name, size: f.size }))
-    setAttachments(mapped)
-  }
-
-  function handleSave(e: React.FormEvent) {
-    e.preventDefault()
-    setTouched(true)
-    if (!title.trim()) return
-
-    const durationDays =
-      typeof estimateHours === "number" && !Number.isNaN(estimateHours) && estimateHours > 0
-        ? Math.floor(estimateHours)
-        : 1
-
-    const payload: Omit<Task, "id"> & { id?: string } = {
-      id: taskToEdit?.id,
-      projectId,
-      title: title.trim(),
-      listId, // kept for compatibility with lists
-      phaseId: phaseId || undefined,
-      priority,
-      status,
-      assigneeIds: assignees,
-      startDate: startDate || undefined,
-      dueDate: dueDate || undefined,
-      estimateHours: durationDays,
-      tags,
-      description,
-      attachments,
-      subtasks: subtasks.filter((s) => s.title.trim() !== ""),
-      createdAt: taskToEdit?.id ? ((taskToEdit as any).createdAt ?? Date.now()) : Date.now(),
-      updatedAt: Date.now(),
-    }
-    onSave(payload)
-    onOpenChange(false)
-  }
-
-  function initialsOf(name: string) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
+      return {
+        ...prev,
+        assigned: alreadyAssigned
+          ? prev.assigned.filter((a: any) => a.id !== member.id) // remove
+          : [...prev.assigned, member], // add object
+      };
+    });
   }
 
   // Label rail (160px) with small icon + label
-  function Labeled({
-    icon,
-    label,
-    children,
-    alignTop = false,
-  }: {
-    icon: React.ReactNode
-    label: string
-    children: React.ReactNode
-    alignTop?: boolean
-  }) {
-    return (
-      <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
-        <div className={cn("flex items-center gap-2 text-[13px] text-gray-600", alignTop && "self-start pt-1")}>
-          <span className="text-gray-500">{icon}</span>
-          <span className="truncate">{label}</span>
+  const Labeled = React.memo(
+    ({
+      icon,
+      label,
+      children,
+      alignTop = false,
+    }: {
+      icon: React.ReactNode;
+      label: string;
+      children: React.ReactNode;
+      alignTop?: boolean;
+    }) => {
+      return (
+        <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
+          <div className={cn('flex items-center gap-2 text-[13px] text-gray-600', alignTop && 'self-start pt-1')}>
+            <span className="text-gray-500">{icon}</span>
+            <span className="truncate">{label}</span>
+          </div>
+          <div>{children}</div>
         </div>
-        <div>{children}</div>
-      </div>
-    )
+      );
+    }
+  );
+
+  function initialsOf(name: string): string {
+    if (!name) return '';
+
+    const parts = name.trim().split(/\s+/);
+
+    if (parts.length > 1) {
+      // Take first char of first and last word
+      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+    }
+
+    // Only one word -> take first 2 letters
+    return name.substring(0, 2).toUpperCase();
   }
 
   function AssigneesMultiSelect() {
-    const [openPop, setOpenPop] = React.useState(false)
-    const selected = team.filter((m) => assignees.includes(m.id))
+    const [openPop, setOpenPop] = React.useState(false);
+    const selected = taskValues?.assigned || [];
 
     return (
       <div className="space-y-2">
@@ -294,19 +586,19 @@ export function TaskModal({
                 className="w-full justify-between bg-white h-9 text-sm rounded-xl"
               >
                 <span className="flex items-center gap-2 overflow-hidden">
-                  {selected.length > 0 ? (
+                  {selected?.length > 0 ? (
                     <>
                       <div className="flex -space-x-2">
-                        {selected.slice(0, 4).map((m) => (
+                        {selected.slice(0, 4).map(m => (
                           <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
                             {/* @ts-ignore optional avatarUrl */}
-                            <AvatarImage src={(m as any).avatarUrl || ""} alt={m.name} />
-                            <AvatarFallback className="text-[10px]">{initialsOf(m.name)}</AvatarFallback>
+                            <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                         ))}
                       </div>
                       <span className="truncate text-sm text-gray-600">
-                        {selected.length} selected{selected.length > 4 ? " +" + (selected.length - 4) : ""}
+                        {selected.length} selected{selected.length > 4 ? ' +' + (selected.length - 4) : ''}
                       </span>
                     </>
                   ) : (
@@ -322,85 +614,148 @@ export function TaskModal({
               <Command>
                 <CommandInput
                   placeholder="Search teammates…"
-                  className="focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
+                  className=" focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
                 />
                 <CommandEmpty>No people found.</CommandEmpty>
                 <CommandList className="max-h-64">
                   <CommandGroup>
-                    {team.map((m) => {
-                      const checked = assignees.includes(m.id)
+                    {users?.data?.map(m => {
+                      const checked = taskValues?.assigned?.some(a => a.id === m.id);
                       return (
-                        <CommandItem
-                          key={m.id}
-                          value={m.name}
-                          className="flex items-center gap-2"
-                          onSelect={() => toggleAssignee(m.id)}
-                        >
+                        <CommandItem key={m.id} value={m.name} className="flex items-center gap-2">
                           <Checkbox
                             checked={checked}
-                            onCheckedChange={() => toggleAssignee(m.id)}
+                            onCheckedChange={() => toggleAssignee(m)}
                             className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                           />
                           <Avatar className="h-6 w-6">
-                            {/* @ts-ignore optional */}
-                            <AvatarImage src={(m as any).avatarUrl || ""} alt={m.name} />
-                            <AvatarFallback className="text-[10px]">{initialsOf(m.name)}</AvatarFallback>
+                            <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                           <span className="truncate">{m.name}</span>
-                          {checked && <Check className="ml-auto h-4 w-4 text-gray-500" />}
+                          {taskValues?.assigned?.some(a => a.id === m.id) && <Check className="ml-auto h-4 w-4 text-gray-500" />}
                         </CommandItem>
-                      )
+                      );
                     })}
                   </CommandGroup>
                 </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
-          {selected.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setAssignees([])}>
+          {selected?.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setTaskValues(prev => ({
+                  ...prev,
+                  assigned: [],
+                }))
+              }
+            >
               Clear
             </Button>
           )}
         </div>
 
-        {selected.length > 0 && (
+        {taskValues?.assigned?.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {selected.map((m) => (
-              <TypeChip key={m.id} label={m.name} className="cursor-pointer" onClick={() => toggleAssignee(m.id)} />
+            {taskValues?.assigned?.map(m => (
+              <span onClick={() => toggleAssignee(m)}>
+                <TypeChip key={m.id} label={m.name} className="cursor-pointer" />
+              </span>
             ))}
           </div>
         )}
       </div>
-    )
+    );
   }
 
   function handleAddComment() {
-    const body = newComment.trim()
-    if (!body) return
-    const me = team.find((t) => t.id === assignees[0]) ?? ({ id: "me", name: "You" } as TeamMember)
+    const body = newComment.trim();
+    if (!body) return;
+    const me = team.find(t => t.id === assignees[0]) ?? ({ id: 'me', name: 'You' } as TeamMember);
     const c: Comment = {
       id: crypto.randomUUID(),
-      author: { id: me.id, name: (me as any).name || "You" },
+      author: { id: me.id, name: (me as any).name || 'You' },
       body,
       createdAt: Date.now(),
-    }
-    setComments((prev) => [c, ...prev])
-    setNewComment("")
-    setActivity((prev) => [{ id: crypto.randomUUID(), text: "Added a comment", createdAt: Date.now() }, ...prev])
+    };
+    setComments(prev => [c, ...prev]);
+    setNewComment('');
+    setActivity(prev => [{ id: crypto.randomUUID(), text: 'Added a comment', createdAt: Date.now() }, ...prev]);
   }
 
+  // handle Task Save
+  const handleSave = e => {
+    e.preventDefault();
+    handleClickSave();
+  };
+
+  // File Upload Handler
+
+  // Get All Files
+  const {
+    data: files,
+    isLoading: attachentLoading,
+    error: attachentError,
+    refetch: attachentRefetch,
+  } = useQuery({
+    queryKey: ['GetAllFiles', taskValues?.id],
+    queryFn: () => getAllFiles(taskValues?.id),
+    enabled: !!taskValues?.id,
+  });
+
+  // File Upload Function
+  const attachmentMutation = useMutation({
+    mutationFn: uploadDoc,
+    onMutate: () => {
+      toast.loading('Uploading...', { id: 'upload-toast' });
+    },
+    onSuccess: data => {
+      // queryClient.invalidateQueries(['tasks']);
+      attachentRefetch();
+      toast.dismiss('upload-toast');
+      toast.success(`Uploaded successfully!`);
+    },
+    onError: () => {
+      toast.dismiss('upload-toast');
+      toast.error('Failed to upload document.');
+    },
+  });
+
+  const handleFileChange = event => {
+    const selectedFile = event.target.files[0];
+    if (selectedFile) {
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        setFile(null);
+        toast('File size must be less than 5MB!');
+      } else {
+        setFile(selectedFile);
+        attachmentMutation.mutate({ file: selectedFile, id: taskValues?.id, projectID: taskValues?.projectID, task: taskValues });
+      }
+    }
+  };
+
+  // File Upload Button
+  // const handleButtonClick = () => {
+  //   fileInputRef.current.click();
+  // };
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
       {/* Single rounded grey surface with balanced padding (28px top/side) */}
       <SheetContent
+        onOpenAutoFocus={e => e.preventDefault()}
         side="right"
-        className="v0-task-sheet w-full sm:max-w-[700px] md:max-w-[720px] h-full px-8 md:px-9 pt-10 md:pt-10 pb-0 bg-gray-50 rounded-2xl shadow-xl flex flex-col overflow-hidden mr-6 my-6"
+        className="v0-task-sheet w-full sm:max-w-[700px] md:max-w-[720px] h-full px-8 md:px-9 pt-10 md:pt-10 pb-0 bg-gray-50 rounded-2xl shadow-xl flex flex-col overflow-hidden"
       >
         <form
           ref={formRef}
-          onSubmit={handleSave}
+          onSubmit={e => handleSave(e)}
           onKeyDown={handleKeyDown}
-          className="flex-1 overflow-auto thin-scrollbar pr-2 overscroll-contain pb-20"
+          className="flex-1 pt-5 overflow-auto thin-scrollbar pr-2 overscroll-contain pb-20"
           aria-label="Task form"
         >
           {/* Title row */}
@@ -411,15 +766,18 @@ export function TaskModal({
                 <span>Task Title</span>
               </div>
               <Input
-                ref={titleRef}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                type="text"
+                name="name"
+                value={taskValues.name}
+                onChange={updateTask}
+                onBlur={() => handleSubmitOnBlur()}
+                autoFocus={false}
                 placeholder="Add task name..."
                 className={cn(
-                  "bg-white h-10 text-[16px] md:text-[17px] font-medium rounded-xl",
-                  !title.trim() && touched && "border-red-300 focus-visible:ring-red-200",
+                  'bg-white h-10 text-[16px] md:text-[17px] font-medium rounded-xl',
+                  !taskValues.name.trim() && touched && 'border-red-300 focus-visible:ring-red-200'
                 )}
-                aria-invalid={!title.trim() && touched}
+                aria-invalid={!taskValues.name.trim() && touched}
               />
             </div>
           </div>
@@ -427,50 +785,124 @@ export function TaskModal({
           {/* Details */}
           <div className="space-y-4">
             <Labeled icon={<Folder className="h-4 w-4" />} label="Project">
-              <div className="text-sm text-gray-800">{projectName || "Current project"}</div>
+              <Select
+                value={taskValues?.projectID || projectId || ''}
+                onValueChange={value => {
+                  const e = {
+                    target: {
+                      name: 'projectID',
+                      value: value,
+                    },
+                  };
+                  updateTask(e);
+                }}
+              >
+                <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
+                  <SelectValue placeholder="Select Project" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-[99] max-h-[300px] overflow-y-auto ">
+                  {!projectId && (
+                    <SelectItem disabled value="Select Project">
+                      Select Project
+                    </SelectItem>
+                  )}
+                  {projectId
+                    ? data
+                        ?.filter(item => item.id == projectId)
+                        .map(item => (
+                          <SelectItem key={item.id} value={item?.id}>
+                            {item.name}
+                          </SelectItem>
+                        ))
+                    : data
+                    ? data?.map(item => (
+                        <SelectItem key={item.id} value={item?.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))
+                    : data?.map(item => (
+                        <SelectItem key={item.id} value={item?.id}>
+                          {item.name}
+                        </SelectItem>
+                      ))}
+                </SelectContent>
+              </Select>
             </Labeled>
 
             <Labeled icon={<CircleDot className="h-4 w-4" />} label="Status">
-              <Select value={status} onValueChange={(v) => setStatus(v as Status)}>
+              <Select
+                value={taskValues?.status || ''}
+                onValueChange={value => {
+                  const e = {
+                    target: {
+                      name: 'status',
+                      value: value,
+                    },
+                  };
+                  updateTask(e);
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todo">To‑do</SelectItem>
-                  <SelectItem value="in_progress">In progress</SelectItem>
-                  <SelectItem value="in_review">In review</SelectItem>
+                  <SelectItem value="in-progress">In progress</SelectItem>
+                  <SelectItem value="in-review">In review</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
                 </SelectContent>
               </Select>
             </Labeled>
 
             <Labeled icon={<GitBranch className="h-4 w-4" />} label="Phase">
-              <Select value={phaseId ?? "none"} onValueChange={(v) => setPhaseId(v === "none" ? undefined : v)}>
+              <Select
+                value={taskValues?.phase || ''}
+                onValueChange={value => {
+                  const e = {
+                    target: {
+                      name: 'phase',
+                      value: value,
+                    },
+                  };
+                  updateTask(e);
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="No phase" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No phase</SelectItem>
-                  {phases.map((p) => (
-                    <SelectItem value={p.id} key={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="initial">Design Concepts</SelectItem>
+                  <SelectItem value="design-development">Design & Development</SelectItem>
+                  <SelectItem value="technical-drawings">Technical Drawing</SelectItem>
+                  <SelectItem value="client-review">Client Review</SelectItem>
+                  <SelectItem value="procurement">Procurement</SelectItem>
+                  <SelectItem value="site-implementation">Site Implementation</SelectItem>
+                  <SelectItem value="complete-project">Complete</SelectItem>
                 </SelectContent>
               </Select>
             </Labeled>
 
             <Labeled icon={<Flag className="h-4 w-4" />} label="Priority">
-              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+              <Select
+                value={taskValues?.priority || ''}
+                onValueChange={value => {
+                  const e = {
+                    target: {
+                      name: 'priority',
+                      value: value,
+                    },
+                  };
+                  updateTask(e);
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="Low">Low</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
                 </SelectContent>
               </Select>
             </Labeled>
@@ -483,25 +915,26 @@ export function TaskModal({
                       type="button"
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                        !startDate && "text-muted-foreground",
+                        'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                        !taskValues?.startDate && 'text-muted-foreground'
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                      {startDate ? format(toDateFromYMD(startDate), "PPP") : "Pick start date"}
+                      {taskValues?.startDate ? format(toDateFromYMD(taskValues?.startDate), 'PPP') : 'Pick start date'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                     <Calendar
                       mode="single"
-                      selected={startDate ? toDateFromYMD(startDate) : undefined}
-                      onSelect={(d) => setStartDate(d ? format(d, "yyyy-MM-dd") : undefined)}
+                      selected={taskValues?.startDate ? toDateFromYMD(taskValues?.startDate) : null}
+                      onSelect={d => setTaskValues(prev => ({ ...prev, startDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
                       initialFocus
+                      // setStartDate(d ? format(d, 'yyyy-MM-dd') : undefined)
                     />
                   </PopoverContent>
                 </Popover>
-                {startDate && (
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setStartDate(undefined)}>
+                {taskValues?.startDate && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, startDate: null }))}>
                     Clear
                   </Button>
                 )}
@@ -509,7 +942,7 @@ export function TaskModal({
             </Labeled>
 
             <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Due Date">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-2.5">
                 <div className="flex items-center gap-2">
                   <Popover>
                     <PopoverTrigger asChild>
@@ -517,63 +950,63 @@ export function TaskModal({
                         type="button"
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                          !dueDate && "text-muted-foreground",
+                          'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                          !taskValues?.dueDate && 'text-muted-foreground'
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                        {dueDate ? format(toDateFromYMD(dueDate), "PPP") : "Pick due date"}
+                        {taskValues?.dueDate ? format(toDateFromYMD(taskValues?.dueDate), 'PPP') : 'Pick due date'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                       <Calendar
                         mode="single"
-                        selected={dueDate ? toDateFromYMD(dueDate) : undefined}
-                        onSelect={(d) => setDueDate(d ? format(d, "yyyy-MM-dd") : undefined)}
+                        selected={taskValues?.dueDate ? toDateFromYMD(taskValues?.dueDate) : undefined}
+                        onSelect={d => setTaskValues(prev => ({ ...prev, dueDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
-                  {dueDate && (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => setDueDate(undefined)}>
+                  {taskValues?.dueDate && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, dueDate: null }))}>
                       Clear
                     </Button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Input
                     type="number"
                     min={1}
                     step={1}
                     placeholder="1"
-                    value={typeof estimateHours === "number" ? String(estimateHours) : ""}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v === "") setEstimateHours(undefined)
+                    value={typeof estimateHours === 'number' ? String(estimateHours) : ''}
+                    onChange={e => {
+                      const v = e.target.value;
+                      if (v === '') setEstimateHours(undefined);
                       else {
-                        const n = Number(v)
-                        setEstimateHours(Number.isNaN(n) ? undefined : Math.max(1, Math.floor(n)))
+                        const n = Number(v);
+                        setEstimateHours(Number.isNaN(n) ? undefined : Math.max(1, Math.floor(n)));
                       }
                     }}
                     className="bg-white h-9 text-sm rounded-xl"
                     aria-label="Duration (days)"
                   />
                   <span className="text-xs text-gray-500">Duration (days)</span>
-                </div>
+                </div> */}
               </div>
             </Labeled>
 
-            <Labeled icon={<TagIcon className="h-4 w-4" />} label="Tags">
+            {/* <Labeled icon={<TagIcon className="h-4 w-4" />} label="Tags">
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Type a tag and press Enter (e.g., Kitchen)"
                     value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault()
-                        addTagFromInput()
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTagFromInput();
                       }
                     }}
                     className="bg-white h-9 text-sm rounded-xl"
@@ -584,7 +1017,7 @@ export function TaskModal({
                 </div>
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {tags.map((t) => (
+                    {tags.map(t => (
                       <TypeChip
                         key={t}
                         label={
@@ -606,33 +1039,43 @@ export function TaskModal({
                   </div>
                 )}
               </div>
-            </Labeled>
+            </Labeled> */}
 
             <Labeled icon={<Users className="h-4 w-4" />} label="Assignees">
               <AssigneesMultiSelect />
             </Labeled>
 
-            <Labeled icon={<TypeIcon className="h-4 w-4" />} label="Description" alignTop>
-              <Textarea
-                placeholder="Add details… use @ to mention teammates. Attach files below."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-[104px] bg-white text-sm rounded-xl"
-              />
-            </Labeled>
+            <div className="grid grid-cols-[160px_1fr] gap-4 items-start">
+              <div className="flex items-center gap-2 text-[13px] text-gray-600 self-start pt-1">
+                <span className="text-gray-500">
+                  <TypeIcon className="h-4 w-4" />
+                </span>
+                <span className="truncate">Description</span>
+              </div>
+              <div>
+                <Textarea
+                  placeholder="Add details… use @ to mention teammates. Attach files below."
+                  id="description"
+                  name="description"
+                  rows={5}
+                  value={taskValues?.description || ''}
+                  onChange={e => {
+                    setTaskValues(prev => ({
+                      ...prev,
+                      description: e.target.value,
+                    }));
+                  }}
+                  className="min-h-[104px] bg-white text-sm rounded-xl"
+                />
+              </div>
+            </div>
 
             <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
               <div className="space-y-2">
-                <Input
-                  id="files"
-                  type="file"
-                  multiple
-                  onChange={onFilesChange}
-                  className="bg-white h-9 text-sm rounded-xl"
-                />
-                {attachments.length > 0 && (
+                <Input id="files" type="file" multiple onChange={handleFileChange} className="bg-white h-9 text-sm rounded-xl" />
+                {files?.data?.length > 0 && (
                   <ul className="text-xs text-gray-600 list-disc pl-5">
-                    {attachments.map((a) => (
+                    {files?.data?.map(a => (
                       <li key={a.name + a.size}>
                         {a.name} ({Math.round(a.size / 1024)} KB)
                       </li>
@@ -643,41 +1086,41 @@ export function TaskModal({
             </Labeled>
 
             <Labeled icon={<ListTodo className="h-4 w-4" />} label="Sub Tasks" alignTop>
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 {subtasks.map((s, idx) => (
                   <div
                     key={s.id}
                     className={cn(
-                      "flex items-center gap-2 rounded-xl bg-white/80 border border-gray-200 pl-2 pr-2 h-10",
-                      s.title.trim() === "" && idx === subtasks.length - 1 && "opacity-80",
+                      'flex items-center gap-2 rounded-xl bg-white/80 border border-gray-200 pl-2 pr-2 h-10',
+                      s?.title?.trim() === '' && idx === subtasks?.length - 1 && 'opacity-80'
                     )}
                   >
                     <Checkbox
                       checked={s.done}
-                      onCheckedChange={(v) => updateSubtask(s.id, { done: Boolean(v) })}
+                      // onCheckedChange={v => updateSubtask(s.id, { done: Boolean(v) })}
                       className="mr-1 focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                       aria-label="Toggle subtask"
                     />
                     <Input
                       value={s.title}
-                      onChange={(e) => updateSubtask(s.id, { title: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault()
-                          if (s.title.trim() !== "") addSubtask()
-                        }
-                      }}
-                      placeholder={idx === subtasks.length - 1 ? "Subtask…" : ""}
+                      // onChange={e => updateSubtask(s.id, { title: e.target.value })}
+                      // onKeyDown={e => {
+                      //   if (e.key === 'Enter') {
+                      //     e.preventDefault();
+                      //     if (s?.title?.trim() !== '') addSubtask();
+                      //   }
+                      // }}
+                      placeholder={idx === subtasks?.length - 1 ? 'Subtask…' : ''}
                       className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent h-9 text-sm"
                     />
                     <GripVertical className="h-4 w-4 text-gray-400" aria-hidden="true" />
-                    {s.title.trim() !== "" && (
+                    {s?.title?.trim() !== '' && (
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
                         className="h-7 w-7 text-gray-700"
-                        onClick={() => removeSubtask(s.id)}
+                        // onClick={() => removeSubtask(s.id)}
                         aria-label="Remove subtask"
                         title="Remove"
                       >
@@ -687,11 +1130,17 @@ export function TaskModal({
                   </div>
                 ))}
                 <div className="flex justify-end">
-                  <Button type="button" variant="ghost" size="sm" onClick={addSubtask} className="gap-1">
+                  <Button type="button" variant="ghost" size="sm" className="gap-1">
                     <Plus className="h-4 w-4" /> Add subtask
                   </Button>
                 </div>
-              </div>
+              </div> */}
+              {/* <DraggableSubtasks2
+                member={teamMembers}
+                taskId={taskValues?.id}
+                subtasks={taskValues?.subtasks}
+                setTaskValues={setTaskValues}
+              /> */}
             </Labeled>
           </div>
 
@@ -718,57 +1167,60 @@ export function TaskModal({
 
               <TabsContent value="comments" className="mt-4">
                 <div className="rounded-2xl border border-gray-200 bg-white">
-                  <div className="p-4 md:p-5">
+                  <form className="border relative rounded-xl py-3 px-4">
                     <Textarea
+                      name="value"
+                      ref={textareaRef}
+                      value={comment.value}
+                      onChange={handleCommentChanges}
+                      required
                       placeholder="Add Comment..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      onKeyDown={(e) => {
-                        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                          e.preventDefault()
-                          handleAddComment()
-                        }
-                      }}
-                      className="min-h-[120px] text-[14px] focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
+                      className="border-none bg-white outline-none focus:ring-0 focus:shadow-none"
                     />
-                  </div>
-                  <div className="flex items-center justify-between px-4 md:px-5 pb-4 md:pb-5">
-                    <Button
-                      type="button"
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim()}
-                      className="h-9 bg-gray-900 text-white hover:bg-gray-800"
-                    >
-                      Comment
-                    </Button>
-                    <div className="flex items-center gap-3 text-gray-500">
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                        <Paperclip className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                        <Smile className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-8 w-8">
-                        <ImageIcon className="h-4 w-4" />
-                      </Button>
+
+                    {showDropdown && (
+                      <div
+                        ref={mentionRef}
+                        className="absolute w-[300px] max-h-[230px] overflow-auto bg-white z-[9999] top-[20%] left-[40%] border border-gray-200 shadow-lg rounded-lg mt-2"
+                      >
+                        <ul>
+                          {filteredUsers.map(user => (
+                            <li
+                              key={user.id}
+                              className="py-2 text-sm px-4 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => handleSelectUser(user)}
+                            >
+                              {user.name}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center mt-2">
+                      <button onClick={handleCommentSubmit} type="button" className="py-2 mt-3 px-4 bg-[#17181B] rounded-lg text-white">
+                        Comment
+                      </button>
+
+                      <div className="flex items-center gap-1">{/* Your additional buttons/icons here */}</div>
                     </div>
-                  </div>
+                  </form>
                 </div>
 
-                {comments.length > 0 && (
+                {taskValues?.comments?.length > 0 && (
                   <ul className="mt-4 space-y-3">
-                    {comments.map((c) => (
+                    {taskValues?.comments?.map(c => (
                       <li key={c.id} className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-[10px]">{initialsOf(c.author.name)}</AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{initialsOf(c?.name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="font-medium text-gray-900">{c.author.name}</span>
-                              <span className="text-xs text-gray-500">{format(c.createdAt, "PP p")}</span>
+                              <span className="font-medium text-gray-900">{c?.name}</span>
+                              <span className="text-xs text-gray-500">{c?.time}</span>
                             </div>
-                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{c.body}</p>
+                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{c?.value}</p>
                           </div>
                         </div>
                       </li>
@@ -779,20 +1231,17 @@ export function TaskModal({
 
               <TabsContent value="activity" className="mt-4">
                 <ul className="space-y-3">
-                  {activity.length === 0 ? (
+                  {/* {activity.length === 0 ? (
                     <li className="text-sm text-gray-500">No activity yet.</li>
                   ) : (
-                    activity.map((a) => (
-                      <li
-                        key={a.id}
-                        className="rounded-xl border border-gray-200 bg-white p-3 flex items-center gap-3 text-sm"
-                      >
+                    activity.map(a => (
+                      <li key={a.id} className="rounded-xl border border-gray-200 bg-white p-3 flex items-center gap-3 text-sm">
                         <Clock3 className="h-4 w-4 text-gray-500" />
                         <span className="text-gray-800">{a.text}</span>
-                        <span className="ml-auto text-xs text-gray-500">{format(a.createdAt, "PP p")}</span>
+                        <span className="ml-auto text-xs text-gray-500">{format(a.createdAt, 'PP p')}</span>
                       </li>
                     ))
-                  )}
+                  )} */}
                 </ul>
               </TabsContent>
             </Tabs>
@@ -802,7 +1251,7 @@ export function TaskModal({
         {/* Sticky footer dock with aligned actions */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
           <div className="h-16 px-7 md:px-7 flex items-center justify-end gap-2">
-            <Button type="button" variant="ghost" className="h-10" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="ghost" className="h-10" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button
@@ -810,7 +1259,7 @@ export function TaskModal({
               className="h-10 bg-gray-900 text-white hover:bg-gray-800"
               onClick={() => formRef.current?.requestSubmit()}
             >
-              Save <span className="ml-2 text-xs opacity-70">{"⌘⏎"}</span>
+              Save <span className="ml-2 text-xs opacity-70">{'⌘⏎'}</span>
             </Button>
           </div>
         </div>
@@ -864,10 +1313,10 @@ export function TaskModal({
         `}</style>
       </SheetContent>
     </Sheet>
-  )
+  );
 }
 
 function toDateFromYMD(ymd: string) {
-  const [y, m, d] = ymd.split("-").map(Number)
-  return new Date(y, (m || 1) - 1, d || 1)
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
 }
