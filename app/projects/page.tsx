@@ -289,7 +289,7 @@ export default function ProjectsPage() {
                             <p className="text-sm text-ink-muted">
                               {project?.code} •{" "}
                               {clientData &&
-                                clientData?.data.find(
+                                clientData?.data?.find(
                                   (client) => client?.id == project?.client
                                 )?.name}
                             </p>
@@ -462,7 +462,7 @@ export default function ProjectsPage() {
                       </td>
                       <td className="py-4 px-4 text-sm text-ink">
                         {clientData &&
-                          clientData?.data.find(
+                          clientData?.data?.find(
                             (client) => client?.id == project?.client
                           )?.name}
                       </td>
