@@ -6,6 +6,30 @@ import type { Task, Phase, TeamMember, ListColumn } from '@/components/tasks/typ
 
 type UITask = Task & { startDate?: string; endDate?: string };
 
+function formatStatus(status: string): string {
+  switch (status) {
+    case 'in-progress':
+      return 'In Progress';
+    case 'todo':
+      return 'Todo';
+    case 'done':
+      return 'Done';
+    case 'in-review':
+      return 'In Review';
+    default:
+      return status;
+  }
+}
+
+function formatDate(dateString: string): string {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
 export default function ListView({
   tasks,
   team,
@@ -26,7 +50,6 @@ export default function ListView({
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
       {tasks &&
         tasks?.map(phase => {
-          // const pts = tasksByPhase[phase.id] || [];
           return (
             <div key={phase.id} className="border-b last:border-b-0 border-gray-200">
               <div className="px-5 py-3 flex items-center justify-between bg-gray-50">
@@ -48,7 +71,7 @@ export default function ListView({
                       <th className="px-3 py-2 font-medium">Status</th>
                       <th className="px-3 py-2 font-medium">Priority</th>
                       <th className="px-3 py-2 font-medium">Assignees</th>
-                      <th className="px-3 py-2 font-medium">List</th>
+                      {/* <th className="px-3 py-2 font-medium">List</th> */}
                       <th className="px-3 py-2 font-medium">Start</th>
                       <th className="px-3 py-2 font-medium">End</th>
                       <th className="px-3 py-2 font-medium">Due</th>
@@ -74,7 +97,7 @@ export default function ListView({
                               <div className="text-sm text-gray-900">{t?.name}</div>
                             </td>
                             <td className="px-3 py-3">
-                              <StatusBadge status={t.status} label={t.status} />
+                              <StatusBadge status={formatStatus(t?.status)} label={formatStatus(t?.status)} />
                             </td>
                             <td className="px-3 py-3">
                               <StatusBadge status={t.priority} label={t.priority} />
@@ -91,15 +114,17 @@ export default function ListView({
                                 )} */}
                               </div>
                             </td>
-                            <td className="px-3 py-3">{/* <span className="text-xs text-gray-700">{list?.title ?? '—'}</span> */}</td>
+                            {/* <td className="px-3 py-3">
+                              <span className="text-xs text-gray-700">{list?.title ?? '—'}</span>
+                            </td> */}
                             <td className="px-3 py-3">
-                              <span className="text-xs text-gray-700">{t.startDate ?? '—'}</span>
+                              <span className="text-xs text-gray-700">{formatDate(t?.startDate) ?? '—'}</span>
                             </td>
                             <td className="px-3 py-3">
                               <span className="text-xs text-gray-700">{t.endDate ?? '—'}</span>
                             </td>
                             <td className="px-3 py-3">
-                              <span className="text-xs text-gray-700">{t.dueDate ?? '—'}</span>
+                              <span className="text-xs text-gray-700">{formatDate(t?.dueDate) ?? '—'}</span>
                             </td>
                           </tr>
                         );

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -34,11 +34,18 @@ import {
   Globe,
   Clock,
   Plus,
+  Search,
+  Check,
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { modifyProject } from '@/supabase/API';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getUsers, modifyProject } from '@/supabase/API';
 import { toast } from 'sonner';
+import { CurrencySelector } from '@/components/ui/CurrencySelector';
+import { TypeChip } from '@/components/chip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type SectionKey =
   | 'overview'
@@ -69,6 +76,20 @@ const sections: { key: SectionKey; label: string; icon: any }[] = [
   { key: 'automation', label: 'Automation', icon: Sparkles },
 ];
 
+function initialsOf(name: string): string {
+  if (!name) return '';
+
+  const parts = name.trim().split(/\s+/);
+
+  if (parts.length > 1) {
+    // Take first char of first and last word
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+
+  // Only one word -> take first 2 letters
+  return name.substring(0, 2).toUpperCase();
+}
+
 export default function ProjectSettingsPage() {
   const params = useParams<{ id: string }>();
   const projectId = params?.id ?? 'project-1';
@@ -84,6 +105,17 @@ export default function ProjectSettingsPage() {
   const [selectedProject, setSelectedProject] = useState(null);
   const { data: project, isLoading: projectLoading } = useProjects();
   const queryClient = useQueryClient();
+
+  // Get Users
+  const {
+    data: users,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['users'],
+    queryFn: getUsers,
+  });
 
   const mutation = useMutation({
     mutationFn: modifyProject,
@@ -249,8 +281,9 @@ export default function ProjectSettingsPage() {
             )}
             {selected === 'team' && (
               <TeamForm
-                value={projectData}
-                onChange={data => setProjectData({ ...projectData, ...data })}
+                value={selectedProject}
+                users={users?.data}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
                 onSave={p => handleSave('team', p)}
               />
             )}
@@ -263,22 +296,22 @@ export default function ProjectSettingsPage() {
             )}
             {selected === 'contractors' && (
               <ContractorsForm
-                value={projectData}
-                onChange={data => setProjectData({ ...projectData, ...data })}
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
                 onSave={p => handleSave('contractors', p)}
               />
             )}
             {selected === 'timeline' && (
               <TimelineForm
-                value={projectData}
-                onChange={data => setProjectData({ ...projectData, ...data })}
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
                 onSave={p => handleSave('timeline', p)}
               />
             )}
             {selected === 'financial' && (
               <FinancialForm
-                value={projectData}
-                onChange={data => setProjectData({ ...projectData, ...data })}
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
                 onSave={p => handleSave('financial', p)}
               />
             )}
@@ -871,7 +904,7 @@ function TimelineForm({ value, onChange, onSave }: { value: any; onChange: (v: a
               id="startDate"
               type="date"
               className="mt-1"
-              value={formatDateForInput(value.startDate)}
+              value={formatDateForInput(value?.startDate)}
               onChange={e => onChange({ startDate: e.target.value })}
             />
           </div>
@@ -881,14 +914,14 @@ function TimelineForm({ value, onChange, onSave }: { value: any; onChange: (v: a
               id="endDate"
               type="date"
               className="mt-1"
-              value={formatDateForInput(value.endDate)}
+              value={formatDateForInput(value?.endDate)}
               onChange={e => onChange({ endDate: e.target.value })}
             />
           </div>
         </div>
         <div>
           <Label htmlFor="timezone">Timezone</Label>
-          <Select value={value.timezone} onValueChange={val => onChange({ timezone: val })}>
+          <Select value={value?.timezone} onValueChange={val => onChange({ timezone: val })}>
             <SelectTrigger id="timezone" className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
               <SelectValue />
             </SelectTrigger>
@@ -923,6 +956,12 @@ function TimelineForm({ value, onChange, onSave }: { value: any; onChange: (v: a
 }
 
 function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+  const updateData = updates => {
+    onChange({
+      ...value,
+      currency: updates.currency,
+    });
+  };
   return (
     <Card>
       <CardHeader>
@@ -936,7 +975,7 @@ function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: 
               id="budget"
               className="mt-1"
               placeholder="850000"
-              value={value.budget}
+              value={value?.budget}
               onChange={e => onChange({ budget: e.target.value })}
             />
           </div>
@@ -946,14 +985,14 @@ function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: 
               id="taxRate"
               className="mt-1"
               placeholder="20"
-              value={value.taxRate}
+              value={value?.taxRate}
               onChange={e => onChange({ taxRate: e.target.value })}
             />
           </div>
         </div>
         <div>
           <Label htmlFor="currency">Currency</Label>
-          <Select value={value.currency} onValueChange={val => onChange({ currency: val })}>
+          {/* <Select value={value.currency} onValueChange={val => onChange({ currency: val })}>
             <SelectTrigger id="currency" className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
               <SelectValue />
             </SelectTrigger>
@@ -977,7 +1016,8 @@ function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: 
                 </div>
               </SelectItem>
             </SelectContent>
-          </Select>
+          </Select> */}
+          <CurrencySelector value={value?.currency} onChange={updateData} />
         </div>
         <div className="flex items-center justify-end">
           <Button onClick={() => onSave(value)}>Save</Button>
@@ -1012,7 +1052,9 @@ function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
   );
 }
 
-function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
+  const [openPop, setOpenPop] = React.useState(false);
+  const selected = value?.assigned || [];
   const addTeamMember = () => {
     const newMember = {
       id: Date.now().toString(),
@@ -1020,20 +1062,35 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
       role: '',
       avatar: '',
     };
-    onChange({ team: [...(value.team || []), newMember] });
+    onChange({ assigned: [...(value.assigned || []), newMember] });
   };
 
   const updateTeamMember = (index: number, updates: any) => {
-    const updatedTeam = [...(value.team || [])];
+    const updatedTeam = [...(value.assigned || [])];
     updatedTeam[index] = { ...updatedTeam[index], ...updates };
-    onChange({ team: updatedTeam });
+    onChange({ assigned: updatedTeam });
   };
 
   const removeTeamMember = (index: number) => {
-    const updatedTeam = [...(value.team || [])];
+    const updatedTeam = [...(value.assigned || [])];
     updatedTeam.splice(index, 1);
-    onChange({ team: updatedTeam });
+    onChange({ assigned: updatedTeam });
   };
+
+  function toggleAssignee(member: any) {
+    console.log(member);
+
+    const alreadyAssigned = value.assigned.some((a: any) => a.id === member.id);
+
+    const updatedValue = {
+      ...value,
+      assigned: alreadyAssigned
+        ? value.assigned.filter((a: any) => a.id !== member.id) // remove
+        : [...value.assigned, member], // add
+    };
+
+    onChange(updatedValue);
+  }
 
   return (
     <Card>
@@ -1048,7 +1105,7 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          {(value.team || []).map((member: any, index: number) => (
+          {(value?.assigned || []).map((member: any, index: number) => (
             <div key={member.id || index} className="flex items-center gap-4 p-4 border rounded-lg">
               <div className="w-10 h-10 bg-clay-100 rounded-full flex items-center justify-center">
                 <span className="text-sm font-medium text-clay-600">
@@ -1062,7 +1119,12 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
                 </span>
               </div>
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input placeholder="Full name" value={member.name} onChange={e => updateTeamMember(index, { name: e.target.value })} />
+                <Input
+                  readOnly
+                  placeholder="Full name"
+                  value={member.name}
+                  onChange={e => updateTeamMember(index, { name: e.target.value })}
+                />
                 <Input
                   placeholder="Role (e.g., Lead Designer)"
                   value={member.role}
@@ -1072,19 +1134,123 @@ function TeamForm({ value, onChange, onSave }: { value: any; onChange: (v: any) 
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => removeTeamMember(index)}
+                onClick={() => toggleAssignee(member)}
+                // onClick={() => removeTeamMember(index)}
                 className="text-red-500 hover:text-red-700 hover:bg-red-50"
               >
                 Remove
               </Button>
             </div>
           ))}
-          {(!value.team || value.team.length === 0) && (
+          {(!value?.assigned || value?.assigned.length === 0) && (
             <div className="text-center py-8 text-muted-foreground">No team members assigned yet. Click "Add Member" to get started.</div>
           )}
         </div>
+
+        {/* Add Member option */}
+        <div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Popover open={openPop} onOpenChange={setOpenPop}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openPop}
+                    className="w-full justify-between bg-white h-9 text-sm rounded-xl"
+                  >
+                    <span className="flex items-center gap-2 overflow-hidden">
+                      <span className="flex items-center gap-2 text-gray-500">
+                        <Search className="h-4 w-4" />
+                        Search teammates…
+                      </span>
+                      {/* {selected?.length > 0 ? (
+                        <>
+                          <div className="flex -space-x-2">
+                            {selected.slice(0, 4).map(m => (
+                              <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
+                                <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
+                                <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
+                              </Avatar>
+                            ))}
+                          </div>
+                          <span className="truncate text-sm text-gray-600">
+                            {selected.length} selected{selected.length > 4 ? ' +' + (selected.length - 4) : ''}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="flex items-center gap-2 text-gray-500">
+                          <Search className="h-4 w-4" />
+                          Search teammates…
+                        </span>
+                      )} */}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 w-[360px] rounded-xl border border-gray-200 shadow-md" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Search teammates…"
+                      className=" focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
+                    />
+                    <CommandEmpty>No people found.</CommandEmpty>
+                    <CommandList className="max-h-64">
+                      <CommandGroup>
+                        {users?.map(m => {
+                          const checked = value?.assigned?.some(a => a.id === m.id);
+                          return (
+                            <CommandItem key={m.id} value={m.name} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={() => toggleAssignee(m)}
+                                className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
+                              />
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                                <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
+                              </Avatar>
+                              <span className="truncate">{m.name}</span>
+                              {value?.assigned?.some(a => a.id === m.id) && <Check className="ml-auto h-4 w-4 text-gray-500" />}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {/* {selected?.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    onChange({
+                      ...value,
+                      assigned: [],
+                    })
+                  }
+                >
+                  Clear
+                </Button>
+              )} */}
+            </div>
+
+            {/* {value?.assigned?.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {value?.assigned?.map(m => (
+                  <span onClick={() => toggleAssignee(m)}>
+                    <TypeChip key={m.id} label={m.name} className="cursor-pointer" />
+                  </span>
+                ))}
+              </div>
+            )} */}
+          </div>
+        </div>
+
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.team)}>Save Team</Button>
+          <Button onClick={() => onSave(value)}>Save Team</Button>
         </div>
       </CardContent>
     </Card>
@@ -1253,113 +1419,114 @@ function ContractorsForm({ value, onChange, onSave }: { value: any; onChange: (v
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-4">
-          {(value.contractors || []).map((contractor: any, index: number) => (
-            <Card key={contractor.id || index} className="border-borderSoft bg-greige-50">
-              <CardContent className="p-4">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-clay-100 rounded-full flex items-center justify-center">
-                        <Building className="w-5 h-5 text-clay-600" />
+          {value?.contractors?.length > 0 &&
+            (value?.contractors || [])?.map((contractor: any, index: number) => (
+              <Card key={contractor.id || index} className="border-borderSoft bg-greige-50">
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-clay-100 rounded-full flex items-center justify-center">
+                          <Building className="w-5 h-5 text-clay-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{contractor.name || 'New Contractor'}</div>
+                          <div className="text-sm text-muted-foreground">{contractor.trade}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {contractor.portalAccess ? (
+                          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
+                            Portal Access
+                          </Badge>
+                        ) : (
+                          <Button size="sm" onClick={() => inviteToPortal(contractor)} className="bg-clay-600 text-white hover:bg-clay-700">
+                            Invite to Portal
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeContractor(index)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm">Company Name</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="e.g., ABC Plumbing Ltd"
+                          value={contractor.name}
+                          onChange={e => updateContractor(index, { name: e.target.value })}
+                        />
                       </div>
                       <div>
-                        <div className="font-medium">{contractor.name || 'New Contractor'}</div>
-                        <div className="text-sm text-muted-foreground">{contractor.trade}</div>
+                        <Label className="text-sm">Trade</Label>
+                        <Select value={contractor.trade} onValueChange={val => updateContractor(index, { trade: val })}>
+                          <SelectTrigger className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
+                            <SelectValue placeholder="Select trade" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border-borderSoft">
+                            {commonTrades.map(trade => (
+                              <SelectItem key={trade} value={trade} className="focus:bg-greige-50 focus:text-ink">
+                                {trade}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="Other" className="focus:bg-greige-50 focus:text-ink">
+                              Other
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {contractor.portalAccess ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-                          Portal Access
-                        </Badge>
-                      ) : (
-                        <Button size="sm" onClick={() => inviteToPortal(contractor)} className="bg-clay-600 text-white hover:bg-clay-700">
-                          Invite to Portal
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeContractor(index)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm">Company Name</Label>
-                      <Input
-                        className="mt-1"
-                        placeholder="e.g., ABC Plumbing Ltd"
-                        value={contractor.name}
-                        onChange={e => updateContractor(index, { name: e.target.value })}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label className="text-sm">Contact Person</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="Primary contact name"
+                          value={contractor.contact}
+                          onChange={e => updateContractor(index, { contact: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Email</Label>
+                        <Input
+                          className="mt-1"
+                          type="email"
+                          placeholder="contact@company.com"
+                          value={contractor.email}
+                          onChange={e => updateContractor(index, { email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm">Phone</Label>
+                        <Input
+                          className="mt-1"
+                          placeholder="+44 20 1234 5678"
+                          value={contractor.phone}
+                          onChange={e => updateContractor(index, { phone: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label className="text-sm">Trade</Label>
-                      <Select value={contractor.trade} onValueChange={val => updateContractor(index, { trade: val })}>
-                        <SelectTrigger className="mt-1 bg-white border-borderSoft focus:ring-0 focus:border-borderSoft">
-                          <SelectValue placeholder="Select trade" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-borderSoft">
-                          {commonTrades.map(trade => (
-                            <SelectItem key={trade} value={trade} className="focus:bg-greige-50 focus:text-ink">
-                              {trade}
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="Other" className="focus:bg-greige-50 focus:text-ink">
-                            Other
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-sm">Contact Person</Label>
-                      <Input
-                        className="mt-1"
-                        placeholder="Primary contact name"
-                        value={contractor.contact}
-                        onChange={e => updateContractor(index, { contact: e.target.value })}
+                    <div className="flex items-center gap-2 pt-2 border-t border-borderSoft">
+                      <Switch
+                        checked={contractor.portalAccess}
+                        onCheckedChange={checked => updateContractor(index, { portalAccess: checked })}
                       />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Email</Label>
-                      <Input
-                        className="mt-1"
-                        type="email"
-                        placeholder="contact@company.com"
-                        value={contractor.email}
-                        onChange={e => updateContractor(index, { email: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm">Phone</Label>
-                      <Input
-                        className="mt-1"
-                        placeholder="+44 20 1234 5678"
-                        value={contractor.phone}
-                        onChange={e => updateContractor(index, { phone: e.target.value })}
-                      />
+                      <span className="text-sm">Grant contractor portal access</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-borderSoft">
-                    <Switch
-                      checked={contractor.portalAccess}
-                      onCheckedChange={checked => updateContractor(index, { portalAccess: checked })}
-                    />
-                    <span className="text-sm">Grant contractor portal access</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
 
           {(!value.contractors || value.contractors.length === 0) && (
             <div className="text-center py-8 text-muted-foreground">
@@ -1369,7 +1536,7 @@ function ContractorsForm({ value, onChange, onSave }: { value: any; onChange: (v
         </div>
 
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.contractors)}>Save Contractors</Button>
+          <Button onClick={() => onSave(value)}>Save Contractors</Button>
         </div>
       </CardContent>
     </Card>

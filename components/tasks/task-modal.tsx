@@ -1135,12 +1135,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
                   </Button>
                 </div>
               </div> */}
-              {/* <DraggableSubtasks2
+              <DraggableSubtasks2
                 member={teamMembers}
                 taskId={taskValues?.id}
                 subtasks={taskValues?.subtasks}
                 setTaskValues={setTaskValues}
-              /> */}
+              />
             </Labeled>
           </div>
 
