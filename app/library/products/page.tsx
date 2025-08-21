@@ -111,7 +111,7 @@ export default function ProductsPage() {
       tags: product.tags,
       url: undefined,
     };
-    setSelected(productDetails);
+    setSelected(product);
     setSheetOpen(true);
   }, []);
 
