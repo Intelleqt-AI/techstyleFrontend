@@ -241,7 +241,11 @@ export default function ProjectSettingsPage() {
               />
             )}
             {selected === 'preferences' && (
-              <PreferencesForm value={onboardingData} onChange={setOnboardingData} onSave={p => handleSave('preferences', p)} />
+              <PreferencesForm
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
+                onSave={p => handleSave('preferences', p)}
+              />
             )}
             {selected === 'team' && (
               <TeamForm
@@ -252,8 +256,8 @@ export default function ProjectSettingsPage() {
             )}
             {selected === 'phases' && (
               <PhasesForm
-                value={projectData}
-                onChange={data => setProjectData({ ...projectData, ...data })}
+                value={selectedProject}
+                onChange={data => setSelectedProject({ ...selectedProject, ...data })}
                 onSave={p => handleSave('phases', p)}
               />
             )}
@@ -772,19 +776,8 @@ function PreferencesForm({
           <Input
             className="mt-1"
             placeholder="modern, warm minimalism"
-            value={(value.preferencesConsent.styleTags ?? []).join(', ')}
-            onChange={e =>
-              onChange({
-                ...value,
-                preferencesConsent: {
-                  ...value.preferencesConsent,
-                  styleTags: e.target.value
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean),
-                },
-              })
-            }
+            value={value?.preferences?.styleTags ?? ''}
+            onChange={e => onChange({ ...value, preferences: { ...value?.preferences, styleTags: e.target.value } })}
           />
         </div>
         <div>
@@ -792,38 +785,19 @@ function PreferencesForm({
           <Input
             className="mt-1"
             placeholder="Vendor A, Vendor B"
-            value={(value.preferencesConsent.preferredVendors ?? []).join(', ')}
-            onChange={e =>
-              onChange({
-                ...value,
-                preferencesConsent: {
-                  ...value.preferencesConsent,
-                  preferredVendors: e.target.value
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(Boolean),
-                },
-              })
-            }
+            value={value?.preferences?.preferredVendors ?? ' '}
+            onChange={e => onChange({ ...value, preferences: { ...value?.preferences, preferredVendors: e.target.value } })}
           />
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Switch
-              checked={!!value.preferencesConsent.consents?.marketing}
-              onCheckedChange={v =>
-                onChange({
-                  ...value,
-                  preferencesConsent: {
-                    ...value.preferencesConsent,
-                    consents: { ...value.preferencesConsent.consents, marketing: v },
-                  },
-                })
-              }
+              checked={!!value?.preferences?.consents}
+              onCheckedChange={v => onChange({ ...value, preferences: { ...value?.preferences, consents: v } })}
             />
             <span className="text-sm">Marketing opt‑in</span>
           </div>
-          <div className="flex items-center gap-3 text-sm">
+          {/* <div className="flex items-center gap-3 text-sm">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -848,7 +822,7 @@ function PreferencesForm({
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={!!value.preferencesConsent.consents?.privacy}
+                // checked={!!value.preferencesConsent.consents?.privacy}
                 onChange={e =>
                   onChange({
                     ...value,
@@ -866,10 +840,10 @@ function PreferencesForm({
                 </a>
               </span>
             </label>
-          </div>
+          </div> */}
         </div>
         <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.preferencesConsent)}>Save</Button>
+          <Button onClick={() => onSave(value)}>Save</Button>
         </div>
       </CardContent>
     </Card>
