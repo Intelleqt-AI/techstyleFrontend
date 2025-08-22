@@ -22,6 +22,8 @@ import {
 import { TypeChip } from "@/components/chip";
 import { useQuery } from "@tanstack/react-query";
 import { getContact } from "@/supabase/API";
+import { ContactDetailSheet } from "@/components/contact-details";
+import { ContactFormModal } from "@/components/create-contact-modal";
 
 // const contacts = [
 //   {
@@ -71,6 +73,9 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [filterContact, setFilterContact] = useState([]);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
   const {
     data: contactData,
@@ -89,15 +94,24 @@ export default function ContactsPage() {
       c.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenSheet = (contact) => {
+    setSheetOpen(true);
+    setSelected(contact);
+  };
+  const handleOpenContactFrom = (contact) => {
+    setContactModalOpen(true);
+    setSelected(contact);
+  };
+
   useEffect(() => {
     if (!taskLoading && contactData) {
       setContacts(contactData.data);
     }
   }, [taskLoading, contactData]);
 
-  // useEffect(() => {
-  //   console.log(contactData);
-  // }, [contactData]);
+  useEffect(() => {
+    console.log(contactData);
+  }, [contactData]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -127,7 +141,10 @@ export default function ContactsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
+            <Button
+              size="sm"
+              className="gap-2 bg-gray-900 hover:bg-gray-800"
+              onClick={() => setContactModalOpen(true)}>
               <Plus className="w-4 h-4" />
               Add Contact
             </Button>
@@ -238,10 +255,28 @@ export default function ContactsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>Send Email</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenSheet(contact)}>
+                            View Profile
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (contact?.email) {
+                                window.location.href = `mailto:${contact.email}`;
+                              } else {
+                                alert(
+                                  "No email address available for this contact."
+                                );
+                              }
+                            }}>
+                            Send Email
+                          </DropdownMenuItem>
                           <DropdownMenuItem>Schedule Meeting</DropdownMenuItem>
                           <DropdownMenuItem>Add Note</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenContactFrom(contact)}>
+                            Edit Contact
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -252,6 +287,17 @@ export default function ContactsPage() {
           </div>
         </div>
       </div>
+      <ContactDetailSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        contact={selected}
+      />
+
+      <ContactFormModal
+        open={contactModalOpen}
+        onOpenChange={setContactModalOpen}
+        contact={selected}
+      />
     </div>
   );
 }
