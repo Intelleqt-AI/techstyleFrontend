@@ -14,6 +14,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import errorImage from '/public/product-placeholder-wp.jpg';
 
 const procurementItems: ProcurementItem[] = [
   {
@@ -263,6 +264,7 @@ const ProcurementTable = ({
   };
 
   const handleChangeSample = (item, status, roomID) => {
+    console.log('hello', item, status, roomID);
     const { matchedProduct, ...updatedProduct } = { ...item, sample: status };
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
@@ -411,20 +413,20 @@ const ProcurementTable = ({
                   );
                 })}
 
-              {groupedItems?.type?.map((item, index) => (
+              {groupedItems?.type?.map((items, index) => (
                 <>
-                  {item?.product?.length > 0 && (
-                    <TableRow key={item.text}>
+                  {items?.product?.length > 0 && (
+                    <TableRow key={items.text}>
                       <TableCell colSpan={5} className="font-medium capitalize   sticky left-0 bg-white  z-10  text-[16px] ">
-                        {item.text}
+                        {items.text}
                         <span className="text-[12px] ml-1 bg-gray-100 font-medium px-2 py-1 rounded-2xl">
-                          {item?.product?.length} items
+                          {items?.product?.length} items
                         </span>
                       </TableCell>
                     </TableRow>
                   )}
 
-                  {(clientApprove ? item?.product?.filter(item => item.status === 'approved') : item.product)?.map((item, index) => {
+                  {(clientApprove ? items?.product?.filter(item => item.status === 'approved') : items.product)?.map((item, index) => {
                     return (
                       <tr key={item.id} className="hover:bg-neutral-50">
                         <td className="px-4 py-3">
@@ -452,8 +454,10 @@ const ProcurementTable = ({
                                   alt={item?.matchedProduct?.name}
                                   className="w-full h-full object-cover"
                                 />
-                              ) : (
+                              ) : item?.matchedProduct?.images.length > 0 ? (
                                 <img src={item?.matchedProduct?.images[0]} alt={item?.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <img src={errorImage.src} height={200} width={200} className=" object-cover max-w-[50px] rounded-xl" />
                               )}
                             </button>
                             <div className="flex-1 min-w-0">
@@ -484,7 +488,7 @@ const ProcurementTable = ({
                           })}
                         </td>
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          <Select value={item?.sample} onValueChange={value => handleChangeSample(item, value, item.id)}>
+                          <Select value={item?.sample} onValueChange={value => handleChangeSample(item, value, items.id)}>
                             <SelectTrigger className="">
                               <SelectValue placeholder={item?.sample || 'Select'} />
                             </SelectTrigger>
@@ -507,7 +511,7 @@ const ProcurementTable = ({
                             type="text"
                             defaultValue={item.qty}
                             placeholder={item.qty}
-                            onBlur={e => debouncedHandleQtyChange(item, e.target.value, item.id)}
+                            onBlur={e => debouncedHandleQtyChange(item, e.target.value, items.id)}
                           />
                         </td>
                         <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item.price}>
