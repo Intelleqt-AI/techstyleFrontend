@@ -731,7 +731,7 @@ export default function InboxPage() {
               <h3 className="text-sm font-medium text-gray-900">Recent Messages</h3>
             </div>
 
-            <div className="overflow-y-auto h-full">
+            <div className="overflow-y-scroll h-full pb-12">
               <div className="divide-y divide-gray-100">
                 {emails?.length > 0 &&
                   emails.map(message => (
@@ -1065,7 +1065,7 @@ export default function InboxPage() {
                               </div>
                             </div>
                             <iframe
-                              className="h-full min-h-[600px] max-h-fit"
+                              className="h-full min-h-[300px] max-h-fit"
                               style={{ width: '100%', border: 'none' }}
                               srcDoc={getEmailBody(item.payload)}
                             />
