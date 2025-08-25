@@ -221,7 +221,7 @@ export default function InboxPage() {
   const [newMessage, setNewMessage] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [currentTab, setCurrentTab] = useState('Inbox');
-  const [filter, setFilter] = useState(false);
+  const [filter, setFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [isReply, setIsReply] = useState(false);
   const [reply, setReply] = useState('');
@@ -263,10 +263,10 @@ export default function InboxPage() {
   });
 
   // Get Project
-  const { data: project, isLoading: ProjectLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => fetchProjects(),
-  });
+  // const { data: project, isLoading: ProjectLoading } = useQuery({
+  //   queryKey: ['projects'],
+  //   queryFn: () => fetchProjects(),
+  // });
 
   useEffect(() => {
     if (contactLoading) {
@@ -296,19 +296,21 @@ export default function InboxPage() {
 
   // Filter read , unread, send , inbox
   useEffect(() => {
-    let result = [];
-    if (currentTab === 'Inbox' && !isLoading) {
-      result = inboxEmails;
-    } else if (currentTab === 'Sent' && !sentEmailLoading) {
-      result = sentEmails;
-    }
+    let result = inboxEmails;
+    // if (currentTab === 'all' && !isLoading) {
+    //   result = inboxEmails;
+    // }
+
+    // else if (currentTab === 'Sent' && !sentEmailLoading) {
+    //   result = sentEmails;
+    // }
     //  else if (currentTab == 'Drafts' && !draftEmailLoading) {
     //   result = draftEmails;
     // }
 
-    if (filter) {
-      result = result.filter(item => item.labelIds?.includes('UNREAD'));
-    }
+    // if (filter) {
+    //   result = result.filter(item => item.labelIds?.includes('UNREAD'));
+    // }
 
     if (searchText.trim()) {
       const lower = searchText.toLowerCase();
@@ -321,7 +323,7 @@ export default function InboxPage() {
     }
 
     setEmails(result);
-  }, [currentTab, filter, searchText, inboxEmails, sentEmails, isLoading, sentEmailLoading]);
+  }, [searchText, inboxEmails, isLoading]);
 
   // Initialize Google Identity Services
   useEffect(() => {
@@ -449,7 +451,7 @@ export default function InboxPage() {
     } catch (err) {
       signOut();
       setError(`Profile loading error: ${err.message}`);
-      window.location.href = '/settings/integration';
+      window.location.href = '/settings/studio/integrations';
     }
   };
 
@@ -506,10 +508,10 @@ export default function InboxPage() {
         'Content-Type: text/plain; charset="UTF-8"',
         'MIME-Version: 1.0',
         'Content-Transfer-Encoding: 7bit',
-        `To: ${getEmailAddressFromHeader(selectedMessage.payload.headers, 'From')}`,
-        `Subject: ${getEmailHeader(selectedMessage.payload.headers, 'Subject')}`,
-        `In-Reply-To: ${getEmailHeader(selectedMessage.payload.headers, 'Message-ID')}`,
-        `References: ${getEmailHeader(selectedMessage.payload.headers, 'Message-ID')}`,
+        `To: ${selectedMessage?.from?.email}`,
+        `Subject: ${selectedMessage?.subject}`,
+        `In-Reply-To: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
+        `References: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
         '',
         reply,
       ].join('\n');
@@ -524,7 +526,7 @@ export default function InboxPage() {
         },
         body: JSON.stringify({
           raw: rawMessage,
-          threadId: selectedMessage?.threadId,
+          threadId: selectedMessage?.id,
         }),
       });
 
@@ -603,20 +605,23 @@ export default function InboxPage() {
   };
 
   const filteredMessages = useMemo(() => {
-    switch (filter) {
-      case 'mentions':
-        return messages.filter(m => m.type === 'mention');
-      case 'system':
-        return messages.filter(m => m.type === 'system');
-      case 'emails':
-        return messages.filter(m => m.type === 'email');
-      case 'ai-notes':
-        return messages.filter(m => m.type === 'ai-note');
-      case 'all':
-      default:
-        return messages;
-    }
+    return messages;
+    // switch (filter) {
+    //   case 'mentions':
+    //     return messages.filter(m => m.type === 'mention');
+    //   case 'system':
+    //     return messages.filter(m => m.type === 'system');
+    //   case 'emails':
+    //     return messages.filter(m => m.type === 'email');
+    //   case 'ai-notes':
+    //     return messages.filter(m => m.type === 'ai-note');
+    //   case 'all':
+    //   default:
+    //     return messages;
+    // }
   }, [filter]);
+
+  console.log(selectedMessage);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -626,48 +631,67 @@ export default function InboxPage() {
         {/* Header with filters, search, and actions */}
         <div className="flex items-center justify-between">
           {/* Left: Filter buttons */}
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
-              variant="ghost"
+              variant={filter == 'all' ? 'default' : 'outline'}
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'all' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'all' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={
+                filter == 'all'
+                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
+                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
+              }
               onClick={() => setFilter('all')}
             >
               All
             </Button>
+
             <Button
-              variant="ghost"
+              variant={filter == 'mentions' ? 'default' : 'outline'}
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'mentions' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'mentions' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={
+                filter == 'mentions'
+                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
+                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
+              }
               onClick={() => setFilter('mentions')}
             >
               Mentions
             </Button>
+
             <Button
-              variant="ghost"
+              variant={filter == 'system' ? 'default' : 'outline'}
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'system' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'system' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={
+                filter == 'system'
+                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
+                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
+              }
               onClick={() => setFilter('system')}
             >
               System
             </Button>
+
             <Button
-              variant="ghost"
+              variant={filter == 'emails' ? 'default' : 'outline'}
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'emails' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'emails' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={
+                filter == 'emails'
+                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
+                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
+              }
               onClick={() => setFilter('emails')}
             >
               Emails
             </Button>
+
             <Button
-              variant="ghost"
+              variant={filter == 'ai-notes' ? 'default' : 'outline'}
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'ai-notes' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'ai-notes' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={
+                filter == 'ai-notes'
+                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
+                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
+              }
               onClick={() => setFilter('ai-notes')}
             >
               AI Notes
@@ -715,7 +739,7 @@ export default function InboxPage() {
                       key={message.id}
                       onClick={() => setSelectedMessage(message)}
                       className={`flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                        message.unread ? 'bg-[#FBEAE1]' : ''
+                        message?.labelIds?.includes('UNREAD') ? 'bg-[#FBEAE1]' : ''
                       } ${selectedMessage?.id === message.id ? 'bg-gray-100' : ''}`}
                     >
                       {/* Unread indicator */}
@@ -741,8 +765,8 @@ export default function InboxPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-medium text-gray-900 w-full truncate text-sm">
-                            {/* {getSenderName(message.payload.headers, `${currentTab == 'all' ? 'From' : 'To'}`)} */}
-                            {getEmailHeader(message?.payload?.headers, 'Subject')}
+                            {message?.subject}
+                            {/* {getEmailHeader(message?.payload?.headers, 'Subject')} */}
                           </span>
 
                           {/* Type badges (neutral/brand-aligned) */}
@@ -764,8 +788,8 @@ export default function InboxPage() {
                               Comment
                             </Badge>
                           )} */}
-                          <div className="flex items-center flex-shrink-0 gap-2">
-                            <Badge variant="outline" className="text-gray-600 border-gray-300 bg-transparent text-xs">
+                          <div className="flex items-center  flex-shrink-0 gap-2">
+                            <Badge variant="outline" className="text-gray-600 bg-white border-gray-300 text-xs">
                               <Mail className="w-3 h-3 mr-1" />
                               Email
                             </Badge>
@@ -797,16 +821,16 @@ export default function InboxPage() {
 
                         {/* Subject (if email) + snippet/message */}
                         <p className="text-gray-700 text-sm mb-2 line-clamp-2">
-                          <span className="font-medium"> {getEmailHeader(message?.payload?.headers, 'Subject')} — </span>
+                          {/* <span className="font-medium"> {getEmailHeader(message?.payload?.headers, 'Subject')}</span> */}
 
                           {/* {message.noteTitle ? <span className="font-medium">{message.noteTitle}: </span> : null} */}
                           {message?.snippet}
                         </p>
 
                         {/* Project line (kept neutral) */}
-                        {/* <div className="text-xs text-gray-500">
-                          Project: <span className="font-medium text-gray-700">{message.project}</span>
-                        </div> */}
+                        <div className="text-xs text-gray-500">
+                          Project: <span className="font-medium text-gray-700">{message?.project}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -842,11 +866,11 @@ export default function InboxPage() {
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {<span className="font-medium"> {getEmailHeader(selectedMessage?.payload?.headers, 'Subject')}</span>}(
-                        {getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)})
+                        {<span className="font-medium"> {selectedMessage?.subject}</span>}
+                        {/* {getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)}) */}
                       </h3>
                       {/* <p className="text-sm text-gray-500">{selectedMessage.project}</p> */}
-                      <p className="text-sm text-gray-500">{getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)})</p>
+                      <p className="text-sm text-gray-500">{selectedMessage?.from?.email}</p>
                     </div>
                   </div>
 
@@ -1016,12 +1040,38 @@ export default function InboxPage() {
                         </div>
                       ))} */}
 
-                      <iframe
-                        className="h-full"
-                        sandbox=""
-                        style={{ width: '100%', border: 'none', minHeight: '600px' }}
-                        srcDoc={getEmailBody(selectedMessage.payload)}
-                      />
+                      {selectedMessage?.messages?.map(item => {
+                        return (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-7 h-7 flex items-center justify-center bg-gray-200 rounded-full">
+                                <span className="uppercase">
+                                  {item?.labelIds?.includes('SENT')
+                                    ? item?.to?.name
+                                      ? item?.to?.email[0]
+                                      : item?.to?.email[0]
+                                    : item?.from?.email
+                                    ? item?.from?.email[0]
+                                    : item?.from?.email[0]}
+                                </span>
+                              </div>
+                              <div>
+                                <p className=' flex items-center gap-2 text-gray-900 w-full truncate text-sm"'>
+                                  <span className="text-sm font-medium">{item?.labelIds?.includes('SENT') ? 'You' : item?.from?.name}</span>
+                                  <span className="text-sm opacity-55">
+                                    <span className="text-xs">{dayjs(Number(item?.internalDate)).fromNow()}</span>
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <iframe
+                              className="h-full min-h-[600px] max-h-fit"
+                              style={{ width: '100%', border: 'none' }}
+                              srcDoc={getEmailBody(item.payload)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Reply Input */}
