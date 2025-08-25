@@ -1671,6 +1671,7 @@ export const updateProjectClientDocs = async ({ projectID, newDocs }) => {
 
 // Update product for procurement
 export const updateProductProcurement = async ({ product, projectID, roomID }) => {
+  console.log(product, projectID, roomID);
   try {
     // Step 1: Find the project by projectID
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
