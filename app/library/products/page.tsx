@@ -73,6 +73,7 @@ export default function ProductsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState([]);
 
   const itemsPerPage = 12;
   const queryClient = useQueryClient();
@@ -206,13 +207,18 @@ export default function ProductsPage() {
     }
   };
 
+  const handleSelectProduct = (product) => {
+    setSelectedProduct(product);
+    setAddProductModalOpen(true);
+  };
+
   // useEffect(() => {
   //   console.log(products.find((product) => product?.type));
   // }, [products]);
 
-  useEffect(() => {
-    console.log(types.type);
-  }, [types]);
+  // useEffect(() => {
+  //   console.log(selectedProduct);
+  // }, [selectedProduct]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -347,12 +353,33 @@ export default function ProductsPage() {
                         className="h-8 w-8 bg-white/90 p-0 hover:bg-white">
                         <Heart className="h-4 w-4" />
                       </Button>
-                      <Button
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 bg-white/90 p-0 hover:bg-white"
+                            aria-label={`Open actions for`}>
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => openDetails(product)}>
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleSelectProduct(product)}>
+                            Edit Product
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {/* <Button
                         size="sm"
                         variant="secondary"
                         className="h-8 w-8 bg-white/90 p-0 hover:bg-white">
                         <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                     </div>
 
                     {/* Stock Status */}
@@ -523,6 +550,7 @@ export default function ProductsPage() {
         closeModal={() => setAddProductModalOpen(false)}
         modalOpen={addProductmodalOpen}
         onAddProduct={handleAddProduct}
+        selectedProduct={selectedProduct}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { addProduct, uploadDoc } from "@/supabase/API";
+import { addProduct, updateProductApi, uploadDoc } from "@/supabase/API";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -74,11 +74,12 @@ const initial = {
   initialStatus: "Draft",
 };
 
-const AddProductModal = ({ closeModal, modalOpen }) => {
+const AddProductModal = ({ closeModal, modalOpen, selectedProduct }) => {
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
   const [product, setProduct] = useState(initial);
+
   const [open, setOpen] = useState(false);
 
   const {
@@ -162,12 +163,13 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
 
   // Create Product
   const mutation = useMutation({
-    mutationFn: addProduct,
+    mutationFn: product ? updateProductApi : addProduct,
     onSuccess: () => {
       queryClient.refetchQueries(["GetAllProduct"]);
       toast("Product Added");
       closeModal();
       setProduct(initial);
+      toast(product ? "Product Updated" : "Product Added");
     },
     onError: () => {
       toast("Error! Try again");
@@ -258,7 +260,7 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
   };
 
   useEffect(() => {
-    if (product.id.length < 1) {
+    if (product?.id?.length < 1) {
       const id = uuidv1();
       setProduct((prev) => ({ ...prev, id }));
     }
@@ -269,9 +271,22 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
     mutate({ url: fetchUrl });
   };
 
-  // useEffect(() => {
-  //   console.log(loadingClient);
-  // }, [loadingClient]);
+  useEffect(() => {
+    if (selectedProduct) {
+      // Only keep keys from `initial`
+      const filtered = Object.keys(initial).reduce((acc, key) => {
+        acc[key] = selectedProduct[key] ?? initial[key];
+        return acc;
+      }, {});
+      setProduct(filtered);
+    } else {
+      setProduct(initial);
+    }
+  }, [selectedProduct]);
+
+  useEffect(() => {
+    console.log(selectedProduct);
+  }, [selectedProduct]);
 
   return (
     <AnimatePresence>
@@ -325,7 +340,7 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
                           product?.name?.length < 1 &&
                           "cursor-not-allowed opacity-40"
                         } rounded-[8px] bg-black px-4 py-2 text-white`}>
-                        Save Product
+                        {product ? "Update Product" : "Save Product"}
                       </button>
                       <button
                         onClick={afterCloseModal}
