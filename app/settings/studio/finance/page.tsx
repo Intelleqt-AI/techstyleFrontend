@@ -1,25 +1,25 @@
-"use client"
+'use client';
 
-import { useActionState } from "react"
-import { saveSettings } from "@/app/settings/actions"
-import { Section } from "@/components/settings/section"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { saveSettings } from '@/app/settings/actions';
+import { Section } from '@/components/settings/section';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { useActionState } from '@/hooks/useActionState';
 
 const currencies = [
-  { code: "USD", label: "US Dollar (USD)" },
-  { code: "EUR", label: "Euro (EUR)" },
-  { code: "GBP", label: "British Pound (GBP)" },
-  { code: "CAD", label: "Canadian Dollar (CAD)" },
-  { code: "AUD", label: "Australian Dollar (AUD)" },
-]
+  { code: 'USD', label: 'US Dollar (USD)' },
+  { code: 'EUR', label: 'Euro (EUR)' },
+  { code: 'GBP', label: 'British Pound (GBP)' },
+  { code: 'CAD', label: 'Canadian Dollar (CAD)' },
+  { code: 'AUD', label: 'Australian Dollar (AUD)' },
+];
 
 export default function StudioFinancePage() {
-  const { toast } = useToast()
-  const [state, formAction, pending] = useActionState(saveSettings as any, null)
+  const { toast } = useToast();
+  const [state, formAction, pending] = useActionState(saveSettings as any, null);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -30,10 +30,10 @@ export default function StudioFinancePage() {
 
       <Section title="Defaults" description="Set your studio-wide financial defaults.">
         <form
-          action={async (fd) => {
-            fd.set("section", "Finance")
-            const res = await (formAction as any)(fd)
-            if (res?.success) toast({ title: "Saved", description: "Finance settings updated." })
+          action={async fd => {
+            fd.set('section', 'Finance');
+            const res = await (formAction as any)(fd);
+            if (res?.success) toast({ title: 'Saved', description: 'Finance settings updated.' });
           }}
           className="grid gap-6 sm:grid-cols-2"
         >
@@ -44,7 +44,7 @@ export default function StudioFinancePage() {
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
               <SelectContent>
-                {currencies.map((c) => (
+                {currencies.map(c => (
                   <SelectItem key={c.code} value={c.code}>
                     {c.label}
                   </SelectItem>
@@ -74,10 +74,10 @@ export default function StudioFinancePage() {
           </div>
 
           <div className="sm:col-span-2 flex justify-end">
-            <Button disabled={pending}>{pending ? "Saving..." : "Save finance settings"}</Button>
+            <Button disabled={pending}>{pending ? 'Saving...' : 'Save finance settings'}</Button>
           </div>
         </form>
       </Section>
     </div>
-  )
+  );
 }

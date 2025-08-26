@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <SidebarProvider defaultOpen={true}>
                 <div className="flex min-h-screen w-full bg-white">
                   <AppSidebar />
-                  <div className="flex-1 flex flex-col min-w-0 bg-white">
+                  <div className="flex-1 h-screen flex flex-col min-w-0 bg-white">
                     <Toaster closeButton visibleToasts={3} duration={2000} position="bottom-right" />
                     <TopBar />
                     <main className="flex-1 bg-gray-50 overflow-auto">{children}</main>

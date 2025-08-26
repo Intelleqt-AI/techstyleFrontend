@@ -1671,7 +1671,6 @@ export const updateProjectClientDocs = async ({ projectID, newDocs }) => {
 
 // Update product for procurement
 export const updateProductProcurement = async ({ product, projectID, roomID }) => {
-  console.log(product, projectID, roomID);
   try {
     // Step 1: Find the project by projectID
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
@@ -1882,5 +1881,98 @@ export const fetchContacts = async () => {
   } else {
     console.error('Failed to load contacts:', data.error);
     return [];
+  }
+};
+
+// API endpoint to add email to project
+export const addProjectEmail = async ({ projectID, emailData }) => {
+  try {
+    // Validate required parameters
+    if (!projectID) {
+      throw new Error('Project ID is required');
+    }
+    if (!emailData) {
+      throw new Error('Email data is required');
+    }
+
+    // First, fetch the current project to get existing emails
+    const { data: currentProject, error: fetchError } = await supabase.from('Project').select('emails').eq('id', projectID).single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch project: ${fetchError.message}`);
+    }
+
+    if (!currentProject) {
+      throw new Error('Project not found');
+    }
+
+    // Get existing emails array or initialize as empty array
+    const existingEmails = currentProject.emails || [];
+    // Add the new email data to the existing emails array
+    const updatedEmails = [...existingEmails, emailData];
+
+    // Update the project with the new emails array
+    const { data: updatedProject, error: updateError } = await supabase
+      .from('Project')
+      .update({ emails: updatedEmails })
+      .eq('id', projectID)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error(`Failed to update project: ${updateError.message}`);
+    }
+
+    return {
+      success: true,
+      project: updatedProject,
+      message: 'Email added to project successfully',
+    };
+  } catch (error) {
+    console.error('Error adding email to project:', error);
+    return {
+      success: false,
+      error: error.message,
+      project: null,
+    };
+  }
+};
+
+// API endpoint to fetch emails from a project
+export const fetchProjectEmails = async ({ projectID }) => {
+  try {
+    // Validate required parameters
+    if (!projectID) {
+      throw new Error('Project ID is required');
+    }
+
+    // Fetch the project with only the emails field
+    const { data: project, error } = await supabase.from('Project').select('emails').eq('id', projectID).single();
+
+    if (error) {
+      throw new Error(`Failed to fetch project emails: ${error.message}`);
+    }
+
+    if (!project) {
+      throw new Error('Project not found');
+    }
+
+    // Return the emails array (or empty array if no emails)
+    const emails = project.emails || [];
+
+    return {
+      success: true,
+      emails: emails,
+      count: emails.length,
+      message: 'Emails fetched successfully',
+    };
+  } catch (error) {
+    console.error('Error fetching project emails:', error);
+    return {
+      success: false,
+      error: error.message,
+      emails: [],
+      count: 0,
+    };
   }
 };
