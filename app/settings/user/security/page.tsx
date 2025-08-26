@@ -1,18 +1,18 @@
-"use client"
+'use client';
 
-import { useActionState } from "react"
-import { saveSettings } from "@/app/settings/actions"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Section } from "@/components/settings/section"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
+import { saveSettings } from '@/app/settings/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Section } from '@/components/settings/section';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import { useActionState } from '@/hooks/useActionState';
 
 export default function UserSecurityPage() {
-  const { toast } = useToast()
-  const [state, formAction, pending] = useActionState(saveSettings as any, null)
+  const { toast } = useToast();
+  const [state, formAction, pending] = useActionState(saveSettings as any, null);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -23,10 +23,10 @@ export default function UserSecurityPage() {
 
       <Section title="Password" description="Use a strong password you don’t reuse elsewhere.">
         <form
-          action={async (fd) => {
-            fd.set("section", "Password")
-            const res = await (formAction as any)(fd)
-            if (res?.success) toast({ title: "Saved", description: "Password updated." })
+          action={async fd => {
+            fd.set('section', 'Password');
+            const res = await (formAction as any)(fd);
+            if (res?.success) toast({ title: 'Saved', description: 'Password updated.' });
           }}
           className="grid gap-4 sm:grid-cols-2"
         >
@@ -43,17 +43,17 @@ export default function UserSecurityPage() {
             <Input id="confirm" name="confirm" type="password" />
           </div>
           <div className="sm:col-span-2 flex justify-end">
-            <Button disabled={pending}>{pending ? "Saving..." : "Update password"}</Button>
+            <Button disabled={pending}>{pending ? 'Saving...' : 'Update password'}</Button>
           </div>
         </form>
       </Section>
 
       <Section title="Two-factor authentication" description="Add an extra layer of security to your account.">
         <form
-          action={async (fd) => {
-            fd.set("section", "Two-factor authentication")
-            const res = await (formAction as any)(fd)
-            if (res?.success) toast({ title: "Saved", description: "2FA preference updated." })
+          action={async fd => {
+            fd.set('section', 'Two-factor authentication');
+            const res = await (formAction as any)(fd);
+            if (res?.success) toast({ title: 'Saved', description: '2FA preference updated.' });
           }}
           className="space-y-4"
         >
@@ -72,7 +72,7 @@ export default function UserSecurityPage() {
             <Switch name="sms_backup" />
           </div>
           <div className="flex justify-end">
-            <Button disabled={pending}>{pending ? "Saving..." : "Save 2FA settings"}</Button>
+            <Button disabled={pending}>{pending ? 'Saving...' : 'Save 2FA settings'}</Button>
           </div>
         </form>
       </Section>
@@ -90,9 +90,9 @@ export default function UserSecurityPage() {
             </TableHeader>
             <TableBody>
               {[
-                { device: "MacBook Pro • Safari", loc: "New York, US", last: "2 mins ago" },
-                { device: "iPhone 15 • Mobile Safari", loc: "New York, US", last: "Yesterday" },
-              ].map((s) => (
+                { device: 'MacBook Pro • Safari', loc: 'New York, US', last: '2 mins ago' },
+                { device: 'iPhone 15 • Mobile Safari', loc: 'New York, US', last: 'Yesterday' },
+              ].map(s => (
                 <TableRow key={s.device}>
                   <TableCell className="font-medium">{s.device}</TableCell>
                   <TableCell>{s.loc}</TableCell>
@@ -109,5 +109,5 @@ export default function UserSecurityPage() {
         </div>
       </Section>
     </div>
-  )
+  );
 }

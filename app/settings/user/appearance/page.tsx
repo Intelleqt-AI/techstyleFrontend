@@ -1,17 +1,17 @@
-"use client"
+'use client';
 
-import { useActionState } from "react"
-import { saveSettings } from "@/app/settings/actions"
-import { Section } from "@/components/settings/section"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useToast } from "@/hooks/use-toast"
+import { saveSettings } from '@/app/settings/actions';
+import { Section } from '@/components/settings/section';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
+import { useActionState } from '@/hooks/useActionState';
 
 export default function UserAppearancePage() {
-  const { toast } = useToast()
-  const [state, formAction, pending] = useActionState(saveSettings as any, null)
+  const { toast } = useToast();
+  const [state, formAction, pending] = useActionState(saveSettings as any, null);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -22,10 +22,10 @@ export default function UserAppearancePage() {
 
       <Section title="Interface" description="Personalize how the app looks for you.">
         <form
-          action={async (fd) => {
-            fd.set("section", "Appearance")
-            const res = await (formAction as any)(fd)
-            if (res?.success) toast({ title: "Saved", description: "Appearance updated." })
+          action={async fd => {
+            fd.set('section', 'Appearance');
+            const res = await (formAction as any)(fd);
+            if (res?.success) toast({ title: 'Saved', description: 'Appearance updated.' });
           }}
           className="grid gap-6 sm:grid-cols-2"
         >
@@ -63,10 +63,10 @@ export default function UserAppearancePage() {
           </div>
 
           <div className="sm:col-span-2 flex justify-end">
-            <Button disabled={pending}>{pending ? "Saving..." : "Save appearance"}</Button>
+            <Button disabled={pending}>{pending ? 'Saving...' : 'Save appearance'}</Button>
           </div>
         </form>
       </Section>
     </div>
-  )
+  );
 }

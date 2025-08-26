@@ -1,17 +1,18 @@
-"use client"
+'use client';
 
-import { Section } from "@/components/settings/section"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { useActionState } from "react"
-import { saveSettings } from "@/app/settings/actions"
-import { useToast } from "@/hooks/use-toast"
-import Image from "next/image"
+import { Section } from '@/components/settings/section';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+import { saveSettings } from '@/app/settings/actions';
+import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
+import { useActionState } from '@/hooks/useActionState';
 
 export default function StudioBrandingPage() {
-  const { toast } = useToast()
-  const [state, formAction, pending] = useActionState(saveSettings as any, null)
+  const { toast } = useToast();
+  const [state, formAction, pending] = useActionState(saveSettings as any, null);
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -22,10 +23,10 @@ export default function StudioBrandingPage() {
 
       <Section title="Logos" description="Upload your primary and monochrome logos.">
         <form
-          action={async (fd) => {
-            fd.set("section", "Branding")
-            const res = await (formAction as any)(fd)
-            if (res?.success) toast({ title: "Saved", description: "Branding updated." })
+          action={async fd => {
+            fd.set('section', 'Branding');
+            const res = await (formAction as any)(fd);
+            if (res?.success) toast({ title: 'Saved', description: 'Branding updated.' });
           }}
           className="grid gap-6 sm:grid-cols-2"
         >
@@ -33,12 +34,7 @@ export default function StudioBrandingPage() {
             <Label>Primary logo</Label>
             <div className="flex items-center gap-4">
               <div className="relative h-16 w-16 overflow-hidden rounded-md border border-gray-200 bg-white">
-                <Image
-                  src="/placeholder.svg?height=64&width=64"
-                  alt="Primary logo"
-                  fill
-                  className="object-contain p-2"
-                />
+                <Image src="/placeholder.svg?height=64&width=64" alt="Primary logo" fill className="object-contain p-2" />
               </div>
               <Input type="file" accept="image/*" />
             </div>
@@ -48,12 +44,7 @@ export default function StudioBrandingPage() {
             <Label>Monochrome logo</Label>
             <div className="flex items-center gap-4">
               <div className="relative h-16 w-16 overflow-hidden rounded-md border border-gray-200 bg-white">
-                <Image
-                  src="/placeholder.svg?height=64&width=64"
-                  alt="Monochrome logo"
-                  fill
-                  className="object-contain p-2"
-                />
+                <Image src="/placeholder.svg?height=64&width=64" alt="Monochrome logo" fill className="object-contain p-2" />
               </div>
               <Input type="file" accept="image/*" />
             </div>
@@ -69,10 +60,10 @@ export default function StudioBrandingPage() {
           </div>
 
           <div className="sm:col-span-2 flex justify-end">
-            <Button disabled={pending}>{pending ? "Saving..." : "Save branding"}</Button>
+            <Button disabled={pending}>{pending ? 'Saving...' : 'Save branding'}</Button>
           </div>
         </form>
       </Section>
     </div>
-  )
+  );
 }

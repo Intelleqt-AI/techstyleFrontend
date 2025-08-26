@@ -38,6 +38,7 @@ import {
 } from '@/supabase/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import EmailIframe from '@/components/inbox/EmailIframe';
 
 // extend once in your app (e.g., in _app.tsx or a utils/date.ts file)
 dayjs.extend(relativeTime);
@@ -724,7 +725,7 @@ export default function InboxPage() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-5 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-5 gap-6 h-[calc(100vh+100px)]">
           {/* Left Column: Messages List */}
           <div className="col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-gray-100">
@@ -1064,11 +1065,12 @@ export default function InboxPage() {
                                 </p>
                               </div>
                             </div>
-                            <iframe
+                            <EmailIframe payload={item.payload} />
+                            {/* <iframe
                               className="h-full min-h-[300px] max-h-fit"
                               style={{ width: '100%', border: 'none' }}
                               srcDoc={getEmailBody(item.payload)}
-                            />
+                            /> */}
                           </div>
                         );
                       })}
@@ -1080,7 +1082,7 @@ export default function InboxPage() {
                         disabled={Ailoading}
                         onClick={() => handleAiReply()}
                         className={`
-    inline-flex items-center justify-center mb-5 ml-11 gap-2 whitespace-nowrap text-sm font-medium 
+    inline-flex items-center justify-center mb-3 ml-11 gap-2 whitespace-nowrap text-sm font-medium 
     ring-offset-background transition-all duration-300 focus-visible:outline-none 
     focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
     disabled:pointer-events-none border border-input bg-background 

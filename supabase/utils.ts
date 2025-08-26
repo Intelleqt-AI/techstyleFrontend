@@ -236,23 +236,32 @@ export const fetchDraftEmails = async ({ token }) => {
 // Emails Formatting Functions
 
 // export const getEmailBody = payload => {
-//   console.log(payload);
+//   const base64ToUtf8 = b64 => {
+//     const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+//     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+//     return new TextDecoder('utf-8').decode(bytes);
+//   };
+
 //   let body = '';
 //   if (payload?.parts) {
-//     payload.parts.forEach(part => {
-//       if (part.mimeType === 'text/html' && part.body.data) {
-//         // base64 decode first
-//         const base64Decoded = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-//         // then quoted-printable decode
-//         body = quotedPrintable.decode(base64Decoded);
-//       } else if (part.mimeType === 'text/plain' && part.body.data) {
-//         const base64Decoded = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-//         body = quotedPrintable.decode(base64Decoded);
+//     for (const part of payload.parts) {
+//       if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
+//         let decoded = base64ToUtf8(part.body.data);
+//         // Gmail sometimes uses quoted-printable, but not always
+//         try {
+//           decoded = quotedPrintable.decode(decoded);
+//         } catch (e) {
+//           // ignore if not quoted-printable
+//         }
+//         body = decoded;
 //       }
-//     });
-//   } else if (payload.body.data) {
-//     const base64Decoded = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-//     body = quotedPrintable.decode(base64Decoded);
+//     }
+//   } else if (payload?.body?.data) {
+//     let decoded = base64ToUtf8(payload.body.data);
+//     try {
+//       decoded = quotedPrintable.decode(decoded);
+//     } catch (e) {}
+//     body = decoded;
 //   }
 //   return body;
 // };
@@ -269,11 +278,10 @@ export const getEmailBody = payload => {
     for (const part of payload.parts) {
       if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
         let decoded = base64ToUtf8(part.body.data);
-        // Gmail sometimes uses quoted-printable, but not always
         try {
           decoded = quotedPrintable.decode(decoded);
         } catch (e) {
-          // ignore if not quoted-printable
+          // not quoted-printable
         }
         body = decoded;
       }
@@ -286,7 +294,32 @@ export const getEmailBody = payload => {
     body = decoded;
   }
 
-  return body;
+  return `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          html, body {
+            margin: 0;
+            padding: 0 0 0 18px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+            overflow: hidden;
+          }
+          ::-webkit-scrollbar { display: none; }
+          body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        </style>
+      </head>
+      <body>
+        ${body}
+      </body>
+    </html>
+  `;
 };
 
 export const getEmailHeader = (headers, name) => {

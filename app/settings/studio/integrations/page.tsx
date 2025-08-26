@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Section } from '@/components/settings/section';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CheckCircle2, PlugZap, ExternalLink } from 'lucide-react';
 import GmailIntegration from '@/components/settings/GmailIntegration';
+import { useState } from 'react';
 
 type Integration = {
   id: string;
