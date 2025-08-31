@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '../chip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal } from 'lucide-react';
+import { ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -15,6 +15,16 @@ import { Input } from '../ui/input';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import errorImage from '/public/product-placeholder-wp.jpg';
+import Image from 'next/image';
+import ProductImage from './ProductImage';
+import { format } from 'date-fns';
+import { ProductDetailSheet } from '../product-detail-sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+import { Separator } from '../ui/separator';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import dayjs from 'dayjs';
 
 const procurementItems: ProcurementItem[] = [
   {
@@ -171,8 +181,24 @@ const ProcurementTable = ({
 }) => {
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState(undefined);
+  const [selected, setSelected] = useState(undefined);
+  const [roomID, setRoomID] = useState(null);
   //   const navigate = useNavigate();
   const [clientApprove, setClientApprove] = useState(false);
+
+  function editProduct(item, roomID) {
+    setEditItem(item);
+    setRoomID(roomID);
+    setEditOpen(true);
+  }
+
+  function openProduct(item) {
+    setSelected(item ?? undefined);
+    setOpen(true);
+  }
 
   const handleCheckAll = e => {
     const allProducts = [];
@@ -282,7 +308,7 @@ const ProcurementTable = ({
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  const handleDueDateChange = (item, date, roomID) => {
+  const handleDueDateChange = (item, date) => {
     if (!date) {
       const { matchedProduct, ...updatedProduct } = { ...item, delivery: '' };
       mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
@@ -290,11 +316,16 @@ const ProcurementTable = ({
     }
 
     const parsedDate = dayjs(date).format('YYYY-MM-DD');
+    setEditItem(prev => ({
+      ...prev,
+      delivery: parsedDate,
+    }));
+
     const { matchedProduct, ...updatedProduct } = { ...item, delivery: parsedDate };
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  const handleInstallDateChange = (item, date, roomID) => {
+  const handleInstallDateChange = (item, date) => {
     if (!date) {
       const { matchedProduct, ...updatedProduct } = { ...item, install: '' };
       mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
@@ -302,11 +333,17 @@ const ProcurementTable = ({
     }
 
     const parsedDate = dayjs(date).format('YYYY-MM-DD');
+
+    setEditItem(prev => ({
+      ...prev,
+      install: parsedDate,
+    }));
+
     const { matchedProduct, ...updatedProduct } = { ...item, install: parsedDate };
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  const handleLeadDate = (item, date, roomID) => {
+  const handleLeadDate = (item, date) => {
     if (!date) {
       const { matchedProduct, ...updatedProduct } = { ...item, leadTime: '' };
       mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
@@ -318,33 +355,35 @@ const ProcurementTable = ({
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
+  console.log(editItem);
+
   return (
     <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full table-auto">
+          <table className="w-full table-fixed border-collapse">
             <colgroup>
-              <col style={{ width: 44 }} />
-              <col />
+              <col style={{ width: 50 }} />
               <col style={{ width: 180 }} />
-              <col style={{ width: 120 }} /> {/* PO # */}
+              <col style={{ width: 150 }} />
+              <col style={{ width: 100 }} /> {/* PO # */}
               <col style={{ width: 112 }} /> {/* Sample */}
-              <col style={{ width: 120 }} /> {/* Order Date */}
-              <col style={{ width: 120 }} /> {/* Lead Time */}
+              <col style={{ width: 110 }} /> {/* Order Date */}
+              <col style={{ width: 110 }} /> {/* Lead Time */}
               <col style={{ width: 60 }} /> {/* Qty */}
-              <col style={{ width: 120 }} /> {/* Price */}
-              <col style={{ width: 112 }} /> {/* Status */}
-              <col style={{ width: 120 }} /> {/* Approval */}
-              <col style={{ width: 64 }} /> {/* Actions */}
+              <col style={{ width: 110 }} /> {/* Price */}
+              <col style={{ width: 152 }} /> {/* Status */}
+              <col style={{ width: 90 }} /> {/* Approval */}
+              <col style={{ width: 100 }} /> {/* Actions */}
             </colgroup>
             <thead className="bg-neutral-50 border-b border-greige-500/30 sticky top-0 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">
+                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700 w-10">
                   {/* <input type="checkbox" className="rounded border-greige-500/30" aria-label="Select all items" /> */}
                   <Checkbox onCheckedChange={checked => handleCheckAll({ target: { checked } })} />
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Item</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700 w-[120px]">Dimensions</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Dimensions</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">PO #</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Sample</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Order Date</th>
@@ -416,14 +455,14 @@ const ProcurementTable = ({
               {groupedItems?.type?.map((items, index) => (
                 <>
                   {items?.product?.length > 0 && (
-                    <TableRow key={items.text}>
-                      <TableCell colSpan={5} className="font-medium capitalize   sticky left-0 bg-white  z-10  text-[16px] ">
+                    <tr key={items.text}>
+                      <TableCell colSpan={5} className="font-medium capitalize pl-16   sticky left-0 bg-white  z-10  text-[16px] ">
                         {items.text}
                         <span className="text-[12px] ml-1 bg-gray-100 font-medium px-2 py-1 rounded-2xl">
                           {items?.product?.length} items
                         </span>
                       </TableCell>
-                    </TableRow>
+                    </tr>
                   )}
 
                   {(clientApprove ? items?.product?.filter(item => item.status === 'approved') : items.product)?.map((item, index) => {
@@ -449,15 +488,23 @@ const ProcurementTable = ({
                               title={`View ${item.name}`}
                             >
                               {item?.matchedProduct?.imageURL?.length > 0 ? (
-                                <img
-                                  src={item.matchedProduct.imageURL[0]}
-                                  alt={item?.matchedProduct?.name}
-                                  className="w-full h-full object-cover"
+                                <ProductImage
+                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
+                                  alt={item?.matchedProduct?.name || 'Product image'}
+                                  src={item?.matchedProduct?.imageURL?.[0]}
                                 />
                               ) : item?.matchedProduct?.images.length > 0 ? (
-                                <img src={item?.matchedProduct?.images[0]} alt={item?.name} className="w-full h-full object-cover" />
+                                <ProductImage
+                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
+                                  alt={item?.name}
+                                  src={item?.matchedProduct?.images[0]}
+                                />
                               ) : (
-                                <img src={errorImage.src} height={200} width={200} className=" object-cover max-w-[50px] rounded-xl" />
+                                <ProductImage
+                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
+                                  alt={item?.name}
+                                  src={errorImage.src}
+                                />
                               )}
                             </button>
                             <div className="flex-1 min-w-0">
@@ -471,13 +518,9 @@ const ProcurementTable = ({
                           </div>
                         </td>
 
-                        <td
-                          className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate w-[120px]"
-                          title={item?.matchedProduct?.dimensions}
-                        >
+                        <td className="px-4 py-3 text-neutral-700 w-32 whitespace-nowrap truncate" title={item?.matchedProduct?.dimensions}>
                           {item?.matchedProduct?.dimensions}
                         </td>
-
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
                           {item?.PO?.map(po => {
                             return (
@@ -487,48 +530,19 @@ const ProcurementTable = ({
                             );
                           })}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          <Select value={item?.sample} onValueChange={value => handleChangeSample(item, value, items.id)}>
-                            <SelectTrigger className="">
-                              <SelectValue placeholder={item?.sample || 'Select'} />
-                            </SelectTrigger>
-                            <SelectContent className="">
-                              <SelectItem value={'None'}>None</SelectItem>
-                              <SelectItem value={'Requested'}>Requested</SelectItem>
-                              <SelectItem value={'Received'}>Received</SelectItem>
-                              <SelectItem value={'Submitted'}>Submitted</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.sample}>
+                          {item?.sample || 'None'}
                         </td>
 
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.date}>
-                          {item.date}
+                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item?.delivery}>
+                          {item?.delivery ? format(new Date(item?.delivery), 'MMM dd, yyyy') : 'None'}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item.leadTime}</td>
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          <Input
-                            className="max-w-8 h-auto w-auto px-[6px] py-0 bg-transparent border placeholder:opacity-100 placeholder:text-black"
-                            type="text"
-                            defaultValue={item.qty}
-                            placeholder={item.qty}
-                            onBlur={e => debouncedHandleQtyChange(item, e.target.value, items.id)}
-                          />
+                          {item?.leadTime ? item.leadTime + ' Weeks' : 'None'}
                         </td>
-                        <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item.price}>
+                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item?.qty}</td>
+                        <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item?.price}>
                           <p>
-                            <span className="text-xs w-10 inline-block text-gray-500">Retail: </span>
-                            <span className=" ">
-                              {project?.currency?.symbol ? project?.currency?.symbol : '£'}
-                              {(item?.matchedProduct?.priceRegular
-                                ? Number(item?.qty) > 0
-                                  ? parseFloat(item?.matchedProduct?.priceRegular.replace(/[^\d.]/g, '')) * Number(item?.qty)
-                                  : parseFloat(item?.matchedProduct?.priceRegular.replace(/[^\d.]/g, ''))
-                                : 0
-                              ).toLocaleString()}
-                            </span>
-                          </p>
-                          <p>
-                            <span className="text-xs w-10 inline-block text-gray-500">Trade: </span>
                             <span className=" ">
                               {project?.currency?.symbol ? project?.currency?.symbol : '£'}
 
@@ -564,8 +578,8 @@ const ProcurementTable = ({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {/* <DropdownMenuItem onClick={() => openProduct(item.id)}>View details</DropdownMenuItem> */}
-                              <DropdownMenuItem>Update status</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openProduct(item.matchedProduct)}>View details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => editProduct(item, items.id)}>Update status</DropdownMenuItem>
                               <DropdownMenuItem>Download PO</DropdownMenuItem>
                               <DropdownMenuItem>Contact supplier</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -580,6 +594,254 @@ const ProcurementTable = ({
           </table>
         </div>
       </CardContent>
+      {/* Product detail sheet */}
+      <ProductDetailSheet open={open} onOpenChange={setOpen} product={selected} />
+
+      {/* Edit Product Modal */}
+
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent side="right" className="w-full p-0 sm:max-w-xl md:max-w-3xl">
+          <div className="flex h-full flex-col">
+            <SheetHeader className="px-6 pt-6">
+              <SheetTitle className="text-xl font-semibold text-neutral-900">{editItem?.matchedProduct?.name}</SheetTitle>
+              {editItem?.matchedProduct?.supplier ? (
+                <div className="text-sm text-neutral-600">Supplier: {editItem?.matchedProduct?.supplier}</div>
+              ) : null}
+            </SheetHeader>
+
+            <Separator className="mt-4" />
+
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid gap-6 p-6 grid-cols-2">
+                {/* Right: details */}
+
+                {/* Delivery date */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Delivery Date'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            'justify-start h-auto gap-1  text-xs  w-full text-left !py-1 px-2 pl-1',
+                            !editItem?.delivery && 'text-[#595F69]'
+                          )}
+                        >
+                          {editItem?.delivery ? format(new Date(editItem?.delivery), 'MMM dd, yyyy') : <span>Select Date</span>}
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
+                        <Calendar
+                          mode="single"
+                          selected={editItem?.delivery ? new Date(editItem?.delivery) : undefined}
+                          onSelect={date => {
+                            handleDueDateChange(editItem, date);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Install date */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Delivery Date'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            'justify-start h-auto gap-1  text-xs  w-full text-left !py-1 px-2 pl-1',
+                            !editItem?.install && 'text-[#595F69]'
+                          )}
+                        >
+                          {editItem?.install ? format(new Date(editItem?.install), 'MMM dd, yyyy') : <span>Select Date</span>}
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
+                        <Calendar
+                          mode="single"
+                          selected={editItem?.install ? new Date(editItem?.install) : undefined}
+                          onSelect={date => {
+                            handleInstallDateChange(editItem, date);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Lead Time */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Lead Time'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            'justify-start h-auto gap-1  text-xs rounded-xl w-full text-left !py-1 px-2 pl-1',
+                            !editItem?.leadTime && 'text-[#595F69]'
+                          )}
+                        >
+                          {editItem?.leadTime ? editItem.leadTime + ' Weeks' : <span>Select Time</span>}
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-auto pt-3 shadow-xl bg-white">
+                        <div className="week-input-container">
+                          <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Lead Time (weeks)</div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Input
+                              type="number"
+                              placeholder="From"
+                              min="1"
+                              style={{
+                                width: '80px',
+                                padding: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                              }}
+                              onChange={e => {
+                                const fromWeek = parseInt(e.target.value);
+                                const toWeek = parseInt(e.target.nextElementSibling.value);
+                                if (fromWeek && toWeek) {
+                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <Input
+                              type="number"
+                              placeholder="To"
+                              min="1"
+                              style={{
+                                width: '80px',
+                                padding: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                              }}
+                              onChange={e => {
+                                const toWeek = parseInt(e.target.value);
+                                const fromWeek = parseInt(e.target.previousElementSibling.value);
+                                if (fromWeek && toWeek) {
+                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                {/* Quantity */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Quantity'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            'justify-start h-auto gap-1  text-xs rounded-xl w-full text-left !py-1 px-2 pl-1',
+                            !editItem?.leadTime && 'text-[#595F69]'
+                          )}
+                        >
+                          {editItem?.leadTime ? editItem.leadTime + ' Weeks' : <span>Select Time</span>}
+                        </Button>
+                      </PopoverTrigger>
+
+                      <PopoverContent className="w-auto pt-3 shadow-xl bg-white">
+                        <div className="week-input-container">
+                          <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Lead Time (weeks)</div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Input
+                              type="number"
+                              placeholder="From"
+                              min="1"
+                              style={{
+                                width: '80px',
+                                padding: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                              }}
+                              onChange={e => {
+                                const fromWeek = parseInt(e.target.value);
+                                const toWeek = parseInt(e.target.nextElementSibling.value);
+                                if (fromWeek && toWeek) {
+                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
+                                }
+                              }}
+                              autoFocus
+                            />
+                            <Input
+                              type="number"
+                              placeholder="To"
+                              min="1"
+                              style={{
+                                width: '80px',
+                                padding: '8px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                fontSize: '14px',
+                              }}
+                              onChange={e => {
+                                const toWeek = parseInt(e.target.value);
+                                const fromWeek = parseInt(e.target.previousElementSibling.value);
+                                if (fromWeek && toWeek) {
+                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+
+                <div className="">
+                  <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                    <div className="text-xs font-medium text-neutral-500">{'label'}</div>
+                    <div className="mt-1 text-sm font-semibold text-neutral-900">{'value' ?? 'Not Available'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky footer actions */}
+            <div className="border-t border-greige-500/30 bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-neutral-600">Add this product to a project.</div>
+                <div className="flex gap-2">
+                  {editItem?.matchedProduct?.product_url ? (
+                    <a
+                      href={editItem?.matchedProduct?.product_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center rounded-md border border-greige-500/30 bg-white px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+                    >
+                      View Product
+                      <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 };

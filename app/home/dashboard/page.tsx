@@ -73,6 +73,42 @@ const updatetaskList = data => {
   ];
 };
 
+const calculateProjectProgress = (projectId: string, tasks: Task[] | undefined, isLoading: boolean): number => {
+  if (isLoading || !tasks) return 0;
+
+  const projectTasks = tasks.filter(item => item.projectID === projectId);
+  if (projectTasks.length === 0) return 0;
+
+  const completedTasks = projectTasks.filter(task => task.status === 'done');
+  const progress = Math.floor((completedTasks.length / projectTasks.length) * 100);
+
+  return progress;
+};
+
+function timeFromNow(isoString) {
+  const inputDate = new Date(isoString);
+  const now = new Date();
+  const diffMs = inputDate - now;
+
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffHour = Math.round(diffMin / 60);
+  const diffDay = Math.round(diffHour / 24);
+  const diffWeek = Math.round(diffDay / 7);
+
+  if (Math.abs(diffSec) < 60) {
+    return diffSec > 0 ? `in ${diffSec} seconds` : `${Math.abs(diffSec)} seconds ago`;
+  } else if (Math.abs(diffMin) < 60) {
+    return diffMin > 0 ? `in ${diffMin} minutes` : `${Math.abs(diffMin)} minutes ago`;
+  } else if (Math.abs(diffHour) < 24) {
+    return diffHour > 0 ? `in ${diffHour} hours` : `${Math.abs(diffHour)} hours ago`;
+  } else if (Math.abs(diffDay) < 7) {
+    return diffDay > 0 ? `in ${diffDay} days` : `${Math.abs(diffDay)} days ago`;
+  } else {
+    return diffWeek > 0 ? `in ${diffWeek} weeks` : `${Math.abs(diffWeek)} weeks ago`;
+  }
+}
+
 // Mock user data with role-based permissions
 const mockUser = {
   firstName: 'Jane',
@@ -324,27 +360,21 @@ export default function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-neutral-900 truncate">{project.name}</h4>
                   <div className="flex items-center gap-4 mt-1">
-                    <Badge className="text-xs bg-greige-100 text-ink capitalize border border-greige-500/30">{project.phase}</Badge>
-                    <span className="text-xs text-neutral-600">{project.lastActivity}</span>
+                    <Badge className="text-xs bg-greige-100 text-ink capitalize border border-greige-500/30">
+                      {project.phase ? project.phase : 'Initial'}
+                    </Badge>
+                    <span className="text-xs text-neutral-600">{timeFromNow(project.created_at)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-sm font-medium text-neutral-900">{project.progress}%</div>
-                    {/* <Progress value={project.progress} className="w-16 h-1 mt-1 [&>div]:bg-clay-500" /> */}
-                    <div
-                      className={`line h-1 bg-black absolute top-0 left-0 rounded-[30px]`}
-                      style={{
-                        width: `${Math.floor(
-                          (Number(
-                            !taskLoading &&
-                              myTask?.filter(item => item.projectID === project.id).filter(taskItem => taskItem.status === 'done').length
-                          ) /
-                            Number(!taskLoading && myTask?.filter(item => item.projectID === project.id).length)) *
-                            100
-                        )}%`,
-                      }}
-                    ></div>
+                    <div className="text-sm font-medium text-neutral-900">
+                      {calculateProjectProgress(project.id, taskData?.data, isLoading)}%
+                    </div>
+                    <Progress
+                      value={calculateProjectProgress(project.id, taskData?.data, isLoading)}
+                      className="w-16 h-1 mt-1 [&>div]:bg-clay-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -516,10 +546,10 @@ export default function DashboardPage() {
             <div key={task.id} className="flex items-center gap-3">
               <div className="w-2 h-2 bg-terracotta-600 rounded-full flex-shrink-0"></div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900 truncate">{task.name}</p>
-                <p className="text-xs text-neutral-600">
+                <p className="text-sm font-medium capitalize text-neutral-900 truncate">{task.name}</p>
+                <p className="text-xs capitalize text-neutral-600">
                   {/* {task.project} {scope === 'studio' && task.assignee !== 'me' && `• ${task.assignee}`} */}
-                  {(project && project.find(p => p.id === task?.projectID)?.name) || '  '}
+                  {(project && project.find(p => p.id === task?.projectID)?.name) || 'No Project'}
                 </p>
               </div>
             </div>
@@ -532,7 +562,7 @@ export default function DashboardPage() {
   function FinancialKPIsCard({ scope, userRole }) {
     const myKPIs = [
       { label: 'My Budget Util', value: 'Upcoming', trend: 'up', change: '+5%' },
-      { label: 'Hours This Week', value: timeDisplay?.Total, trend: 'up', change: '+2h' },
+      { label: 'Hours This Week', value: timeDisplay?.Total ? timeDisplay?.Total : '0', trend: 'up', change: '+2h' },
       { label: 'Projects Active', value: project?.length, trend: 'neutral', change: '0' },
     ];
 

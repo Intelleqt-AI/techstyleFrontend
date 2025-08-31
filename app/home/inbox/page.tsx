@@ -23,9 +23,11 @@ import {
   Star,
   Mail,
   Sparkles,
+  FolderPlus,
+  X,
 } from 'lucide-react';
 import useUser from '@/hooks/useUser';
-import { addProjectEmail, fetchProjects, getContact } from '@/supabase/API';
+import { addProjectEmail, fetchOnlyProject, fetchProjects, getContact } from '@/supabase/API';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -39,6 +41,8 @@ import {
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import EmailIframe from '@/components/inbox/EmailIframe';
+import Drawer from 'react-modern-drawer';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // extend once in your app (e.g., in _app.tsx or a utils/date.ts file)
 dayjs.extend(relativeTime);
@@ -247,6 +251,12 @@ export default function InboxPage() {
   const { data: contactData, isLoading: contactLoading } = useQuery({
     queryKey: ['getContacts'],
     queryFn: getContact,
+  });
+
+  // Get Project
+  const { data: project, isLoading: ProjectLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchOnlyProject(null),
   });
 
   // Send emails to project
@@ -601,8 +611,8 @@ export default function InboxPage() {
 
   // handle send to project
   const handleSendToProject = () => {
-    if (!selectedTopic || !selectedProject) return;
-    mutation.mutate({ projectID: selectedProject?.id, emailData: selectedTopic });
+    if (!selectedMessage || !selectedProject) return;
+    mutation.mutate({ projectID: selectedProject?.id, emailData: selectedMessage });
   };
 
   const filteredMessages = useMemo(() => {
@@ -621,8 +631,6 @@ export default function InboxPage() {
     //     return messages;
     // }
   }, [filter]);
-
-  console.log(selectedMessage);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -1078,48 +1086,52 @@ export default function InboxPage() {
 
                     {/* Reply Input */}
                     <div className="p-4 border-t border-gray-100">
-                      <button
-                        disabled={Ailoading}
-                        onClick={() => handleAiReply()}
-                        className={`
-    inline-flex items-center justify-center mb-3 ml-11 gap-2 whitespace-nowrap text-sm font-medium 
-    ring-offset-background transition-all duration-300 focus-visible:outline-none 
-    focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
-    disabled:pointer-events-none border border-input bg-background 
-    hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3
+                      <div className="flex mb-4 items-center justify-between">
+                        <Button
+                          variant="ghost"
+                          disabled={Ailoading}
+                          onClick={() => handleAiReply()}
+                          className={` border ml-11
+  
     ${Ailoading ? 'bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-400/50' : ''}
     relative overflow-hidden
   `}
-                      >
-                        {/* Animated background shimmer effect */}
-                        {Ailoading && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-pulse" />
-                        )}
-
-                        {/* Icon with rotation animation */}
-                        <Sparkles
-                          className={`w-4 h-4 mr-2 transition-transform  duration-600 ${Ailoading ? 'animate-spin text-purple-500' : ''}`}
-                        />
-
-                        {/* Text with typing animation */}
-                        <span className="relative z-10">
-                          {Ailoading ? (
-                            <span className="flex items-center">
-                              Generating
-                              <span className="ml-1 animate-pulse">
-                                <span className="animate-bounce delay-0">.</span>
-                                <span className="animate-bounce delay-150">.</span>
-                                <span className="animate-bounce delay-300">.</span>
-                              </span>
-                            </span>
-                          ) : (
-                            'Reply with AI'
+                        >
+                          {/* Animated background shimmer effect */}
+                          {Ailoading && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-pulse" />
                           )}
-                        </span>
 
-                        {/* Pulse ring effect */}
-                        {Ailoading && <div className="absolute inset-0 rounded-md border-2 border-purple-400/30 animate-ping" />}
-                      </button>
+                          {/* Icon with rotation animation */}
+                          <Sparkles
+                            className={`w-4 h-4 mr-2 transition-transform  duration-600 ${Ailoading ? 'animate-spin text-purple-500' : ''}`}
+                          />
+
+                          {/* Text with typing animation */}
+                          <span className="relative z-10">
+                            {Ailoading ? (
+                              <span className="flex items-center">
+                                Generating
+                                <span className="ml-1 animate-pulse">
+                                  <span className="animate-bounce delay-0">.</span>
+                                  <span className="animate-bounce delay-150">.</span>
+                                  <span className="animate-bounce delay-300">.</span>
+                                </span>
+                              </span>
+                            ) : (
+                              'Reply with AI'
+                            )}
+                          </span>
+
+                          {/* Pulse ring effect */}
+                          {Ailoading && <div className="absolute inset-0 rounded-md border-2 border-purple-400/30 animate-ping" />}
+                        </Button>
+
+                        <Button onClick={() => setProjectOpen(true)}>
+                          <FolderPlus className="w-4 h-4 mr-2" />
+                          Share to Project
+                        </Button>
+                      </div>
                       <div className="flex gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src="/placeholder.svg?height=32&width=32" />
@@ -1169,6 +1181,79 @@ export default function InboxPage() {
           </div>
         </div>
       </div>
+
+      {/* Sent to project drawer */}
+
+      <Drawer lockBackgroundScroll={true} size={550} open={projectOpen} onClose={() => setProjectOpen(false)} direction="right">
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-lg font-semibold">Share to Project</h2>
+            <button onClick={handleCancel} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-6 overflow-scroll">
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Select a project:</h3>
+
+              {ProjectLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-3 ">
+                  {project?.map(proj => (
+                    <label
+                      key={proj.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      <input
+                        type="radio"
+                        name="project"
+                        value={proj.id}
+                        checked={selectedProject?.id === proj?.id.toString()}
+                        onChange={() => setSelectedProject(proj)}
+                        className="w-4 h-4 text-black bg-black border-gray-300 "
+                      />
+                      <Checkbox
+                        name="project"
+                        value={proj.id}
+                        checked={selectedProject?.id === proj?.id.toString()}
+                        onChange={() => setSelectedProject(proj)}
+                      />
+                      <span className="text-sm font-medium text-gray-900">{proj?.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t bg-gray-50">
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              {selectedProject && (
+                <button
+                  onClick={handleSendToProject}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-black border border-transparent rounded-md  transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  Send
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }

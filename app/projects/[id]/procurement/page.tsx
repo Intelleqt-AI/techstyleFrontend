@@ -858,7 +858,6 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   ////
 
   //
-  console.log('PARAMS', params);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ProductDetails | undefined>(undefined);
   const productMap = useProductMap(procurementItems);
@@ -992,6 +991,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               )}
             </Button>
 
+            {/* Comment Drawer */}
             <Drawer direction="right">
               <DrawerTrigger asChild>
                 <Button variant="outline" className="border-greige-500/30 bg-transparent">
@@ -1102,135 +1102,6 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           loading={isLoading}
           projectID={projectID}
         />
-
-        {/* Table */}
-        <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full table-auto">
-                <colgroup>
-                  <col style={{ width: 44 }} />
-                  <col />
-                  <col style={{ width: 180 }} />
-                  <col style={{ width: 120 }} /> {/* PO # */}
-                  <col style={{ width: 112 }} /> {/* Sample */}
-                  <col style={{ width: 120 }} /> {/* Order Date */}
-                  <col style={{ width: 120 }} /> {/* Lead Time */}
-                  <col style={{ width: 60 }} /> {/* Qty */}
-                  <col style={{ width: 120 }} /> {/* Price */}
-                  <col style={{ width: 112 }} /> {/* Status */}
-                  <col style={{ width: 120 }} /> {/* Approval */}
-                  <col style={{ width: 64 }} /> {/* Actions */}
-                </colgroup>
-                <thead className="bg-neutral-50 border-b border-greige-500/30 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">
-                      <input type="checkbox" className="rounded border-greige-500/30" aria-label="Select all items" />
-                    </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Item</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Dimensions</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">PO #</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Sample</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Order Date</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Lead Time</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Qty</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Price</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Approval</th>
-                    <th className="pl-4 pr-6 py-3 text-right text-sm font-medium text-neutral-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200 text-sm">
-                  {procurementItems.map(item => (
-                    <tr key={item.id} className="hover:bg-neutral-50">
-                      <td className="px-4 py-3">
-                        <input type="checkbox" className="rounded border-greige-500/30" aria-label={`Select ${item.name}`} />
-                      </td>
-
-                      {/* Item cell with thumbnail button to open sheet */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <button
-                            type="button"
-                            onClick={() => openProduct(item.id)}
-                            className="shrink-0 focus:outline-none focus:ring-2 focus:ring-clay-600 rounded-lg"
-                            aria-label={`View ${item.name}`}
-                            title={`View ${item.name}`}
-                          >
-                            <img
-                              src={item.image || '/placeholder.svg'}
-                              alt={item.name}
-                              className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
-                            />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-neutral-900 whitespace-nowrap truncate" title={item.name}>
-                              {item.name}
-                            </div>
-                            <div className="text-xs text-neutral-600 whitespace-nowrap truncate" title={item.supplier}>
-                              {item.supplier}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.dimensions}>
-                        {item.dimensions}
-                      </td>
-
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.poNumber}>
-                        {item.poNumber}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.sample}>
-                        {item.sample}
-                      </td>
-
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.date}>
-                        {item.date}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.leadTime}>
-                        {item.leadTime}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={String(item.quantity)}>
-                        {item.quantity}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item.price}>
-                        {item.price}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={item.status} label={item.status.charAt(0).toUpperCase() + item.status.slice(1)} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ApprovalBadge status={item.clientApproval} />
-                      </td>
-
-                      <td className="pl-4 pr-6 py-3 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                              aria-label={`Open actions for ${item.name}`}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openProduct(item.id)}>View details</DropdownMenuItem>
-                            <DropdownMenuItem>Update status</DropdownMenuItem>
-                            <DropdownMenuItem>Download PO</DropdownMenuItem>
-                            <DropdownMenuItem>Contact supplier</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Product detail sheet */}

@@ -312,9 +312,9 @@ export default function MyTasksPage() {
                   <TypeChip label={String(column?.items?.length)} />
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
+                  {/* <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <MoreHorizontal className="w-4 h-4" />
-                  </Button>
+                  </Button> */}
                   <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -348,7 +348,7 @@ export default function MyTasksPage() {
                         {task?.subtasks?.filter(subtask => subtask.selected === true).length}/{task?.subtasks?.length}
                       </span>
                       <div className="flex items-center gap-1">
-                        <StatusBadge status={task?.priority} label={task?.priority} />
+                        {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
                       </div>
                     </div>
                   </div>
