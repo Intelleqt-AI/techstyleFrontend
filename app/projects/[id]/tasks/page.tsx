@@ -100,275 +100,6 @@ const LISTS: (ListColumn & { icon: any; colorClass: string; id: string })[] = [
   { id: 'complete', title: 'Complete', icon: CheckCircle2, colorClass: 'text-gray-600' },
 ];
 
-function seedTasks(projectId: string): UITask[] {
-  return [
-    // Concept — Jan → Feb 2025
-    {
-      id: 't1',
-      projectId,
-      title: 'Initial mood board creation',
-      listId: 'concept',
-      phaseId: 'phase-concept',
-      priority: 'high',
-      status: 'in_progress',
-      assigneeIds: ['jd'],
-      startDate: '2025-01-08',
-      endDate: '2025-01-28',
-      tags: ['Moodboard'],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't2',
-      projectId,
-      title: 'Color palette selection',
-      listId: 'concept',
-      phaseId: 'phase-concept',
-      priority: 'medium',
-      status: 'done',
-      assigneeIds: ['mj'],
-      startDate: '2025-02-01',
-      endDate: '2025-02-15',
-      tags: ['Colors'],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Design Development — Feb → Apr 2025
-    {
-      id: 't3',
-      projectId,
-      title: '3D rendering of living space',
-      listId: 'design-dev',
-      phaseId: 'phase-design-dev',
-      priority: 'high',
-      status: 'in_progress',
-      assigneeIds: ['sw'],
-      startDate: '2025-02-18',
-      endDate: '2025-03-25',
-      tags: ['3D'],
-      description: '',
-      attachments: [],
-      subtasks: [{ id: 's1', title: 'Lighting pass', done: false }],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't9',
-      projectId,
-      title: 'Materials study',
-      listId: 'design-dev',
-      phaseId: 'phase-design-dev',
-      priority: 'medium',
-      status: 'todo',
-      assigneeIds: ['jd'],
-      startDate: '2025-03-28',
-      endDate: '2025-04-18',
-      tags: ['Materials'],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Technical Drawings — Apr → May 2025
-    {
-      id: 't4',
-      projectId,
-      title: 'Floor plan revisions',
-      listId: 'technical',
-      phaseId: 'phase-technical',
-      priority: 'medium',
-      status: 'in_review',
-      assigneeIds: ['tb'],
-      startDate: '2025-04-20',
-      endDate: '2025-05-08',
-      tags: ['Plans'],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't10',
-      projectId,
-      title: 'Elevations and sections',
-      listId: 'technical',
-      phaseId: 'phase-technical',
-      priority: 'medium',
-      status: 'todo',
-      assigneeIds: ['mj'],
-      startDate: '2025-05-10',
-      endDate: '2025-05-28',
-      tags: ['Drawings'],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Client Review — May → Jun 2025
-    {
-      id: 't5',
-      projectId,
-      title: 'Client review session',
-      listId: 'review',
-      phaseId: 'phase-review',
-      priority: 'low',
-      status: 'todo',
-      assigneeIds: ['jd', 'mj'],
-      startDate: '2025-05-30',
-      endDate: '2025-05-30', // single-day
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't5b',
-      projectId,
-      title: 'Feedback incorporation',
-      listId: 'review',
-      phaseId: 'phase-review',
-      priority: 'medium',
-      status: 'todo',
-      assigneeIds: ['jd'],
-      startDate: '2025-06-02',
-      endDate: '2025-06-18',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Procurement — Jun → Jul 2025
-    {
-      id: 't6',
-      projectId,
-      title: 'Procurement shortlist',
-      listId: 'procurement',
-      phaseId: 'phase-procurement',
-      priority: 'medium',
-      status: 'todo',
-      assigneeIds: ['sw'],
-      startDate: '2025-06-20',
-      endDate: '2025-07-05',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't11',
-      projectId,
-      title: 'Supplier quotes',
-      listId: 'procurement',
-      phaseId: 'phase-procurement',
-      priority: 'high',
-      status: 'todo',
-      assigneeIds: ['sw'],
-      startDate: '2025-07-08',
-      endDate: '2025-07-22',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Site / Implementation — Jul → Aug 2025
-    {
-      id: 't7',
-      projectId,
-      title: 'Site prep',
-      listId: 'site',
-      phaseId: 'phase-site',
-      priority: 'high',
-      status: 'todo',
-      assigneeIds: ['tb'],
-      startDate: '2025-07-25',
-      endDate: '2025-08-08',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't7b',
-      projectId,
-      title: 'Site walkthrough',
-      listId: 'site',
-      phaseId: 'phase-site',
-      priority: 'high',
-      status: 'todo',
-      assigneeIds: ['tb'],
-      startDate: '2025-08-10',
-      endDate: '2025-08-10', // single-day
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-    {
-      id: 't12',
-      projectId,
-      title: 'Final install',
-      listId: 'site',
-      phaseId: 'phase-site',
-      priority: 'high',
-      status: 'todo',
-      assigneeIds: ['sw'],
-      startDate: '2025-08-12',
-      endDate: '2025-08-25',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-
-    // Due-date only example (shows as diamond)
-    {
-      id: 't-due-photos',
-      projectId,
-      title: 'Photoshoot',
-      listId: 'site',
-      phaseId: 'phase-site',
-      priority: 'low',
-      status: 'todo',
-      assigneeIds: ['jd'],
-      dueDate: '2025-08-28',
-      tags: [],
-      description: '',
-      attachments: [],
-      subtasks: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    },
-  ];
-}
-
 function getInitials(name: string) {
   return name
     .split(' ')
@@ -428,15 +159,38 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
     }
   }, [taskData, projectId]);
 
-  function openNewTask(listId?: string) {
+  function openNewTask(phase?: string) {
+    switch (phase) {
+      case 'Design Concepts':
+        setColumsName('initial');
+        break;
+      case 'Design Development':
+        setColumsName('design-development');
+        break;
+      case 'Technical Drawings':
+        setColumsName('technical-drawings');
+        break;
+      case 'Client Review':
+        setColumsName('client-review');
+        break;
+      case 'Procurement':
+        setColumsName('procurement');
+        break;
+      case 'Site / Implementation':
+        setColumsName('site-implementation');
+        break;
+      case 'Complete':
+        setColumsName('complete-project');
+        break;
+      default:
+        setColumsName('initial');
+    }
     setEditing(null);
-    setDefaultListId(listId);
     setModalOpen(true);
   }
 
   function openEditTask(task: UITask) {
     setEditing(task);
-    setDefaultListId(task.listId);
     setModalOpen(true);
   }
 
@@ -702,7 +456,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                               variant="ghost"
                               className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 justify-center border-2 border-dashed border-gray-200 hover:border-gray-300 py-8"
                               size="sm"
-                              onClick={() => openNewTask(col.id)}
+                              onClick={() => openNewTask(col.name)}
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Add Task
@@ -719,14 +473,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
 
         {/* List View */}
         {activeTab === 'list' && (
-          <ListView
-            tasks={tasks}
-            team={TEAM}
-            phases={PHASES}
-            lists={LISTS}
-            onEditTask={openEditTask}
-            onCreateTask={() => openNewTask(undefined)}
-          />
+          <ListView tasks={tasks} team={TEAM} phases={PHASES} lists={LISTS} onEditTask={openEditTask} onCreateTask={e => openNewTask(e)} />
         )}
 
         {/* Timeline View */}
@@ -749,6 +496,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
         projectId={projectId}
         team={TEAM}
         defaultListId={defaultListId}
+        phase={columnName}
         taskToEdit={editing}
         onSave={handleSave}
       />

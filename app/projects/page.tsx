@@ -154,8 +154,6 @@ export default function ProjectsPage() {
   // Get clients
   const { data: clientData, isLoading: loadingClient, refetch: refetchClient } = useClient();
 
-  console.log('clientData', clientData);
-
   useEffect(() => {
     if (isLoading) return;
     setProject(data);

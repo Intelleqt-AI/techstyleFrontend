@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge, TypeChip } from '@/components/chip';
 import { ChevronRight, Plus } from 'lucide-react';
 import type { Task, Phase, TeamMember, ListColumn } from '@/components/tasks/types';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 type UITask = Task & { startDate?: string; endDate?: string };
 
@@ -45,7 +46,6 @@ export default function ListView({
   onEditTask: (t: UITask) => void;
   onCreateTask: (phaseId?: string) => void;
 }) {
-  console.log(tasks);
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
       {tasks &&
@@ -58,7 +58,7 @@ export default function ListView({
                   <span className="text-sm font-medium text-gray-900">{phase.name}</span>
                   <TypeChip label={String(phase?.items?.length)} />
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => onCreateTask(phase.id)} className="gap-1">
+                <Button variant="ghost" size="sm" onClick={() => onCreateTask(phase.name)} className="gap-1">
                   <Plus className="h-4 w-4" />
                   Add task
                 </Button>
@@ -104,16 +104,29 @@ export default function ListView({
                             </td>
                             <td className="px-3 py-3">
                               <div className="flex flex-wrap gap-1.5">
-                                {/* {assignees.length === 0 ? (
+                                {!t?.assigned || t.assigned.length === 0 ? (
                                   <span className="text-xs text-gray-500">Unassigned</span>
                                 ) : (
-                                  assignees.map(id => {
-                                    const m = team.find(tm => tm.id === id);
-                                    return <TypeChip key={id} label={m ? m.name : id} />;
-                                  })
-                                )} */}
+                                  <>
+                                    {t.assigned.slice(0, 3).map((member, index) => (
+                                      <Avatar key={member?.id ?? index} className="w-6 h-6 border-2 border-white">
+                                        <AvatarImage src={member?.photoURL} />
+                                        <AvatarFallback className="text-xs bg-clay-200 text-clay-700">
+                                          {member?.name?.[0] ?? '?'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                    ))}
+
+                                    {t.assigned.length > 3 && (
+                                      <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
+                                        <span className="text-xs text-ink-muted">+{t.assigned.length - 3}</span>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
                               </div>
                             </td>
+
                             {/* <td className="px-3 py-3">
                               <span className="text-xs text-gray-700">{list?.title ?? '—'}</span>
                             </td> */}

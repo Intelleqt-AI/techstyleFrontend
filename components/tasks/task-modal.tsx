@@ -115,7 +115,7 @@ const PRIORITIES: { value: Priority; label: string }[] = [
   { value: 'High', label: 'High' },
 ];
 
-export function TaskModal({ open, onOpenChange, projectId, projectName, team, defaultListId, taskToEdit, onSave }: Props) {
+export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave }: Props) {
   // Core form state
   const [taskValues, setTaskValues] = React.useState(taskToEdit ? taskToEdit : initialTask);
   const [activeTab, setActiveTab] = React.useState(1);
@@ -155,6 +155,35 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const [file, setFile] = React.useState(null);
   const [totalDocs, setTotalDocs] = React.useState([]);
 
+  React.useEffect(() => {
+    if (taskToEdit) {
+      setTaskValues(prevValues => ({
+        ...prevValues,
+        ...taskToEdit,
+      }));
+    } else if (!projectId) {
+      setTaskValues(prevValues => ({
+        ...initialTask,
+      }));
+    }
+  }, [taskToEdit]);
+
+  React.useEffect(() => {
+    if (projectId && phase) {
+      setTaskValues(prevValues => ({
+        ...prevValues,
+        projectID: projectId,
+        phase,
+      }));
+      return;
+    } else if (projectId) {
+      setTaskValues(prevValues => ({
+        ...prevValues,
+        projectID: projectId,
+      }));
+    }
+  }, [projectId, phase]);
+
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
   );
@@ -180,17 +209,18 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   const mutation = useMutation({
     mutationFn: async input => {
       if (taskToEdit || taskValues?.id) {
-        console.log('modufying old task');
         return modifyTask(input);
       } else {
-        console.log('adding new task');
         return addNewTask(input);
       }
     },
     onSuccess: e => {
       toast.success('Task Updated');
       setSubTaskText('');
-      setTaskValues(e?.data[0]);
+      setTaskValues(prev => ({
+        ...prev,
+        id: e?.data?.[0]?.id,
+      }));
       queryClient.invalidateQueries(['tasks']);
     },
     onError: e => {
@@ -329,34 +359,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   //     }));
   //   }
   // }, [modalOpen, phase]);
-
-  // React.useEffect(() => {
-  //   if (projectId) {
-  //     setTaskValues(prevValues => ({
-  //       ...prevValues,
-  //       projectID: projectId,
-  //     }));
-  //   }
-  // }, [projectId]);
-
-  React.useEffect(() => {
-    if (projectId) {
-      setTaskValues(prevValues => ({
-        ...prevValues,
-        projectID: projectId,
-      }));
-    }
-    if (taskToEdit) {
-      setTaskValues(prevValues => ({
-        ...prevValues,
-        ...taskToEdit,
-      }));
-    } else {
-      setTaskValues(prevValues => ({
-        ...initialTask,
-      }));
-    }
-  }, [taskToEdit, projectId]);
 
   // React.useEffect(() => {
   //   setTaskValues(prevValues => ({
@@ -742,6 +744,8 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, de
   // const handleButtonClick = () => {
   //   fileInputRef.current.click();
   // };
+
+  console.log(taskValues);
 
   return (
     <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
