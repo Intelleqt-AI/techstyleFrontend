@@ -345,7 +345,7 @@ export default function ProductsPage() {
                             aria-label={`Open ${product.name} details`}
                           >
                             <h3 className="truncate text-sm !capitalize font-semibold tracking-tight text-gray-900">{product.name}</h3>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">{product.supplier}</p>
+                            <p className="text-xs capitalize tracking-wide text-gray-500">{product.supplier}</p>
                           </button>
                         </div>
                       </div>

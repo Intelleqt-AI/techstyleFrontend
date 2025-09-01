@@ -119,7 +119,7 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
   // Format prices with currency symbol
   const formatPrice = (price: string) => {
     if (!price) return 'Not Available';
-    return `$${price}`;
+    return `$${Number(price).toLocaleString()}`;
   };
 
   // Format boolean values

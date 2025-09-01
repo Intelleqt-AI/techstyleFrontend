@@ -1083,10 +1083,10 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               <span className="text-[14px] font-medium">Client Portal</span>
             </div>
 
-            <Button variant="outline" className="border-greige-500/30 bg-transparent">
+            {/* <Button variant="outline" className="border-greige-500/30 bg-transparent">
               Client Portal
               <ExternalLink className="w-4 h-4 ml-2" />
-            </Button>
+            </Button> */}
           </div>
         </div>
 

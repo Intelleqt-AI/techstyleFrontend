@@ -256,7 +256,7 @@ export default function InboxPage() {
   // Get Project
   const { data: project, isLoading: ProjectLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => fetchOnlyProject(null),
+    queryFn: () => fetchProjects(),
   });
 
   // Send emails to project
@@ -857,21 +857,12 @@ export default function InboxPage() {
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
-                      {selectedMessage.avatar ? (
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={selectedMessage.avatar || '/placeholder.svg'} />
-                          <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
-                            {selectedMessage.from
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Bell className="w-5 h-5 text-gray-500" />
-                        </div>
-                      )}
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={selectedMessage.avatar} />
+                        <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-bold">
+                          {selectedMessage?.from?.email?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
@@ -1210,19 +1201,19 @@ export default function InboxPage() {
                       key={proj.id}
                       className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors"
                     >
-                      <input
+                      {/* <input
                         type="radio"
                         name="project"
                         value={proj.id}
                         checked={selectedProject?.id === proj?.id.toString()}
                         onChange={() => setSelectedProject(proj)}
                         className="w-4 h-4 text-black bg-black border-gray-300 "
-                      />
+                      /> */}
                       <Checkbox
                         name="project"
                         value={proj.id}
                         checked={selectedProject?.id === proj?.id.toString()}
-                        onChange={() => setSelectedProject(proj)}
+                        onCheckedChange={() => setSelectedProject(proj)}
                       />
                       <span className="text-sm font-medium text-gray-900">{proj?.name}</span>
                     </label>

@@ -148,11 +148,9 @@ export const deleteTask = async taskId => {
 //Fetch OnlyProject data
 export const fetchOnlyProject = async ({ projectID }) => {
   if (projectID) {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
     return project;
   } else {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*');
     return project;
   }

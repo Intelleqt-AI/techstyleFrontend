@@ -234,10 +234,10 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
   };
 
   const handleClose = () => {
-    setStep(1);
-    setData(initialProject);
     setExpandedSections({ phases: false, budget: false });
     onOpenChange(false);
+    setStep(1);
+    setData(initialProject);
   };
 
   const handleNext = () => {
@@ -283,12 +283,11 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
 
   // Define the mutation
   const mutation = useMutation({
-    mutationFn: task ? modifyProject : addNewProject,
+    mutationFn: addNewProject,
     onSuccess: () => {
       queryClient.invalidateQueries(['projects']);
-      toast('Project Updated');
       setData(initialProject);
-      handleClose(); // Reset form values
+      handleClose();
     },
     onError: error => {
       console.log(error);
@@ -298,10 +297,7 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
 
   const handleCreate = async () => {
     // Simulate project creation
-    toast({
-      title: 'Project Created',
-      description: `${data.name} has been created successfully.`,
-    });
+    toast.success(`${data.name} has been created successfully.`);
     const finalData = { ...data, budget: +data?.budget };
     // console.log(finalData);
     // handleClose()

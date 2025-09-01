@@ -218,7 +218,7 @@ export default function ProjectsPage() {
             project?.length > 0 &&
             project.map(project => (
               <Link key={project?.id} href={`/projects/${project?.id}`}>
-                <Card className="border-borderSoft bg-white hover:shadow-md transition-shadow cursor-pointer">
+                <Card className="border-borderSoft h-full bg-white hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="p-0">
                     {/* Project Image */}
                     <div className="relative h-48 bg-greige-100 rounded-t-lg overflow-hidden">
@@ -254,10 +254,16 @@ export default function ProjectsPage() {
                             </div>
                           </Badge>
                         </div>
-                        {project?.code && (
+                        {(project?.code || project?.client) && (
                           <span className="text-sm text-ink-muted">
                             {project?.code}
-                            {project?.client && <> • {clientData?.data?.find(client => client?.id == project?.client)?.name}</>}
+                            {project?.client && (
+                              <>
+                                {' '}
+                                {project?.code && project?.client && '•'}{' '}
+                                {clientData?.data?.find(client => client?.id == project?.client)?.name}
+                              </>
+                            )}
                           </span>
                         )}
                       </div>

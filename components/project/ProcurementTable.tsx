@@ -156,14 +156,14 @@ function ApprovalBadge({ status }) {
 
 const getStatusColor = status => {
   switch (status) {
-    case 'approved':
-      return 'bg-[#F2FCE2] text-[#4B9E22]';
-    case 'pending':
-      return 'bg-[#FEF7CD] text-[#946800]';
-    case 'rejected':
-      return 'bg-[#FFCCCB] text-[#9E2000]';
+    case 'Received':
+      return 'bg-[#F2FCE2] text-[#4B9E22] border border-[#C6E6A4]';
+    case 'Requested':
+      return 'bg-[#FEF7CD] text-[#946800] border border-[#E6D999]';
+    case 'Submitted':
+      return 'bg-gray-100 text-gray-700 border border-gray-300';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-100 text-gray-700 border border-gray-300';
   }
 };
 
@@ -284,22 +284,29 @@ const ProcurementTable = ({
     'Delivered',
   ];
 
-  const handleChangeStatus = (item, status, roomID) => {
+  const handleChangeStatus = (item, status) => {
     const { matchedProduct, ...updatedProduct } = { ...item, initialStatus: status };
+    setEditItem(prev => ({
+      ...prev,
+      initialStatus: status,
+    }));
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  const handleChangeSample = (item, status, roomID) => {
-    console.log('hello', item, status, roomID);
+  const handleChangeSample = (item, status) => {
     const { matchedProduct, ...updatedProduct } = { ...item, sample: status };
+    setEditItem(prev => ({
+      ...prev,
+      sample: status,
+    }));
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  const debouncedHandleQtyChange = debounce((item, value, roomID) => {
+  const debouncedHandleQtyChange = debounce((item, value) => {
     handleQtyChange(item, value, roomID);
   }, 700);
 
-  const handleQtyChange = (item, qty, roomID) => {
+  const handleQtyChange = (item, qty) => {
     if (qty < 1 || Number.isNaN(qty)) {
       toast('Enter valid Qty');
       return;
@@ -350,12 +357,15 @@ const ProcurementTable = ({
       return;
     }
 
+    setEditItem(prev => ({
+      ...prev,
+      leadTime: date,
+    }));
+
     // const parseDate = dayjs(date).format('YYYY-MM-DD');
     const { matchedProduct, ...updatedProduct } = { ...item, leadTime: date };
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
-
-  console.log(editItem);
 
   return (
     <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
@@ -472,8 +482,8 @@ const ProcurementTable = ({
                           <Checkbox
                             key={item?.id}
                             value={item.id}
-                            checked={!!checkedItems.find(checkItem => checkItem.id == item.id && checkItem.roomID == item.id)}
-                            onCheckedChange={checked => handleChange({ target: { value: item, checked, room: item.id } })}
+                            checked={!!checkedItems.find(checkItem => checkItem.id == item.id && checkItem.roomID == items.id)}
+                            onCheckedChange={checked => handleChange({ target: { value: item, checked, room: items.id } })}
                           />
                         </td>
 
@@ -482,7 +492,7 @@ const ProcurementTable = ({
                           <div className="flex items-center gap-3 min-w-0">
                             <button
                               type="button"
-                              // onClick={() => openProduct(item.id)}
+                              onClick={() => openProduct(item.matchedProduct)}
                               className="shrink-0 focus:outline-none focus:ring-2 focus:ring-clay-600 rounded-lg"
                               aria-label={`View ${item.name}`}
                               title={`View ${item.name}`}
@@ -524,14 +534,22 @@ const ProcurementTable = ({
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
                           {item?.PO?.map(po => {
                             return (
-                              <Link className="hover:underline" href={`/finances/purchase-orders/${po?.poID}`}>
+                              <Link className="hover:underline" href={'#'}>
                                 {po?.poNumber} <br />{' '}
                               </Link>
                             );
                           })}
+                          {!item?.PO && 'None'}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item.sample}>
-                          {item?.sample || 'None'}
+                        <td className={`px-4 py-3 text-neutral-700 whitespace-nowrap truncate `} title={item.sample}>
+                          <span
+                            className={`${getStatusColor(
+                              item?.sample
+                            )} inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium leading-none select-none" `}
+                          >
+                            {' '}
+                            {item?.sample || 'None'}
+                          </span>
                         </td>
 
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item?.delivery}>
@@ -547,10 +565,8 @@ const ProcurementTable = ({
                               {project?.currency?.symbol ? project?.currency?.symbol : '£'}
 
                               {(item?.matchedProduct?.priceMember
-                                ? Number(item?.qty) > 0
-                                  ? parseFloat(item?.matchedProduct?.priceMember.replace(/[^\d.]/g, '')) * Number(item?.qty)
-                                  : parseFloat(item?.matchedProduct?.priceMember.replace(/[^\d.]/g, ''))
-                                : 0
+                                ? parseFloat(item?.matchedProduct?.priceMember.replace(/[^\d.]/g, ''))
+                                : parseFloat(item?.matchedProduct?.priceRegular.replace(/[^\d.]/g, ''))
                               ).toLocaleString()}
                             </span>
                           </p>
@@ -648,7 +664,7 @@ const ProcurementTable = ({
 
                 {/* Install date */}
                 <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
-                  <div className="text-xs font-medium text-neutral-500">{'Delivery Date'}</div>
+                  <div className="text-xs font-medium text-neutral-500">{'Install Date'}</div>
                   <div className="mt-1 text-sm font-semibold text-neutral-900">
                     <Popover>
                       <PopoverTrigger asChild>
@@ -748,73 +764,53 @@ const ProcurementTable = ({
                 <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
                   <div className="text-xs font-medium text-neutral-500">{'Quantity'}</div>
                   <div className="mt-1 text-sm font-semibold text-neutral-900">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className={cn(
-                            'justify-start h-auto gap-1  text-xs rounded-xl w-full text-left !py-1 px-2 pl-1',
-                            !editItem?.leadTime && 'text-[#595F69]'
-                          )}
-                        >
-                          {editItem?.leadTime ? editItem.leadTime + ' Weeks' : <span>Select Time</span>}
-                        </Button>
-                      </PopoverTrigger>
-
-                      <PopoverContent className="w-auto pt-3 shadow-xl bg-white">
-                        <div className="week-input-container">
-                          <div style={{ marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>Lead Time (weeks)</div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <Input
-                              type="number"
-                              placeholder="From"
-                              min="1"
-                              style={{
-                                width: '80px',
-                                padding: '8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '4px',
-                                fontSize: '14px',
-                              }}
-                              onChange={e => {
-                                const fromWeek = parseInt(e.target.value);
-                                const toWeek = parseInt(e.target.nextElementSibling.value);
-                                if (fromWeek && toWeek) {
-                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <Input
-                              type="number"
-                              placeholder="To"
-                              min="1"
-                              style={{
-                                width: '80px',
-                                padding: '8px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '4px',
-                                fontSize: '14px',
-                              }}
-                              onChange={e => {
-                                const toWeek = parseInt(e.target.value);
-                                const fromWeek = parseInt(e.target.previousElementSibling.value);
-                                if (fromWeek && toWeek) {
-                                  handleLeadDate(editItem, `${fromWeek}-${toWeek}`);
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <Input
+                      className=" w-full h-auto  px-[6px] py-0 bg-transparent border placeholder:opacity-100 placeholder:text-black"
+                      type="number"
+                      defaultValue={editItem?.qty}
+                      placeholder={editItem?.qty}
+                      onBlur={e => debouncedHandleQtyChange(editItem, e.target.value)}
+                    />
                   </div>
                 </div>
 
-                <div className="">
-                  <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
-                    <div className="text-xs font-medium text-neutral-500">{'label'}</div>
-                    <div className="mt-1 text-sm font-semibold text-neutral-900">{'value' ?? 'Not Available'}</div>
+                {/* Sample */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Sample'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Select value={editItem?.sample} onValueChange={value => handleChangeSample(editItem, value)}>
+                      <SelectTrigger className="bg-transparent w-full text-left focus:ring-0 focus:ring-offset-0 pl-0 text-xs py-1 font-medium  border-0 focus:border-0 focus-visible:outline-0">
+                        <SelectValue className="text-sm" placeholder={editItem?.sample || 'Select'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white  z-[99]">
+                        <SelectItem value={'None'}>None</SelectItem>
+                        <SelectItem value={'Requested'}>Requested</SelectItem>
+                        <SelectItem value={'Received'}>Received</SelectItem>
+                        <SelectItem value={'Submitted'}>Submitted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Initial Status */}
+
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'Status'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Select value={editItem?.initialStatus} onValueChange={value => handleChangeStatus(editItem, value)}>
+                      <SelectTrigger className="bg-transparent  text-left focus:ring-0 focus:ring-offset-0 pl-0 text-xs py-1 font-medium w-full border-0 focus:border-0 focus-visible:outline-0">
+                        <SelectValue placeholder={editItem?.initialStatus || 'Select'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[99] h-[320px]">
+                        <div className="overflow-y-auto h-full">
+                          {statusValues.map(item => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -823,7 +819,7 @@ const ProcurementTable = ({
             {/* Sticky footer actions */}
             <div className="border-t border-greige-500/30 bg-white p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-neutral-600">Add this product to a project.</div>
+                <div className="text-sm text-neutral-600">Update product for this room</div>
                 <div className="flex gap-2">
                   {editItem?.matchedProduct?.product_url ? (
                     <a
