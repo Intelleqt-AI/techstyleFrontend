@@ -18,6 +18,8 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { signOut } from '@/supabase/API';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { TooltipArrow } from '@radix-ui/react-tooltip';
 
 type Item = {
   label: string;
@@ -67,7 +69,7 @@ export function AppSidebar() {
           <img
             src="/brand/techstyles-t-logo.png"
             alt="Techstyles logo mark"
-            className={cn(isCollapsed ? 'w-12 h-12 mx-auto' : 'w-8 h-8', 'block')}
+            className={cn(isCollapsed ? 'w-8 h-8 mx-auto' : 'w-8 h-8', 'block')}
           />
           {!isCollapsed && <span className="font-semibold text-gray-900">Techstyles</span>}
         </div>
@@ -80,19 +82,41 @@ export function AppSidebar() {
           const isActive = pathname.startsWith(item.basePath);
 
           return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                'flex items-center rounded-lg text-sm font-medium transition-colors',
-                isCollapsed ? 'justify-center p-3 w-12 h-12 mx-auto' : 'gap-3 px-3 py-2',
-                isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            <>
+              {isCollapsed ? (
+                <Tooltip delayDuration={500}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center duration-300 rounded-lg text-sm font-medium transition-colors',
+                        isCollapsed ? 'justify-center p-3 w-11 h-11 mx-auto' : 'gap-3 px-3 py-2',
+                        isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    'flex items-center duration-300 rounded-lg text-sm font-medium transition-colors',
+                    'gap-3 px-3 py-2',
+                    isActive ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
               )}
-              title={isCollapsed ? item.label : undefined}
-            >
-              <Icon className={cn(isCollapsed ? 'w-6 h-6' : 'w-5 h-5')} />
-              {!isCollapsed && item.label}
-            </Link>
+            </>
           );
         })}
 
@@ -154,7 +178,7 @@ export function AppSidebar() {
             <div
               className={cn(
                 'bg-white rounded-full flex items-center justify-center flex-shrink-0',
-                isCollapsed ? 'w-12 h-12 mx-auto' : 'w-10 h-10'
+                isCollapsed ? 'w-8 h-8 mx-auto' : 'w-10 h-10'
               )}
             >
               <span className={cn('text-gray-900 font-semibold', isCollapsed ? 'text-base' : 'text-sm')}>{user?.name[0]}</span>

@@ -148,11 +148,9 @@ export const deleteTask = async taskId => {
 //Fetch OnlyProject data
 export const fetchOnlyProject = async ({ projectID }) => {
   if (projectID) {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
     return project;
   } else {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*');
     return project;
   }
@@ -172,7 +170,7 @@ export const fetchProjects = async () => {
     projects.map(async project => {
       const imagePath = `${project.id}/`;
       // List images in the folder
-      const { data: imageFiles, error: imageError } = await supabase.storage.from('Cover').list(imagePath);
+      const { data: imageFiles, error: imageError } = await supabase.storage.from('cover').list(imagePath);
       if (imageError) {
         console.error('Error fetching images:', imageError);
         return { ...project, images: [] }; // Return empty array if no images found

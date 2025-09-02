@@ -11,13 +11,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InviteOnboardDialog } from '@/components/project-settings/invite-onboard-dialog';
 import { OnboardingWizard } from '@/components/project-settings/onboarding-wizard';
 import { computeMissingFields, computeProgressPct } from '@/components/project-settings/utils';
 import type { OnboardingData } from '@/components/project-settings/types';
-import { saveProjectSettings } from './actions';
 import {
   Settings,
   Building2,
@@ -26,7 +26,7 @@ import {
   SlidersHorizontal,
   Users,
   Sparkles,
-  Calendar,
+  Calendar as CalendarIcon2,
   DollarSign,
   Building,
   Store,
@@ -36,6 +36,7 @@ import {
   Plus,
   Search,
   Check,
+  CalendarIcon,
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -46,6 +47,35 @@ import { TypeChip } from '@/components/chip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+
+function Labeled({
+  icon,
+  label,
+  children,
+  alignTop = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+  alignTop?: boolean;
+}) {
+  return (
+    <div className="flex flex-col space-y-2 text-sm font-medium text-ink">
+      <div className={cn('flex items-center gap-2', alignTop && 'self-start pt-1')}>
+        <span className="">{icon}</span>
+        <span className="truncate">{label}</span>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function toDateFromYMD(ymd: string) {
+  const [y, m, d] = ymd?.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
 
 type SectionKey =
   | 'overview'
@@ -69,9 +99,9 @@ const sections: { key: SectionKey; label: string; icon: any }[] = [
   { key: 'delivery', label: 'Delivery & Billing', icon: Truck },
   { key: 'preferences', label: 'Preferences & Consent', icon: SlidersHorizontal },
   { key: 'team', label: 'Team', icon: Users },
-  { key: 'phases', label: 'Phases', icon: Calendar },
+  { key: 'phases', label: 'Phases', icon: CalendarIcon2 },
   { key: 'contractors', label: 'Contractors', icon: Building },
-  { key: 'timeline', label: 'Timeline', icon: Calendar },
+  { key: 'timeline', label: 'Timeline', icon: CalendarIcon2 },
   { key: 'financial', label: 'Financial', icon: DollarSign },
   { key: 'automation', label: 'Automation', icon: Sparkles },
 ];
@@ -133,52 +163,6 @@ export default function ProjectSettingsPage() {
     if (projectLoading) return;
     setSelectedProject(project?.find(data => data.id == params?.id));
   }, [project, projectLoading, params?.id]);
-
-  // Mock project data that would normally come from an API or store
-  const [projectData, setProjectData] = useState({
-    title: 'Chelsea Penthouse',
-    code: 'LUX-001',
-    summary: 'Luxury penthouse redesign in Chelsea with focus on sustainable materials and modern aesthetics.',
-    type: 'residential',
-    currency: 'GBP',
-    timezone: 'Europe/London',
-    budget: '850000',
-    taxRate: '20',
-    startDate: '2024-09-01',
-    endDate: '2025-03-15',
-    notes: 'Client prefers minimalist design with warm tones. Previous designer left detailed notes in the shared drive.',
-    team: [
-      { id: '1', name: 'Jane Designer', role: 'Lead Designer', avatar: '/avatars/jane.jpg' },
-      { id: '2', name: 'Tom Manager', role: 'Project Manager', avatar: '/avatars/tom.jpg' },
-      { id: '3', name: 'Sarah Procurement', role: 'Procurement Lead', avatar: '/avatars/sarah.jpg' },
-    ],
-    phases: [
-      { name: 'Discovery & Planning', duration: '2 weeks', description: 'Initial consultation and space assessment' },
-      { name: 'Design Development', duration: '4 weeks', description: 'Concept creation and design refinement' },
-      { name: 'Documentation', duration: '3 weeks', description: 'Technical drawings and specifications' },
-      { name: 'Implementation', duration: '8 weeks', description: 'Procurement and installation' },
-    ],
-    contractors: [
-      {
-        id: '1',
-        name: 'ABC Plumbing',
-        trade: 'Plumbing',
-        contact: 'John Smith',
-        email: 'john@abcplumbing.com',
-        phone: '+44 20 1234 5678',
-        portalAccess: true,
-      },
-      {
-        id: '2',
-        name: 'Elite Carpentry',
-        trade: 'Carpentry',
-        contact: 'Sarah Johnson',
-        email: 'sarah@elitecarpentry.co.uk',
-        phone: '+44 20 8765 4321',
-        portalAccess: false,
-      },
-    ],
-  });
 
   const missing = useMemo(() => computeMissingFields(onboardingData), [onboardingData]);
   const progressPct = useMemo(() => computeProgressPct(missing), [missing]);
@@ -1338,6 +1322,96 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
                       onChange={e => updatePhase(index, { description: e.target.value })}
                       rows={2}
                     />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Labeled label={`Phase ${index + 1} Start Date`}>
+                      <div className="flex items-center gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                !phase?.startDate && 'text-muted-foreground'
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
+                              {phase?.startDate ? format(toDateFromYMD(phase?.startDate), 'PPP') : 'Pick start date'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={phase?.startDate ? toDateFromYMD(phase?.startDate) : undefined}
+                              onSelect={d => {
+                                // const updatedPhases = [...data.phases];
+                                // updatedPhases[index] = {
+                                //   ...phase,
+                                //   startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                                // };
+                                // updateData({ phases: updatedPhases });
+                                updatePhase(index, { startDate: d ? format(d, 'yyyy-MM-dd') : undefined });
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        {/* {data?.startDate && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => updateData({ startDate: undefined })}>
+                                          X
+                                        </Button>
+                                      )} */}
+                      </div>
+                    </Labeled>{' '}
+                    <Labeled label={`Phase ${index + 1} End Date`}>
+                      <div className="flex items-center gap-2">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className={cn(
+                                'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                !phase?.endDate && 'text-muted-foreground'
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
+                              {phase?.endDate ? format(toDateFromYMD(phase?.endDate), 'PPP') : 'Pick start date'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={phase?.endDate ? toDateFromYMD(phase?.endDate) : undefined}
+                              onSelect={d => {
+                                // const updatedPhases = [...data.phases];
+                                // updatedPhases[index] = {
+                                //   ...phase,
+                                //   endDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                                // };
+                                // updateData({ phases: updatedPhases });
+                                updatePhase(index, { endDate: d ? format(d, 'yyyy-MM-dd') : undefined });
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        {/* {data?.startDate && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => updateData({ startDate: undefined })}>
+                                          X
+                                        </Button>
+                                      )} */}
+                      </div>
+                    </Labeled>
                   </div>
                 </div>
               </CardContent>

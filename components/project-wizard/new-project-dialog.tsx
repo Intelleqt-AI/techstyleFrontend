@@ -70,67 +70,97 @@ const projectTypes = [
 const defaultPhases = {
   residential: [
     {
-      name: 'Discovery & Planning',
+      name: 'Discovery',
       duration: '2 weeks',
       description: 'Initial consultation and space assessment',
     },
     {
-      name: 'Design Development',
+      name: 'Concept Design',
       duration: '4 weeks',
       description: 'Concept creation and design refinement',
     },
     {
-      name: 'Documentation',
+      name: 'Design Development',
       duration: '3 weeks',
       description: 'Technical drawings and specifications',
     },
     {
-      name: 'Implementation',
+      name: 'Technical Drawings',
       duration: '8 weeks',
+      description: 'Technical drawings and specifications',
+    },
+    {
+      name: 'Procurement',
+      duration: '10 weeks',
+      description: 'Procurement and installation',
+    },
+    {
+      name: 'Site / Implementation',
+      duration: '12 weeks',
       description: 'Procurement and installation',
     },
   ],
   commercial: [
     {
-      name: 'Strategic Planning',
-      duration: '3 weeks',
-      description: 'Business requirements and space analysis',
+      name: 'Discovery',
+      duration: '2 weeks',
+      description: 'Initial consultation and space assessment',
+    },
+    {
+      name: 'Concept Design',
+      duration: '4 weeks',
+      description: 'Concept creation and design refinement',
     },
     {
       name: 'Design Development',
-      duration: '5 weeks',
-      description: 'Concept design and stakeholder approval',
+      duration: '3 weeks',
+      description: 'Technical drawings and specifications',
     },
     {
-      name: 'Documentation',
-      duration: '4 weeks',
-      description: 'Construction documents and permits',
+      name: 'Technical Drawings',
+      duration: '8 weeks',
+      description: 'Technical drawings and specifications',
     },
     {
-      name: 'Implementation',
+      name: 'Procurement',
+      duration: '10 weeks',
+      description: 'Procurement and installation',
+    },
+    {
+      name: 'Site / Implementation',
       duration: '12 weeks',
-      description: 'Construction and fit-out',
+      description: 'Procurement and installation',
     },
   ],
   hospitality: [
     {
-      name: 'Brand & Concept',
+      name: 'Discovery',
+      duration: '2 weeks',
+      description: 'Initial consultation and space assessment',
+    },
+    {
+      name: 'Concept Design',
       duration: '4 weeks',
-      description: 'Brand alignment and experience design',
+      description: 'Concept creation and design refinement',
     },
     {
       name: 'Design Development',
-      duration: '6 weeks',
-      description: 'Detailed design and prototyping',
+      duration: '3 weeks',
+      description: 'Technical drawings and specifications',
     },
     {
-      name: 'Documentation',
-      duration: '4 weeks',
-      description: 'FF&E specifications and drawings',
+      name: 'Technical Drawings',
+      duration: '8 weeks',
+      description: 'Technical drawings and specifications',
     },
     {
-      name: 'Implementation',
-      duration: '16 weeks',
+      name: 'Procurement',
+      duration: '10 weeks',
+      description: 'Procurement and installation',
+    },
+    {
+      name: 'Site / Implementation',
+      duration: '12 weeks',
       description: 'Procurement and installation',
     },
   ],
@@ -160,7 +190,7 @@ const paymentSchedules = [
 ];
 
 function toDateFromYMD(ymd: string) {
-  const [y, m, d] = ymd.split('-').map(Number);
+  const [y, m, d] = ymd?.split('-').map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
@@ -234,10 +264,10 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
   };
 
   const handleClose = () => {
-    setStep(1);
-    setData(initialProject);
     setExpandedSections({ phases: false, budget: false });
     onOpenChange(false);
+    setStep(1);
+    setData(initialProject);
   };
 
   const handleNext = () => {
@@ -283,12 +313,10 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
 
   // Define the mutation
   const mutation = useMutation({
-    mutationFn: task ? modifyProject : addNewProject,
+    mutationFn: addNewProject,
     onSuccess: () => {
       queryClient.invalidateQueries(['projects']);
-      toast('Project Updated');
-      setData(initialProject);
-      handleClose(); // Reset form values
+      handleClose();
     },
     onError: error => {
       console.log(error);
@@ -298,12 +326,8 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
 
   const handleCreate = async () => {
     // Simulate project creation
-    toast({
-      title: 'Project Created',
-      description: `${data.name} has been created successfully.`,
-    });
+    toast.success(`${data.name} has been created successfully.`);
     const finalData = { ...data, budget: +data?.budget };
-    // console.log(finalData);
     // handleClose()
     mutation.mutate(finalData);
   };
@@ -581,6 +605,94 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
                           className="text-sm bg-white border-borderSoft focus:ring-0 focus:border-clay-300"
                           rows={2}
                         />
+                        <div className="flex items-center justify-between">
+                          <Labeled label={`Phase ${index + 1} Start Date`}>
+                            <div className="flex items-center gap-2">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className={cn(
+                                      'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                      !phase?.startDate && 'text-muted-foreground'
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
+                                    {phase?.startDate ? format(toDateFromYMD(phase?.startDate), 'PPP') : 'Pick start date'}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={phase?.startDate ? toDateFromYMD(phase?.startDate) : undefined}
+                                    onSelect={d => {
+                                      const updatedPhases = [...data.phases];
+                                      updatedPhases[index] = {
+                                        ...phase,
+                                        startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                                      };
+                                      updateData({ phases: updatedPhases });
+                                    }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              {/* {data?.startDate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => updateData({ startDate: undefined })}>
+                        X
+                      </Button>
+                    )} */}
+                            </div>
+                          </Labeled>{' '}
+                          <Labeled label={`Phase ${index + 1} End Date`}>
+                            <div className="flex items-center gap-2">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className={cn(
+                                      'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                      !phase?.endDate && 'text-muted-foreground'
+                                    )}
+                                  >
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
+                                    {phase?.endDate ? format(toDateFromYMD(phase?.endDate), 'PPP') : 'Pick start date'}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={phase?.endDate ? toDateFromYMD(phase?.endDate) : undefined}
+                                    onSelect={d => {
+                                      const updatedPhases = [...data.phases];
+                                      updatedPhases[index] = {
+                                        ...phase,
+                                        endDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                                      };
+                                      updateData({ phases: updatedPhases });
+                                    }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                              {/* {data?.startDate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => updateData({ startDate: undefined })}>
+                        X
+                      </Button>
+                    )} */}
+                            </div>
+                          </Labeled>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

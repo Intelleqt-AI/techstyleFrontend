@@ -1,107 +1,47 @@
-"use client";
+'use client';
 
-import type React from "react";
+import type React from 'react';
 
-import { Input } from "@/components/ui/input";
-import { BreadcrumbBar } from "@/components/breadcrumb-bar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import Modal from "react-modal";
-import {
-  AlertCircle,
-  FolderKanban,
-  Package,
-  Play,
-  UserPlus,
-  Bell,
-  History,
-  Plus,
-  Search,
-  Command,
-} from "lucide-react";
-import { Switch } from "./ui/switch";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import { BreadcrumbBar } from '@/components/breadcrumb-bar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Modal from 'react-modal';
+import { AlertCircle, FolderKanban, Package, Play, UserPlus, Bell, History, Plus, Search, Command } from 'lucide-react';
+import { Switch } from './ui/switch';
+import { Label } from '@/components/ui/label';
 
-import { TimeTrackingDialog } from "./time-tracking/TimeTrackingDialog";
-import { toast } from "sonner";
-import { UserInfo } from "./topbar/UserInfo";
-import { SearchBar } from "./topbar/SearchBar";
-import { useActionMenu } from "@/Context/ActionMenuContext";
-import {
-  addTimeTracker,
-  fetchOnlyProject,
-  fetchProjects,
-  getTask,
-  getTimeTracking,
-  modifyTask,
-} from "@/supabase/API";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import NewTaskDrawar from "./tasks/newTaskCReateDialog";
-import NewProjectDrawar from "./tasks/newProjectCReateDialog";
-import AddProductModal from "./product-library/AddProductModal";
-import NotificationButton from "./topbar/Notification";
-import useUser from "@/hooks/useUser";
+import { toast } from 'sonner';
+import { addTimeTracker, fetchOnlyProject, fetchProjects, getTask, getTimeTracking, modifyTask } from '@/supabase/API';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import useUser from '@/hooks/useUser';
+import { TaskModal } from './tasks/task-modal';
 
 type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "neutral" | "notify" | "activity" | "primary";
+  variant?: 'neutral' | 'notify' | 'activity' | 'primary';
   isOpen?: boolean;
 };
 
-const IconButton = ({
-  children,
-  variant = "neutral",
-  className,
-  isOpen = false,
-  ...props
-}: IconButtonProps) => {
+const IconButton = ({ children, variant = 'neutral', className, isOpen = false, ...props }: IconButtonProps) => {
   const base =
-    "w-11 h-11 flex items-center justify-center rounded-[12px] transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2";
-  const variants: Record<NonNullable<IconButtonProps["variant"]>, string> = {
+    'w-11 h-11 flex items-center justify-center rounded-[12px] transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2';
+  const variants: Record<NonNullable<IconButtonProps['variant']>, string> = {
     // neutral greige chip
-    neutral:
-      "bg-greige-100 hover:bg-greige-300 text-slatex-700 focus-visible:ring-greige-500/40",
+    neutral: 'bg-greige-100 hover:bg-greige-300 text-slatex-700 focus-visible:ring-greige-500/40',
     // notifications use clay tint
-    notify: cn(
-      "bg-clay-50 hover:bg-clay-100 text-ink focus-visible:ring-clay-300",
-      isOpen && "translate-y-0.5"
-    ),
+    notify: cn('bg-clay-50 hover:bg-clay-100 text-ink focus-visible:ring-clay-300', isOpen && 'translate-y-0.5'),
     // activity uses subtle neutral tint
-    activity: cn(
-      "bg-neutral-50 hover:bg-neutral-100 text-ink focus-visible:ring-neutral-300",
-      isOpen && "translate-y-0.5"
-    ),
+    activity: cn('bg-neutral-50 hover:bg-neutral-100 text-ink focus-visible:ring-neutral-300', isOpen && 'translate-y-0.5'),
     // primary action uses deep navy
-    primary: cn(
-      "bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-neutral-200",
-      isOpen && "translate-y-0.5"
-    ),
+    primary: cn('bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-neutral-200', isOpen && 'translate-y-0.5'),
   };
   return (
-    <button
-      className={cn(base, variants[variant], className)}
-      data-state={isOpen ? "open" : "closed"}
-      {...props}>
+    <button className={cn(base, variants[variant], className)} data-state={isOpen ? 'open' : 'closed'} {...props}>
       {children}
     </button>
   );
@@ -111,10 +51,10 @@ export function TopBar() {
   const [modalOpen, setModalOpen] = useState(false);
   const [activatedTask, setActivatedTask] = useState([]);
   const [studioTask, setStudioTask] = useState(false);
-  const [selectedProject, setSelectedProject] = useState("");
+  const [selectedProject, setSelectedProject] = useState('');
   const [projects, setProjects] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState('');
   const { user } = useUser();
 
   const [filteredTask, setFilteredTask] = useState([]);
@@ -134,32 +74,32 @@ export function TopBar() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["fetch-projects"],
+    queryKey: ['fetch-projects'],
     queryFn: fetchProjects,
   });
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ["Time Tracking"],
+    queryKey: ['Time Tracking'],
     queryFn: getTimeTracking,
   });
 
   const mutation = useMutation({
     mutationFn: addTimeTracker,
     onSuccess: () => {
-      queryClient.invalidateQueries(["Time Tracking"]);
-      toast("Timer Update");
+      queryClient.invalidateQueries(['Time Tracking']);
+      toast('Timer Update');
       closeModal();
     },
     onError: () => {
-      toast("Error! Try again");
+      toast('Error! Try again');
     },
   });
 
   const closeModal = useCallback(() => {
     setModalOpen(false);
-    setSelectedProject("");
+    setSelectedProject('');
     setFilteredTask([]);
-    setNote("");
+    setNote('');
     setSelectedTask(null);
   }, []);
 
@@ -167,7 +107,7 @@ export function TopBar() {
     if (activatedTask?.length === 0) {
       setModalOpen(true);
     } else {
-      router.push("/home/time");
+      router.push('/home/time');
     }
   }, [activatedTask, router]);
 
@@ -177,7 +117,7 @@ export function TopBar() {
 
   const handleStartTracking = useCallback(() => {
     if (!selectedTask && !studioTask) {
-      toast.error("Select Project and Task");
+      toast.error('Select Project and Task');
       return;
     }
     mutation.mutate({
@@ -209,14 +149,12 @@ export function TopBar() {
     error: taskError,
     refetch: refetchTask,
   } = useQuery({
-    queryKey: ["tasksMyTask"],
+    queryKey: ['tasksMyTask'],
     queryFn: getTask,
   });
 
   useEffect(() => {
-    setFilteredTask(
-      task?.filter((item) => String(item.projectID) === String(selectedProject))
-    );
+    setFilteredTask(task?.filter(item => String(item.projectID) === String(selectedProject)));
   }, [selectedProject, task]);
 
   useEffect(() => {
@@ -227,14 +165,12 @@ export function TopBar() {
   useEffect(() => {
     if (trackingLoading) return;
     setActivatedTask(
-      trackingData?.data
-        ?.filter((item) => item.isActive === true && item.isPaused === false)
-        .filter((item) => item.creator == user?.email)
+      trackingData?.data?.filter(item => item.isActive === true && item.isPaused === false).filter(item => item.creator == user?.email)
     );
   }, [trackingData?.data, trackingLoading, user?.email]);
 
   const dropdownNavigateContacts = useCallback(() => {
-    router.push("/crm/contacts/new");
+    router.push('/crm/contacts/new');
   }, [router]);
 
   const dropdownOpenTaskModal = useCallback(() => {
@@ -250,16 +186,12 @@ export function TopBar() {
   }, []);
 
   const memoizedTaskItems = useMemo(() => {
-    return filteredTask?.map((item) => (
+    return filteredTask?.map(item => (
       <SelectItem key={item.id} value={item}>
         {item.name}
       </SelectItem>
     ));
   }, [filteredTask]);
-
-  // useEffect(() => {
-  //   console.log(projects);
-  // }, [projects]);
 
   return (
     <header className="h-14 bg-white flex items-center justify-between px-6 border-b border-gray-200">
@@ -269,10 +201,7 @@ export function TopBar() {
         <div className="flex-1 max-w-md mx-auto">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search or ask AI..."
-              className="pl-10 pr-16 bg-neutral-50 text-sm h-9 w-full"
-            />
+            <Input placeholder="Search or ask AI..." className="pl-10 pr-16 bg-neutral-50 text-sm h-9 w-full" />
             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs px-2 py-1 rounded bg-greige-100 text-taupe-700">
               <Command className="w-3 h-3" />K
             </div>
@@ -296,12 +225,9 @@ export function TopBar() {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton
-                variant="activity"
-                aria-label="Activity Log"
-                onClick={handleNavigate}>
+              <IconButton variant="activity" aria-label="Activity Log" onClick={handleNavigate}>
                 <History className="w-5 h-5 stroke-[1.75]" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-slatex-500" />
+                {activatedTask?.length > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-slatex-500" />}
               </IconButton>
             </TooltipTrigger>
             <TooltipContent>
@@ -313,9 +239,12 @@ export function TopBar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <IconButton variant="primary" aria-label="Quick actions">
+                  <button
+                    type="button"
+                    className="w-11 h-11 flex items-center justify-center rounded-[12px] transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2 bg-primary text-primary-foreground hover:opacity-90 focus-visible:ring-neutral-200"
+                  >
                     <Plus className="w-5 h-5 stroke-[1.75]" />
-                  </IconButton>
+                  </button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
               <TooltipContent>
@@ -323,18 +252,12 @@ export function TopBar() {
               </TooltipContent>
             </Tooltip>
 
-            <DropdownMenuContent
-              className="w-56 bg-white border border-borderSoft shadow-lg"
-              align="end">
-              <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">
+            <DropdownMenuContent className="w-56 bg-white border border-borderSoft shadow-lg" align="end">
+              <DropdownMenuItem onClick={dropdownOpenTaskModal} className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">
                 Task
               </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">
-                Meeting
-              </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">
-                AI Note
-              </DropdownMenuItem>
+              <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">Meeting</DropdownMenuItem>
+              <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">AI Note</DropdownMenuItem>
               <DropdownMenuItem className="flex items-center gap-2 hover:bg-neutral-50 focus:bg-neutral-50">
                 Purchase Order
               </DropdownMenuItem>
@@ -347,22 +270,19 @@ export function TopBar() {
         className="!max-w-[500px] flex !h-auto flex-col py-6"
         isOpen={modalOpen}
         onRequestClose={afterCloseModal}
-        contentLabel="Example Modal">
+        contentLabel="Example Modal"
+      >
         <div className="navbar mb-[10px] flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="text-[20px] font-semibold flex items-center gap-2">
-              Time Tracker
-            </div>
+            <div className="text-[20px] font-semibold flex items-center gap-2">Time Tracker</div>
           </div>
           {/* Delete and Close Modal Section */}
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={closeModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -421,25 +341,11 @@ export function TopBar() {
                 <div className="">
                   <div className="flex items-center justify-end gap-3">
                     <div className="flex items-center space-x-2">
-                      <AlertCircle
-                        className={`w-4 h-4 ${
-                          studioTask ? "text-black" : "text-gray-400"
-                        }`}
-                      />
-                      <span
-                        className={`text-sm font-medium ${
-                          studioTask ? "text-black" : "text-gray-600"
-                        }`}>
-                        Start Studio Management
-                      </span>
+                      <AlertCircle className={`w-4 h-4 ${studioTask ? 'text-black' : 'text-gray-400'}`} />
+                      <span className={`text-sm font-medium ${studioTask ? 'text-black' : 'text-gray-600'}`}>Start Studio Management</span>
                     </div>
 
-                    <Switch
-                      className="rounded-lg"
-                      checked={studioTask}
-                      onCheckedChange={setStudioTask}
-                      aria-label="Toggle urgent tasks"
-                    />
+                    <Switch className="rounded-lg" checked={studioTask} onCheckedChange={setStudioTask} aria-label="Toggle urgent tasks" />
                   </div>
                 </div>
               </div>
@@ -447,11 +353,10 @@ export function TopBar() {
               <div className="mt-0">
                 <div className="space-y-2 col-span-2 mb-3">
                   <Label htmlFor="memo">
-                    Note{" "}
-                    <span className="text-xs text-gray-500">(optional)</span>
+                    Note <span className="text-xs text-gray-500">(optional)</span>
                   </Label>
                   <Input
-                    onChange={(e) => setNote(e.target.value)}
+                    onChange={e => setNote(e.target.value)}
                     className="bg-white py-7 rounded-xl"
                     id="memo"
                     name="memo"
@@ -462,10 +367,7 @@ export function TopBar() {
                 {!studioTask && (
                   <div className="space-y-2 mt-2">
                     <Label htmlFor="memo">Projects</Label>
-                    <Select
-                      required
-                      value={selectedProject}
-                      onValueChange={(value) => setSelectedProject(value)}>
+                    <Select required value={selectedProject} onValueChange={value => setSelectedProject(value)}>
                       <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                         <SelectValue placeholder="Select Project" />
                       </SelectTrigger>
@@ -473,7 +375,7 @@ export function TopBar() {
                         <SelectItem key="default" disabled value="none">
                           Select Project
                         </SelectItem>
-                        {projects?.map((item) => (
+                        {projects?.map(item => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.name}
                           </SelectItem>
@@ -487,15 +389,11 @@ export function TopBar() {
                 {!studioTask && (
                   <div className="space-y-2 mt-2">
                     <Label htmlFor="task">Task</Label>
-                    <Select
-                      required
-                      onValueChange={(value) => setSelectedTask(value)}>
+                    <Select required onValueChange={value => setSelectedTask(value)}>
                       <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                         <SelectValue placeholder="Select Task" />
                       </SelectTrigger>
-                      <SelectContent className="bg-white z-[999] max-h-[250px] overflow-auto">
-                        {memoizedTaskItems}
-                      </SelectContent>
+                      <SelectContent className="bg-white z-[999] max-h-[250px] overflow-auto">{memoizedTaskItems}</SelectContent>
                     </Select>
                   </div>
                 )}
@@ -504,16 +402,24 @@ export function TopBar() {
 
             {/* Submit Button */}
             <div className="flex pb-2 mt-3 justify-between items-center">
-              <Button
-                type="submit"
-                onClick={handleStartTracking}
-                className="w-full rounded-[10px] py-6">
+              <Button type="submit" onClick={handleStartTracking} className="w-full rounded-[10px] py-6">
                 <Play /> Start Tracking
               </Button>
             </div>
           </div>
         </div>
       </Modal>
+
+      <TaskModal
+        open={TaskmodalOpen}
+        onOpenChange={setTaskmodalOpen}
+        projectId={null}
+        team={null}
+        defaultListId={null}
+        taskToEdit={null}
+        onSave={null}
+        setEditing={null}
+      />
     </header>
   );
 }

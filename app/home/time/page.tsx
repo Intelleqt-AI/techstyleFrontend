@@ -345,7 +345,7 @@ export default function HomeTimePage() {
         ...(s.startTime === activeTask.currentSession
           ? {
               endTime: Date.now(),
-              totalWorkTime: Date.now() - s.startTime,
+              totalTime: Date.now() - s.startTime,
             }
           : {}),
       })),
@@ -375,6 +375,31 @@ export default function HomeTimePage() {
 
     mutation.mutate(updatedTask);
   }, [activeTask, mutation]);
+
+  // const handleStopTracking = useCallback(() => {
+  //   if (!activeTask) return;
+
+  //   const updatedTask = {
+  //     id: activeTask.id,
+  //     isActive: false,
+  //     isPaused: false,
+  //     startTime: 0,
+  //     endTime: Date.now(),
+  //     totalWorkTime: activeTask.totalWorkTime + (activeTask.isPaused ? 0 : Date.now() - activeTask.startTime),
+  //     session: activeTask.session.map(s => ({
+  //       ...s,
+  //       ...(s.startTime === activeTask.currentSession
+  //         ? {
+  //             endTime: Date.now(),
+  //             totalTime: Date.now() - s.startTime,
+  //           }
+  //         : {}),
+  //     })),
+  //     currentSession: null,
+  //   };
+
+  //   mutation.mutate(updatedTask);
+  // }, [activeTask, mutation]);
 
   const handleStopTracking = useCallback(() => {
     if (!activeTask) return;
