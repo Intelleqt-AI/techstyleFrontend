@@ -464,7 +464,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               order: {
                 supplier: supplier.data.find(items => items.company.trim() === item.matchedProduct.supplier.trim()),
                 projectID: projectID,
-                projectName: title,
+                projectName: project?.name,
                 issueDate: new Date().toISOString(),
                 status: 'Pending',
                 clientName: client ? client.name + ' ' + client.surname : null,
@@ -501,7 +501,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           const totalOrder = {
             supplier: supplier.data.find(items => items.company.trim() === currentSupplier.trim()),
             projectID: projectID,
-            projectName: title,
+            projectName: project?.name,
             status: 'Pending',
             clientName: client ? client.name + ' ' + client.surname : null,
             clientEmail: client ? client.email : null,

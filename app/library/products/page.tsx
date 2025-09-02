@@ -355,7 +355,7 @@ export default function ProductsPage() {
                           <span className="tabular-nums text-sm font-semibold text-gray-900">
                             £{Number(product?.priceRegular).toLocaleString()}
                           </span>
-                          <TypeChip label={product.type} />
+                          {product?.type && <TypeChip label={product.type} />}
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger className="w-full">
