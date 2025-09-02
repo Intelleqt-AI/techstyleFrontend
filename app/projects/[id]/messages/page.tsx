@@ -274,21 +274,7 @@ export default function ProjectMessagesPage({ params }: { params: { id: string }
   });
 
   useEffect(() => {
-    let result = emailData?.emails;
-    // if (currentTab === 'all' && !isLoading) {
-    //   result = inboxEmails;
-    // }
-
-    // else if (currentTab === 'Sent' && !sentEmailLoading) {
-    //   result = sentEmails;
-    // }
-    //  else if (currentTab == 'Drafts' && !draftEmailLoading) {
-    //   result = draftEmails;
-    // }
-
-    // if (filter) {
-    //   result = result.filter(item => item.labelIds?.includes('UNREAD'));
-    // }
+    let result = emailData?.emails || [];
 
     if (searchText.trim()) {
       const lower = searchText.toLowerCase();
@@ -300,6 +286,9 @@ export default function ProjectMessagesPage({ params }: { params: { id: string }
       );
     }
 
+    // Sort by internalDate (newest first)
+    result.sort((a, b) => b.internalDate - a.internalDate);
+
     setEmails(result);
   }, [searchText, emailData?.emails, emailLoading]);
 
@@ -308,8 +297,6 @@ export default function ProjectMessagesPage({ params }: { params: { id: string }
     queryKey: ['projects'],
     queryFn: () => fetchProjects(),
   });
-
-  console.log('object', project);
 
   const selectedThread = useMemo(() => threads.find(t => t.id === selectedThreadId)!, [threads, selectedThreadId]);
 

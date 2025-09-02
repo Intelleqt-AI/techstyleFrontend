@@ -144,271 +144,273 @@ export default function ProjectsPage() {
       </div>
 
       {/* Projects Content */}
-      {activeTab !== 'all' ? null : viewMode === 'board' ? (
-        /* Projects Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {project &&
-            project?.length > 0 &&
-            project.map(project => {
-              const nextPhase = project.phases
-                ?.filter(phase => dayjs(phase.endDate).isAfter(dayjs()))
-                .sort((a, b) => dayjs(a.endDate) - dayjs(b.endDate))[0];
-              const daysUntilMilestone = nextPhase ? dayjs(nextPhase.endDate).diff(dayjs(), 'day') : null;
-              return (
-                <Link key={project?.id} href={`/projects/${project?.id}`}>
-                  <Card className="border-borderSoft h-full bg-white hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-0">
-                      {/* Project Image */}
-                      <div className="relative h-48 bg-greige-100 rounded-t-lg overflow-hidden">
-                        <Image
-                          width={400}
-                          height={400}
-                          className="w-full h-full object-cover"
-                          src={
-                            project?.images[0]
-                              ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
-                              : projectCover
-                          }
-                          alt=""
-                          loading="lazy"
-                        />
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
-                            {project?.phases[0]?.name}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Project Details */}
-                      <div className="p-4 space-y-4">
-                        {/* Header */}
-                        <div className="space-y-2">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-semibold capitalize text-ink line-clamp-1">{project?.name}</h3>
-                            <Badge variant="outline" className={`text-xs ${getTypeColor(project?.type)}`}>
-                              <div className="flex capitalize items-center">
-                                {getTypeIcon(project?.projectType)}
-                                {project?.projectType}
-                              </div>
+      {activeTab == 'all' || activeTab == 'active' ? (
+        viewMode === 'board' ? (
+          /* Projects Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {project &&
+              project?.length > 0 &&
+              project.map(project => {
+                const nextPhase = project.phases
+                  ?.filter(phase => dayjs(phase.endDate).isAfter(dayjs()))
+                  .sort((a, b) => dayjs(a.endDate) - dayjs(b.endDate))[0];
+                const daysUntilMilestone = nextPhase ? dayjs(nextPhase.endDate).diff(dayjs(), 'day') : null;
+                return (
+                  <Link key={project?.id} href={`/projects/${project?.id}`}>
+                    <Card className="border-borderSoft h-full bg-white hover:shadow-md transition-shadow cursor-pointer">
+                      <CardContent className="p-0">
+                        {/* Project Image */}
+                        <div className="relative h-48 bg-greige-100 rounded-t-lg overflow-hidden">
+                          <Image
+                            width={400}
+                            height={400}
+                            className="w-full h-full object-cover"
+                            src={
+                              project?.images[0]
+                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                : projectCover
+                            }
+                            alt=""
+                            loading="lazy"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
+                              {project?.phases[0]?.name}
                             </Badge>
                           </div>
-                          {(project?.code || project?.client) && (
-                            <span className="text-sm text-ink-muted">
-                              {project?.code}
-                              {project?.client && (
-                                <>
-                                  {' '}
-                                  {project?.code && project?.client && '•'}{' '}
-                                  {clientData?.data?.find(client => client?.id == project?.client)?.name}
-                                </>
-                              )}
-                            </span>
-                          )}
                         </div>
 
-                        {/* Progress */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-ink-muted">Progress</span>
-                            <span className="font-medium text-ink">
-                              {calculateProjectProgress(project?.id, taskData?.data, isLoading)}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-greige-200 rounded-full h-1">
-                            <div
-                              className="bg-sage-500 h-1 rounded-full transition-all duration-300"
-                              style={{
-                                width: `${calculateProjectProgress(project?.id, taskData?.data, isLoading)}%`,
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Date Range */}
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ink-muted">Date</span>
-                          <span className="font-medium text-ink">
-                            {formatDate(project?.startDate)} - {formatDate(project?.endDate)}
-                          </span>
-                        </div>
-
-                        {/* Budget */}
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-ink-muted">Budget</span>
-                          <div className="text-right">
-                            <div className="font-medium text-ink">
-                              {project?.currency?.symbol}
-                              {Number(project?.budget).toLocaleString('en-GB', {
-                                minimumFractionDigits: 1,
-                                maximumFractionDigits: 1,
-                              })}
+                        {/* Project Details */}
+                        <div className="p-4 space-y-4">
+                          {/* Header */}
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between">
+                              <h3 className="font-semibold capitalize text-ink line-clamp-1">{project?.name}</h3>
+                              <Badge variant="outline" className={`text-xs ${getTypeColor(project?.type)}`}>
+                                <div className="flex capitalize items-center">
+                                  {getTypeIcon(project?.projectType)}
+                                  {project?.projectType}
+                                </div>
+                              </Badge>
                             </div>
-                            <div className="text-xs text-ink-muted"> {project?.currency?.symbol}0 spent</div>
-                          </div>
-                        </div>
-
-                        {/* Team */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-ink-muted">Team</span>
-                          <div className="flex -space-x-2">
-                            {project?.assigned &&
-                              project?.assigned.slice(0, 3).map((member, index) => (
-                                <Avatar key={index} className="w-6 h-6 border-2 border-white">
-                                  <AvatarImage src={member?.photoURL} />
-                                  <AvatarFallback className="text-xs bg-clay-200 text-clay-700">{member?.name[0]}</AvatarFallback>
-                                </Avatar>
-                              ))}
-                            {project?.assigned && project?.assigned.length > 3 && (
-                              <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
-                                <span className="text-xs text-ink-muted">+{project?.assigned.length - 3}</span>
-                              </div>
+                            {(project?.code || project?.client) && (
+                              <span className="text-sm text-ink-muted">
+                                {project?.code}
+                                {project?.client && (
+                                  <>
+                                    {' '}
+                                    {project?.code && project?.client && '•'}{' '}
+                                    {clientData?.data?.find(client => client?.id == project?.client)?.name}
+                                  </>
+                                )}
+                              </span>
                             )}
                           </div>
-                        </div>
 
-                        {/* Next Milestone */}
-                        {nextPhase && (
-                          <div className="pt-2 border-t border-borderSoft">
+                          {/* Progress */}
+                          <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-ink-muted">Next milestone</span>
-                              <div className="text-right">
-                                <div className="font-medium text-ink">{nextPhase?.name}</div>
-                                <div className="text-xs text-ink-muted">
-                                  {daysUntilMilestone === 0 ? 'Due today' : `${daysUntilMilestone} days`}
+                              <span className="text-ink-muted">Progress</span>
+                              <span className="font-medium text-ink">
+                                {calculateProjectProgress(project?.id, taskData?.data, isLoading)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-greige-200 rounded-full h-1">
+                              <div
+                                className="bg-sage-500 h-1 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${calculateProjectProgress(project?.id, taskData?.data, isLoading)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Date Range */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-ink-muted">Date</span>
+                            <span className="font-medium text-ink">
+                              {formatDate(project?.startDate)} - {formatDate(project?.endDate)}
+                            </span>
+                          </div>
+
+                          {/* Budget */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-ink-muted">Budget</span>
+                            <div className="text-right">
+                              <div className="font-medium text-ink">
+                                {project?.currency?.symbol}
+                                {Number(project?.budget).toLocaleString('en-GB', {
+                                  minimumFractionDigits: 1,
+                                  maximumFractionDigits: 1,
+                                })}
+                              </div>
+                              <div className="text-xs text-ink-muted"> {project?.currency?.symbol}0 spent</div>
+                            </div>
+                          </div>
+
+                          {/* Team */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-ink-muted">Team</span>
+                            <div className="flex -space-x-2">
+                              {project?.assigned &&
+                                project?.assigned.slice(0, 3).map((member, index) => (
+                                  <Avatar key={index} className="w-6 h-6 border-2 border-white">
+                                    <AvatarImage src={member?.photoURL} />
+                                    <AvatarFallback className="text-xs bg-clay-200 text-clay-700">{member?.name[0]}</AvatarFallback>
+                                  </Avatar>
+                                ))}
+                              {project?.assigned && project?.assigned.length > 3 && (
+                                <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
+                                  <span className="text-xs text-ink-muted">+{project?.assigned.length - 3}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Next Milestone */}
+                          {nextPhase && (
+                            <div className="pt-2 border-t border-borderSoft">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-ink-muted">Next milestone</span>
+                                <div className="text-right">
+                                  <div className="font-medium text-ink">{nextPhase?.name}</div>
+                                  <div className="text-xs text-ink-muted">
+                                    {daysUntilMilestone === 0 ? 'Due today' : `${daysUntilMilestone} days`}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-        </div>
-      ) : (
-        /* Projects Table */
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Project</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Client</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Progress</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Budget</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Timeline</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Team</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 text-sm">
-                {project &&
-                  project.length > 0 &&
-                  project.map((project, index) => (
-                    <tr key={project?.id} className="hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <Link href={`/projects/${project?.id}`} className="flex items-center gap-3 hover:text-primary">
-                          <div className="w-10 h-10 bg-greige-100 rounded-lg overflow-hidden flex-shrink-0">
-                            <Image
-                              width={400}
-                              height={400}
-                              className="w-full h-full object-cover"
-                              src={
-                                project?.images[0]
-                                  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
-                                  : projectCover
-                              }
-                              alt=""
-                              loading="lazy"
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium text-ink">{project?.name}</div>
-                            <div className="text-sm text-ink-muted">{project?.code}</div>
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-ink">
-                        {clientData && clientData?.data?.find(client => client?.id == project?.client)?.name}
-                      </td>
-                      <td className="py-4 px-4 capitalize">
-                        <Badge variant="outline" className={`text-xs ${getTypeColor(project?.projectType)}`}>
-                          <div className="flex capitalize items-center">
-                            {getTypeIcon(project?.projectType)}
-                            {project?.projectType}
-                          </div>
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            project?.status === 'In Progress'
-                              ? 'bg-sage-50 text-sage-700 border-sage-200'
-                              : project?.status === 'Planning'
-                              ? 'bg-clay-50 text-clay-700 border-clay-200'
-                              : 'bg-greige-50 text-greige-700 border-greige-200'
-                          }`}
-                        >
-                          {project?.status}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-greige-200 rounded-full h-1">
-                            <div
-                              className="bg-sage-500 h-1 rounded-full transition-all duration-300"
-                              style={{
-                                width: `${calculateProjectProgress(project?.id, taskData?.data, isLoading)}%`,
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-ink">
-                            {calculateProjectProgress(project?.id, taskData?.data, isLoading)}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="text-sm">
-                          <div className="font-medium text-ink">
-                            {project?.currency?.symbol}
-                            {Number(project?.budget).toLocaleString()}
-                          </div>
-                          <div className="text-ink-muted">{project?.currency?.symbol}0 spent</div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-ink">
-                        <div>
-                          <div>{formatDate(project?.startDate)}</div>
-                          <div className="text-ink-muted">to {formatDate(project?.endDate)}</div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex -space-x-2">
-                          {project?.assigned &&
-                            project.assigned.slice(0, 3).map((member, memberIndex) => (
-                              <Avatar key={memberIndex} className="w-6 h-6 border-2 border-white">
-                                <AvatarImage src={member.photoURL} />
-                                <AvatarFallback className="text-xs bg-clay-200 text-clay-700">{member?.name[0]}</AvatarFallback>
-                              </Avatar>
-                            ))}
-                          {project?.assigned && project.assigned.length > 3 && (
-                            <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
-                              <span className="text-xs text-ink-muted">+{project.assigned.length - 3}</span>
-                            </div>
                           )}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
           </div>
-        </div>
-      )}
+        ) : (
+          /* Projects Table */
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Project</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Client</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Type</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Progress</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Budget</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Timeline</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Team</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 text-sm">
+                  {project &&
+                    project.length > 0 &&
+                    project.map((project, index) => (
+                      <tr key={project?.id} className="hover:bg-gray-50">
+                        <td className="py-4 px-4">
+                          <Link href={`/projects/${project?.id}`} className="flex items-center gap-3 hover:text-primary">
+                            <div className="w-10 h-10 bg-greige-100 rounded-lg overflow-hidden flex-shrink-0">
+                              <Image
+                                width={400}
+                                height={400}
+                                className="w-full h-full object-cover"
+                                src={
+                                  project?.images[0]
+                                    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                    : projectCover
+                                }
+                                alt=""
+                                loading="lazy"
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium text-ink">{project?.name}</div>
+                              <div className="text-sm text-ink-muted">{project?.code}</div>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-ink">
+                          {clientData && clientData?.data?.find(client => client?.id == project?.client)?.name}
+                        </td>
+                        <td className="py-4 px-4 capitalize">
+                          <Badge variant="outline" className={`text-xs ${getTypeColor(project?.projectType)}`}>
+                            <div className="flex capitalize items-center">
+                              {getTypeIcon(project?.projectType)}
+                              {project?.projectType}
+                            </div>
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              project?.status === 'In Progress'
+                                ? 'bg-sage-50 text-sage-700 border-sage-200'
+                                : project?.status === 'Planning'
+                                ? 'bg-clay-50 text-clay-700 border-clay-200'
+                                : 'bg-greige-50 text-greige-700 border-greige-200'
+                            }`}
+                          >
+                            {project?.status}
+                          </Badge>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 bg-greige-200 rounded-full h-1">
+                              <div
+                                className="bg-sage-500 h-1 rounded-full transition-all duration-300"
+                                style={{
+                                  width: `${calculateProjectProgress(project?.id, taskData?.data, isLoading)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium text-ink">
+                              {calculateProjectProgress(project?.id, taskData?.data, isLoading)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="text-sm">
+                            <div className="font-medium text-ink">
+                              {project?.currency?.symbol}
+                              {Number(project?.budget).toLocaleString()}
+                            </div>
+                            <div className="text-ink-muted">{project?.currency?.symbol}0 spent</div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-sm text-ink">
+                          <div>
+                            <div>{formatDate(project?.startDate)}</div>
+                            <div className="text-ink-muted">to {formatDate(project?.endDate)}</div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex -space-x-2">
+                            {project?.assigned &&
+                              project.assigned.slice(0, 3).map((member, memberIndex) => (
+                                <Avatar key={memberIndex} className="w-6 h-6 border-2 border-white">
+                                  <AvatarImage src={member.photoURL} />
+                                  <AvatarFallback className="text-xs bg-clay-200 text-clay-700">{member?.name[0]}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                            {project?.assigned && project.assigned.length > 3 && (
+                              <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
+                                <span className="text-xs text-ink-muted">+{project.assigned.length - 3}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      ) : null}
 
       {/* Empty State */}
       {project?.length === 0 && (

@@ -99,9 +99,7 @@ export default function ListView({
                             <td className="px-3 py-3">
                               <StatusBadge status={formatStatus(t?.status)} label={formatStatus(t?.status)} />
                             </td>
-                            <td className="px-3 py-3">
-                              <StatusBadge status={t.priority} label={t.priority} />
-                            </td>
+                            <td className="px-3 py-3">{t.priority && <StatusBadge status={t.priority} label={t.priority} />}</td>
                             <td className="px-3 py-3">
                               <div className="flex flex-wrap gap-1.5">
                                 {!t?.assigned || t.assigned.length === 0 ? (

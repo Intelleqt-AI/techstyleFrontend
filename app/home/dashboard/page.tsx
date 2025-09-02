@@ -17,6 +17,7 @@ import { fetchOnlyProject, fetchProjects, getInvoices, getPurchaseOrder, getTime
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import useUsers from '@/hooks/useUsers';
+import { useRouter } from 'next/navigation';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -261,20 +262,12 @@ function ScopeToggle({ scope, onScopeChange, canSeeStudio }) {
 // Dashboard card components with role-based data
 function TodaysMeetingsCard({ scope, userRole }) {
   const myMeetings = [
-    { id: 1, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
-    { id: 2, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
-    { id: 3, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
-    { id: 4, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
-    { id: 5, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    // { id: 1, title: 'No Meeting', time: 'Upcoming', client: 'Upcoming', attendee: true },
     // { id: 2, title: 'Material Selection', time: '2:30 PM', client: 'TechCorp', attendee: true },
     // { id: 3, title: 'Team Standup', time: '4:00 PM', client: 'Internal', attendee: true },
   ];
 
-  const studioMeetings = [
-    ...myMeetings,
-    { id: 4, title: 'Budget Review', time: '11:30 AM', client: 'Grandeur Hotels', attendee: false },
-    { id: 5, title: 'Contractor Check-in', time: '3:15 PM', client: 'Modern Office', attendee: false },
-  ];
+  const studioMeetings = [...myMeetings];
 
   const meetings = scope === 'studio' ? studioMeetings : myMeetings;
 
@@ -285,17 +278,38 @@ function TodaysMeetingsCard({ scope, userRole }) {
         <h3 className="font-semibold text-neutral-900">Today's Meetings</h3>
       </div>
       <div className="space-y-3 flex-1">
-        {meetings.slice(0, 3).map(meeting => (
-          <div key={meeting.id} className="flex items-center gap-3">
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? 'bg-sage-500' : 'bg-greige-500'}`}></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-900 truncate">{meeting.title}</p>
-              <p className="text-xs text-neutral-600">
-                {meeting.time} • {meeting.client}
-              </p>
+        {meetings?.length > 0 ? (
+          meetings.slice(0, 3).map(meeting => (
+            <div key={meeting.id} className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? 'bg-sage-500' : 'bg-greige-500'}`}></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-neutral-900 truncate">{meeting.title}</p>
+                <p className="text-xs text-neutral-600">
+                  {meeting.time} • {meeting.client}
+                </p>
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12 text-neutral-400 mb-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z"
+              />
+            </svg>
+            <p className="text-neutral-500 font-medium text-sm">No meetings today</p>
+            <p className="text-neutral-400 text-xs mt-1">Relax! You don’t have any scheduled meetings.</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -370,50 +384,73 @@ export default function DashboardPage() {
     queryFn: getTimeTracking,
   });
 
-  function getFormattedTimeForMonth(tasks, selectedYear, selectedMonth) {
-    console.log('getFormattedTimeForMonth', tasks);
-    if (!Array.isArray(tasks) || !tasks.length) return '0.00';
+  function getFormattedTimeFromMondayToSaturday(tasks) {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
 
-    console.log('getFormattedTimeForMonth');
+    // Get Monday of the current week
+    const monday = new Date(now);
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
 
-    // JS Date expects 0-based months
-    const firstDay = new Date(selectedYear, selectedMonth, 1, 0, 0, 0, 0);
-    const lastDay = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+    // Get Friday of the same week
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4); // +4 days = Friday
+    friday.setHours(23, 59, 59, 999);
 
-    const totalMs = tasks.reduce((total, task) => {
-      if (!Array.isArray(task.session)) return total;
-
-      const sessionTime = task.session.reduce((sum, session) => {
-        const sessionDate = new Date(session.date);
-
-        if (!isNaN(sessionDate) && sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
-          return sum + session.totalTime;
+    return tasks
+      .reduce((totalHours, task) => {
+        // 1. Check if the task was worked on this week (Mon–Fri)
+        const taskDate = new Date(task.timerStart);
+        if (taskDate < monday || taskDate > friday) {
+          return totalHours;
         }
-        return sum;
-      }, 0);
 
-      return total + sessionTime;
-    }, 0);
+        // 2. Calculate time from sessions
+        let sessionTime = 0;
+        if (Array.isArray(task.session)) {
+          sessionTime = task.session.reduce((sum, session) => {
+            const sessionDate = new Date(session.date);
+            if (sessionDate >= monday && sessionDate <= friday) {
+              if (session.endTime) {
+                // Completed session - always count
+                return sum + (Number(session.endTime) - Number(session.startTime));
+              } else if (session.startTime && task.isActive && !task.isPaused) {
+                // Active session - count current duration
+                return sum + (Date.now() - Number(session.startTime));
+              }
+            }
+            return sum;
+          }, 0);
+        }
 
-    const totalHours = totalMs / (1000 * 60 * 60);
-    return totalHours.toFixed(2);
+        // 3. Add saved totalWorkTime for paused/completed tasks
+        let additionalTime = 0;
+        if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
+          additionalTime = Number(task.totalWorkTime);
+        }
+
+        // 4. Convert ms → hours and add to total
+        const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
+        return totalHours + taskHours;
+      }, 0)
+      .toFixed(1);
   }
 
   function getTrackingByUser(email) {
     if (trackingLoading || !trackingData?.data) return [];
-    const processedTasks = trackingData.data.filter(item => item.isActive);
-    const filterByEmail = processedTasks.filter(item => item.creator == email);
+    // const processedTasks = trackingData.data.filter(item => item.isActive);
+    const filterByEmail = trackingData?.data?.filter(item => item.creator == email);
 
     return filterByEmail;
   }
 
-  function enrichUsersWithProjectCount(users, projects) {
-    const selectedYear = dayjs().year();
-    const selectedMonth = dayjs().month() + 1; // month() is 0-based
-    if (!users || !projects) return [];
+  function enrichUsersWithProjectCount(users) {
+    if (!users) return [];
 
     return users.map(user => {
-      const totalTime = getFormattedTimeForMonth(getTrackingByUser(user.email), selectedYear, selectedMonth);
+      const totalTime = getFormattedTimeFromMondayToSaturday(getTrackingByUser(user.email));
 
       return {
         name: user.name,
@@ -430,10 +467,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (isLoading || trackingLoading) return;
-    setUserTime(enrichUsersWithProjectCount(users?.data, project));
+    setUserTime(enrichUsersWithProjectCount(users?.data));
   }, [users?.data, project, isLoading, trackingLoading]); // Projects
 
   const timeDisplay = getDailyBreakdown(tracking);
+  const router = useRouter();
 
   function JumpBackInSection({ scope, userRole }) {
     const myProjects = project;
@@ -451,6 +489,7 @@ export default function DashboardPage() {
           {!isLoading &&
             projects.slice(0, 4).map(project => (
               <div
+                onClick={() => router.push(`/projects/${project?.id}`)}
                 key={project.id}
                 className="flex items-center gap-4 p-4 bg-white rounded-lg border border-greige-500/30 hover:shadow-sm transition-shadow cursor-pointer"
               >
@@ -496,15 +535,13 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-neutral-900">Team Capacity</h3>
           </div>
           <div className="space-y-3 flex-1">
-            {teamCapacity.map(member => (
+            {userTime?.slice(0, 6).map(member => (
               <div key={member.name} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-900">{member.name}</span>
-                  <span className="text-neutral-600">
-                    {member.hours}h / {member.capacity}h
-                  </span>
+                  <span className="text-neutral-600">{member.totalTime}h / 40h</span>
                 </div>
-                <Progress value={(member.hours / member.capacity) * 100} className="h-1 [&>div]:bg-olive-600" />
+                <Progress value={(member.totalTime / 40) * 100} className="h-1 [&>div]:bg-olive-600" />
               </div>
             ))}
           </div>
@@ -618,8 +655,8 @@ export default function DashboardPage() {
     if (scope === 'studio') {
       return [
         { color: 'clay', text: `${overDueTask?.length} overdue tasks across 3 projects` },
-        // { color: 'sage', text: 'Team utilisation at 89%' },
-        // { color: 'olive', text: '£45k profit this month' },
+        { color: 'sage', text: `Team utilisation at ${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%` },
+        { color: 'olive', text: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)} profit this month` },
       ];
     }
     return [
@@ -684,7 +721,7 @@ export default function DashboardPage() {
 
     const studioKPIs = [
       { label: 'Studio Profit', value: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)}`, trend: 'up', change: '+12%' },
-      { label: 'Utilisation', value: '89%', trend: 'up', change: '+3%' },
+      { label: 'Utilisation', value: `${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%`, trend: 'up', change: '+3%' },
       { label: 'Cash Flow', value: gbp.format(totalPurchaseOrder), trend: 'down', change: '-8%' },
     ];
 

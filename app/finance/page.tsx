@@ -230,10 +230,10 @@ export default function FinancePage() {
       invoice: {
         // projectID: id,
         status: 'Pending',
-        clientName: purchaseOrder[0]?.clientName,
-        clientEmail: purchaseOrder[0]?.clientEmail,
-        clientPhone: purchaseOrder[0]?.clientPhone,
-        clientAddress: purchaseOrder[0]?.clientAddress,
+        clientName: checkedItems[0]?.clientName,
+        clientEmail: checkedItems[0]?.clientEmail,
+        clientPhone: checkedItems[0]?.clientPhone,
+        clientAddress: checkedItems[0]?.clientAddress,
         delivery_charge: checkedItems.reduce((acc, sum) => acc + sum?.delivery_charge, 0),
         poNumber: checkedItems.map(item => item.poNumber),
         products: checkedItems.flatMap(item => item.products),
@@ -490,7 +490,11 @@ export default function FinancePage() {
                       <td className="px-4 py-3">
                         <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{inv.inNumber}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                        <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
+                          {inv.inNumber}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">

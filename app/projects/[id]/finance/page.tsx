@@ -401,7 +401,11 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                         <td className="px-4 py-3">
                           <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{inv.inNumber}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                          <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
+                            {inv.inNumber}
+                          </Link>
+                        </td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">

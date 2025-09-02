@@ -392,7 +392,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                                   draggable
                                   onDragStart={e => handleDragStart(e, task?.id, col?.name)}
                                   key={task.id}
-                                  className={`p-3 active:cursor-grabbing rounded-lg border bg-white hover:shadow-sm transition-all cursor-pointer ${
+                                  className={`p-3  active:cursor-grabbing rounded-lg border bg-white hover:shadow-sm transition-all cursor-pointer ${
                                     task.status === 'done' ? 'border-gray-200 opacity-60' : 'border-gray-200 hover:border-gray-300'
                                   }`}
                                   onClick={() => openEditTask(task)}
@@ -404,14 +404,14 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                                     <Checkbox checked={task.status === 'done'} disabled className="mt-0.5" />
                                     <div className="flex-1 min-w-0">
                                       <h4
-                                        className={`font-medium text-sm text-gray-900 leading-tight ${
+                                        className={`font-medium truncate text-sm text-gray-900 leading-tight ${
                                           task.status === 'done' ? 'line-through text-gray-400' : ''
                                         }`}
                                       >
                                         {task.name}
                                       </h4>
                                       <div className="mt-2 flex items-center gap-2">
-                                        <StatusBadge status={task.priority} label={task.priority} />
+                                        {task.priority && <StatusBadge status={task.priority} label={task.priority} />}
                                         {total > 0 && (
                                           <span className="text-[11px] text-gray-500">
                                             {done}/{total}

@@ -171,8 +171,6 @@ export const fetchProjects = async () => {
       const imagePath = `${project.id}/`;
       // List images in the folder
       const { data: imageFiles, error: imageError } = await supabase.storage.from('cover').list(imagePath);
-      console.log('imageFiles', imageFiles, imagePath);
-
       if (imageError) {
         console.error('Error fetching images:', imageError);
         return { ...project, images: [] }; // Return empty array if no images found

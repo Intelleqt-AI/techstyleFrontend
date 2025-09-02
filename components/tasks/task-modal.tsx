@@ -519,7 +519,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   }, []);
 
   function toggleAssignee(member: any) {
-    console.log(member);
     setTaskValues(prev => {
       const alreadyAssigned = prev.assigned.some((a: any) => a.id === member.id);
 
@@ -744,8 +743,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   // const handleButtonClick = () => {
   //   fileInputRef.current.click();
   // };
-
-  console.log(taskValues);
 
   return (
     <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>

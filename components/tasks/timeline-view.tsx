@@ -145,7 +145,12 @@ export default function TimelineView({
       }
     }
 
-    const outPhases: Phase[] = Array.from(phaseSet.entries()).map(([id, name]) => ({ id, name })) as any;
+    // Merge detected phases with provided phases so empty phases are preserved
+    const providedPhaseMap = new Map<string, string>((phases || []).map(p => [p.id, p.name]));
+    for (const [id, name] of phaseSet.entries()) {
+      if (!providedPhaseMap.has(id)) providedPhaseMap.set(id, name);
+    }
+    const outPhases: Phase[] = Array.from(providedPhaseMap.entries()).map(([id, name]) => ({ id, name })) as any;
     return { tasksView: outTasks, phasesView: outPhases, listsView: outLists };
   }, [tasks, phases, lists, isBoardShape]);
 
@@ -341,10 +346,29 @@ export default function TimelineView({
     return { months: out, monthTodayIndex: idx };
   }, [timescale, projectRange]);
 
-  const gridWidth =
-    timescale === 'day' ? dates.length * dayWidth : timescale === 'week' ? weeks.length * WEEK_WIDTH : months.length * MONTH_WIDTH;
-  const bodyHeight = rows.length * ROW_HEIGHT;
+  // Ensure the timeline fills the available scroller width
   const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollerWidth, setScrollerWidth] = React.useState<number>(0);
+  React.useLayoutEffect(() => {
+    if (!scrollerRef.current) return;
+    const el = scrollerRef.current;
+    const update = () => setScrollerWidth(el.clientWidth);
+    update();
+    const ROClass = (window as any).ResizeObserver;
+    const ro = ROClass ? new ROClass(() => update()) : null;
+    if (ro) ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  const naturalGridWidth =
+    timescale === 'day' ? dates.length * dayWidth : timescale === 'week' ? weeks.length * WEEK_WIDTH : months.length * MONTH_WIDTH;
+  const minGridWidth = Math.max(0, scrollerWidth - LEFT_WIDTH);
+  const gridWidth = Math.max(naturalGridWidth, minGridWidth);
+  const bodyHeight = rows.length * ROW_HEIGHT;
 
   function scrollToToday() {
     if (!scrollerRef.current) return;

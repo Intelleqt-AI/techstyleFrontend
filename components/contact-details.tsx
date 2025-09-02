@@ -98,23 +98,25 @@ export function ContactDetailSheet({ open, onOpenChange, contact }: ContactDetai
           <SheetHeader className="px-6 pt-6">
             <div className="flex items-start justify-between">
               <div>
-                <SheetTitle className="text-xl font-semibold text-neutral-900">
-                  {data.name} {data.surname}
-                </SheetTitle>
+                <div className="flex items-center gap-3">
+                  <SheetTitle className="text-xl font-semibold text-neutral-900">
+                    {data.name} {data.surname}
+                  </SheetTitle>
+                  <Badge
+                    className={cn(
+                      'ml-2',
+                      data.status === 'Qualified'
+                        ? 'bg-green-100 text-green-800'
+                        : data.status === 'Lead'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    )}
+                  >
+                    {data.status}
+                  </Badge>
+                </div>
                 {data.company ? <div className="text-sm text-neutral-600">{data.company}</div> : null}
               </div>
-              <Badge
-                className={cn(
-                  'ml-2',
-                  data.status === 'Qualified'
-                    ? 'bg-green-100 text-green-800'
-                    : data.status === 'Lead'
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-800'
-                )}
-              >
-                {data.status}
-              </Badge>
             </div>
           </SheetHeader>
 

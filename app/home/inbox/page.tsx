@@ -329,9 +329,11 @@ export default function InboxPage() {
   // Filter read , unread, send , inbox
   useEffect(() => {
     let result = inboxEmails;
-    // if (currentTab === 'all' && !isLoading) {
-    //   result = inboxEmails;
-    // }
+    if (filter === 'all' || (filter == 'emails' && !isLoading)) {
+      result = inboxEmails;
+    } else {
+      result = [];
+    }
 
     // else if (currentTab === 'Sent' && !sentEmailLoading) {
     //   result = sentEmails;
@@ -355,7 +357,7 @@ export default function InboxPage() {
     }
 
     setEmails(result);
-  }, [searchText, inboxEmails, isLoading]);
+  }, [searchText, inboxEmails, isLoading, filter]);
 
   // Initialize Google Identity Services
   useEffect(() => {
@@ -779,9 +781,9 @@ export default function InboxPage() {
                       <div className="flex-shrink-0">
                         {!message.avatar ? (
                           <Avatar className="w-10 h-10">
-                            <AvatarImage src={message?.avatar || '/placeholder.svg'} />
-                            <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
-                              {/* {getEmailHeader(message?.payload?.headers, 'Subject')[0]} */}S
+                            <AvatarImage src={message?.avatar} />
+                            <AvatarFallback className="bg-gray-100 text-sm font-bold text-gray-600 ">
+                              {message?.from?.email?.slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         ) : (

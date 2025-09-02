@@ -167,10 +167,6 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
     setSelectedProject(foundProject);
   }, [project, projectLoading]);
 
-  useEffect(() => {
-    console.log(selectedProject);
-  }, [selectedProject]);
-
   return (
     <div className="flex-1 bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -258,7 +254,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
           <Card className="border border-greige-500/30 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <DollarSign className="w-4 h-4 text-slatex-600" />
+                {/* <DollarSign className="w-4 h-4 text-slatex-600" /> */}
+                <span> {selectedProject?.currency?.symbol || '£'}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700">Budget Utilization</p>
                   <p className="text-lg font-semibold text-neutral-900">
@@ -312,8 +309,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                 <TrendingUp className="w-4 h-4 text-slatex-600" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700">Profit Margin</p>
-                  <p className="text-lg font-semibold text-neutral-900">23%</p>
-                  <p className="text-xs text-neutral-600">£28,750 projected</p>
+                  <p className="text-lg font-semibold text-neutral-900">0%</p>
+                  <p className="text-xs text-neutral-600">{selectedProject?.currency?.symbol || '£'}0 projected</p>
                   <p className="text-xs mt-1 text-olive-700">+2% vs estimate</p>
                 </div>
               </div>
@@ -381,35 +378,44 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
             </div>
             <div className="relative">
               <div className="flex items-center justify-between">
-                {selectedProject?.phases?.map((phase, index) => (
-                  <div key={phase.name} className="flex flex-col items-center relative">
-                    <div
-                      className={`w-3 h-3 rounded-full border-2 ${
-                        phase.completed
-                          ? 'bg-sage-500 border-sage-500'
-                          : phase.current
-                          ? 'bg-clay-500 border-clay-500'
-                          : 'bg-greige-500 border-greige-500'
-                      }`}
-                    />
-                    <div className="mt-2 text-center">
-                      <div className={`text-xs font-medium ${phase.current ? 'text-clay-600' : 'text-neutral-700'}`}>{phase.name}</div>
-                      <div className="text-xs text-neutral-500">
-                        {new Date(phase.startDate).toLocaleDateString('en-GB', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </div>
-                    </div>
-                    {index > 0 && (
+                {selectedProject?.phases?.map((phase, index) => {
+                  const now = new Date();
+
+                  // Convert start and end dates to Date objects
+                  const start = phase.startDate ? new Date(phase.startDate) : null;
+                  const end = phase.endDate ? new Date(phase.endDate) : null;
+
+                  // Check if phase is currently running
+                  const isCurrent = start && end && now >= start && now <= end;
+
+                  return (
+                    <div key={phase.name} className="flex flex-col items-center relative">
                       <div
-                        className={`absolute top-1.5 right-6 w-20 h-0.5 ${
-                          timelinePhases[index - 1].completed ? 'bg-sage-500' : 'bg-greige-500'
+                        className={`w-3 h-3 rounded-full border-2 ${
+                          isCurrent
+                            ? 'bg-clay-500 border-clay-500'
+                            : phase.completed
+                            ? 'bg-sage-500 border-sage-500'
+                            : 'bg-greige-500 border-greige-500'
                         }`}
                       />
-                    )}
-                  </div>
-                ))}
+                      <div className="mt-2 text-center">
+                        <div className={`text-xs font-medium ${isCurrent ? 'text-clay-600' : 'text-neutral-700'}`}>{phase.name}</div>
+                        <div className="text-xs text-neutral-500">
+                          {start ? start.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }) : ''}
+                        </div>
+                      </div>
+
+                      {index > 0 && (
+                        <div
+                          className={`absolute top-1.5 right-6 w-20 h-0.5 ${
+                            selectedProject.phases[index - 1].completed ? 'bg-clay-500' : 'bg-greige-500'
+                          }`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </CardContent>
