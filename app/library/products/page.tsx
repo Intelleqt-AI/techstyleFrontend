@@ -188,14 +188,18 @@ export default function ProductsPage() {
         {/* Header - Single Line Layout */}
         <div className="mb-4 flex items-center justify-between gap-4">
           {/* Left side - Category filters */}
-          <div className="flex gap-2">
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex gap-1">
             {['All', 'Furniture', 'Lighting', 'Fabric', 'Accessories'].map(category => (
               <Button
                 key={category}
-                variant={selectedCategory === category ? 'default' : 'outline'}
+                variant="ghost"
                 size="sm"
                 onClick={() => setSelectedCategory(category)}
-                className={`h-9 ${selectedCategory === category ? 'bg-gray-900 text-white' : ''}`}
+                className={` font-medium px-3 ${
+                  selectedCategory == category
+                    ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
               >
                 {category}
               </Button>

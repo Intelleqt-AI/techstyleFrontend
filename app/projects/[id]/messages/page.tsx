@@ -421,51 +421,51 @@ export default function ProjectMessagesPage({ params }: { params: { id: string }
 
         {/* Top toolbar */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex gap-1">
             <Button
-              variant={selectedSources.size === 0 ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 selectedSources.size === 0
-                  ? 'h-9 px-4 text-sm bg-gray-900 text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={clearSources}
             >
               All
             </Button>
             <Button
-              variant={selectedSources.has('Email') ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 selectedSources.has('Email')
-                  ? 'h-9 px-4 text-sm bg-gray-900 text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => toggleSource('Email')}
             >
               Emails
             </Button>
             <Button
-              variant={selectedSources.has('Portal') ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 selectedSources.has('Portal')
-                  ? 'h-9 px-4 text-sm bg-gray-900 text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => toggleSource('Portal')}
             >
               Portal
             </Button>
             <Button
-              variant={selectedSources.has('AI') ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 selectedSources.has('AI')
-                  ? 'h-9 px-4 text-sm bg-gray-900 text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => toggleSource('AI')}
             >
               AI notes

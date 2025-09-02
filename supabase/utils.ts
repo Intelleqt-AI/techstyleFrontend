@@ -233,65 +233,59 @@ export const fetchDraftEmails = async ({ token }) => {
   return draftDetails;
 };
 
-// Emails Formatting Functions
+const base64ToUtf8 = b64 => {
+  const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+};
 
-// export const getEmailBody = payload => {
-//   const base64ToUtf8 = b64 => {
-//     const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-//     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-//     return new TextDecoder('utf-8').decode(bytes);
-//   };
+const decodePart = part => {
+  if (!part.body?.data) {
+    return '';
+  }
 
-//   let body = '';
-//   if (payload?.parts) {
-//     for (const part of payload.parts) {
-//       if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
-//         let decoded = base64ToUtf8(part.body.data);
-//         // Gmail sometimes uses quoted-printable, but not always
-//         try {
-//           decoded = quotedPrintable.decode(decoded);
-//         } catch (e) {
-//           // ignore if not quoted-printable
-//         }
-//         body = decoded;
-//       }
-//     }
-//   } else if (payload?.body?.data) {
-//     let decoded = base64ToUtf8(payload.body.data);
-//     try {
-//       decoded = quotedPrintable.decode(decoded);
-//     } catch (e) {}
-//     body = decoded;
-//   }
-//   return body;
-// };
+  let decoded = base64ToUtf8(part.body.data);
+  try {
+    decoded = quotedPrintable.decode(decoded);
+  } catch (e) {
+    // not quoted-printable
+  }
+  return decoded;
+};
 
-export const getEmailBody = payload => {
-  const base64ToUtf8 = b64 => {
-    const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
-    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-    return new TextDecoder('utf-8').decode(bytes);
-  };
+const findAlternativePart = parts => {
+  let htmlPart = null;
+  let textPart = null;
 
-  let body = '';
-  if (payload?.parts) {
-    for (const part of payload.parts) {
-      if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
-        let decoded = base64ToUtf8(part.body.data);
-        try {
-          decoded = quotedPrintable.decode(decoded);
-        } catch (e) {
-          // not quoted-printable
-        }
-        body = decoded;
+  for (const part of parts) {
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      htmlPart = part;
+    } else if (part.mimeType === 'text/plain' && part.body?.data) {
+      textPart = part;
+    } else if (part.mimeType === 'multipart/alternative' && part.parts) {
+      const found = findAlternativePart(part.parts);
+      if (found.html) {
+        return { html: found.html, text: found.text || textPart };
+      }
+      if (found.text) {
+        textPart = found.text;
       }
     }
+  }
+
+  return { html: htmlPart, text: textPart };
+};
+
+export const getEmailBody = payload => {
+  let body = '';
+  if (payload?.parts) {
+    const { html: htmlPart, text: textPart } = findAlternativePart(payload.parts);
+    const partToUse = htmlPart || textPart;
+    if (partToUse) {
+      body = decodePart(partToUse);
+    }
   } else if (payload?.body?.data) {
-    let decoded = base64ToUtf8(payload.body.data);
-    try {
-      decoded = quotedPrintable.decode(decoded);
-    } catch (e) {}
-    body = decoded;
+    body = decodePart(payload);
   }
 
   return `
@@ -321,6 +315,62 @@ export const getEmailBody = payload => {
     </html>
   `;
 };
+
+// export const getEmailBody = payload => {
+//   const base64ToUtf8 = b64 => {
+//     const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+//     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+//     return new TextDecoder('utf-8').decode(bytes);
+//   };
+
+//   let body = '';
+//   if (payload?.parts) {
+//     for (const part of payload.parts) {
+//       if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
+//         let decoded = base64ToUtf8(part.body.data);
+//         try {
+//           decoded = quotedPrintable.decode(decoded);
+//         } catch (e) {
+//           // not quoted-printable
+//         }
+//         body = decoded;
+//       }
+//     }
+//   } else if (payload?.body?.data) {
+//     let decoded = base64ToUtf8(payload.body.data);
+//     try {
+//       decoded = quotedPrintable.decode(decoded);
+//     } catch (e) {}
+//     body = decoded;
+//   }
+
+//   return `
+//     <html>
+//       <head>
+//         <meta charset="UTF-8" />
+//         <style>
+//           html, body {
+//             margin: 0;
+//             padding: 0 0 0 18px;
+//             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+//             font-size: 14px;
+//             line-height: 1.5;
+//             color: #333;
+//             overflow: hidden;
+//           }
+//           ::-webkit-scrollbar { display: none; }
+//           body {
+//             -ms-overflow-style: none;
+//             scrollbar-width: none;
+//           }
+//         </style>
+//       </head>
+//       <body>
+//         ${body}
+//       </body>
+//     </html>
+//   `;
+// };
 
 export const getEmailHeader = (headers, name) => {
   const header = headers?.find(h => h.name === name);

@@ -259,6 +259,27 @@ export default function InboxPage() {
     queryFn: () => fetchProjects(),
   });
 
+  function findProjectInText(text) {
+    if (!text || !project || !project.length) return null;
+
+    for (const item of project) {
+      // Case-insensitive match
+      const projectName = item.name;
+      if (text.toLowerCase().includes(projectName.toLowerCase())) {
+        return projectName;
+      }
+    }
+
+    return null; // No match
+  }
+
+  function decodeHtmlEntities(text) {
+    if (!text) return '';
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+
   // Send emails to project
   const mutation = useMutation({
     mutationKey: ['email'],
@@ -640,67 +661,67 @@ export default function InboxPage() {
         {/* Header with filters, search, and actions */}
         <div className="flex items-center justify-between">
           {/* Left: Filter buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex gap-1">
             <Button
-              variant={filter == 'all' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 filter == 'all'
-                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('all')}
             >
               All
             </Button>
 
             <Button
-              variant={filter == 'mentions' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 filter == 'mentions'
-                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('mentions')}
             >
               Mentions
             </Button>
 
             <Button
-              variant={filter == 'system' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 filter == 'system'
-                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('system')}
             >
               System
             </Button>
 
             <Button
-              variant={filter == 'emails' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 filter == 'emails'
-                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('emails')}
             >
               Emails
             </Button>
 
             <Button
-              variant={filter == 'ai-notes' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              className={
+              className={` font-medium px-3 ${
                 filter == 'ai-notes'
-                  ? 'h-9 px-4 text-sm bg-gray-900 border-black text-white hover:bg-gray-800 rounded-md'
-                  : 'h-9 px-4 text-sm text-gray-700 border-gray-300 bg-transparent hover:bg-gray-50 rounded-md'
-              }
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('ai-notes')}
             >
               AI Notes
@@ -833,13 +854,11 @@ export default function InboxPage() {
                           {/* <span className="font-medium"> {getEmailHeader(message?.payload?.headers, 'Subject')}</span> */}
 
                           {/* {message.noteTitle ? <span className="font-medium">{message.noteTitle}: </span> : null} */}
-                          {message?.snippet}
+                          {decodeHtmlEntities(message?.snippet)}
                         </p>
 
                         {/* Project line (kept neutral) */}
-                        <div className="text-xs text-gray-500">
-                          Project: <span className="font-medium text-gray-700">{message?.project}</span>
-                        </div>
+                        <div className="text-xs text-gray-500">Project: {findProjectInText(message?.subject)}</div>
                       </div>
                     </div>
                   ))}

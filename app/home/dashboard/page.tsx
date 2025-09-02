@@ -13,9 +13,17 @@ import { HomeNav } from '@/components/home-nav';
 import useFetch from '@/hooks/useFetch';
 import useUser from '@/supabase/hook/useUser';
 import useTask from '@/supabase/hook/useTask';
-import { fetchOnlyProject, fetchProjects, getTimeTracking } from '@/supabase/API';
+import { fetchOnlyProject, fetchProjects, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import useUsers from '@/hooks/useUsers';
 
+const gbp = new Intl.NumberFormat('en-GB', {
+  style: 'currency',
+  currency: 'GBP',
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const updatetaskList = data => {
   return [
     {
@@ -71,18 +79,6 @@ const updatetaskList = data => {
       ),
     },
   ];
-};
-
-const calculateProjectProgress = (projectId: string, tasks: Task[] | undefined, isLoading: boolean): number => {
-  if (isLoading || !tasks) return 0;
-
-  const projectTasks = tasks.filter(item => item.projectID === projectId);
-  if (projectTasks.length === 0) return 0;
-
-  const completedTasks = projectTasks.filter(task => task.status === 'done');
-  const progress = Math.floor((completedTasks.length / projectTasks.length) * 100);
-
-  return progress;
 };
 
 function timeFromNow(isoString) {
@@ -266,6 +262,10 @@ function ScopeToggle({ scope, onScopeChange, canSeeStudio }) {
 function TodaysMeetingsCard({ scope, userRole }) {
   const myMeetings = [
     { id: 1, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    { id: 2, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    { id: 3, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    { id: 4, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    { id: 5, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
     // { id: 2, title: 'Material Selection', time: '2:30 PM', client: 'TechCorp', attendee: true },
     // { id: 3, title: 'Team Standup', time: '4:00 PM', client: 'Internal', attendee: true },
   ];
@@ -307,6 +307,8 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [tracking, setTracking] = useState([]);
+  const [userTime, setUserTime] = useState(null);
+  const { users } = useUsers();
   const admins = [
     'david.zeeman@intelleqt.ai',
     'roxi.zeeman@souqdesign.co.uk',
@@ -315,18 +317,44 @@ export default function DashboardPage() {
     'saif@intelleqt.ai',
   ];
 
-  const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ['Time Tracking'],
-    queryFn: getTimeTracking,
+  const {
+    data: InvoiceData,
+    isLoading: InvoiceLoading,
+    refetch: InvoiceRefetch,
+  } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: getInvoices,
   });
 
-  useEffect(() => {
-    if (trackingLoading || !user?.email) return;
-    const filterByEmail = trackingData?.data?.filter(item => item.creator === user.email);
-    setTracking(filterByEmail ?? []);
-  }, [trackingLoading, trackingData, user?.email]);
+  const { data, isLoading: Poloading } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
 
-  // Projects
+  // Calculate totals for stats
+  let totalPurchaseOrder = 0;
+  let totalInvoiceOrder = 0;
+
+  InvoiceData?.data?.forEach(item => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalInvoiceOrder += temp;
+  });
+
+  data?.data?.forEach(item => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalPurchaseOrder += temp;
+  });
+
   const {
     data: project,
     isLoading,
@@ -337,6 +365,74 @@ export default function DashboardPage() {
     queryFn: fetchProjects,
   });
 
+  const { data: trackingData, isLoading: trackingLoading } = useQuery({
+    queryKey: ['Time Tracking'],
+    queryFn: getTimeTracking,
+  });
+
+  function getFormattedTimeForMonth(tasks, selectedYear, selectedMonth) {
+    console.log('getFormattedTimeForMonth', tasks);
+    if (!Array.isArray(tasks) || !tasks.length) return '0.00';
+
+    console.log('getFormattedTimeForMonth');
+
+    // JS Date expects 0-based months
+    const firstDay = new Date(selectedYear, selectedMonth, 1, 0, 0, 0, 0);
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+
+    const totalMs = tasks.reduce((total, task) => {
+      if (!Array.isArray(task.session)) return total;
+
+      const sessionTime = task.session.reduce((sum, session) => {
+        const sessionDate = new Date(session.date);
+
+        if (!isNaN(sessionDate) && sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
+          return sum + session.totalTime;
+        }
+        return sum;
+      }, 0);
+
+      return total + sessionTime;
+    }, 0);
+
+    const totalHours = totalMs / (1000 * 60 * 60);
+    return totalHours.toFixed(2);
+  }
+
+  function getTrackingByUser(email) {
+    if (trackingLoading || !trackingData?.data) return [];
+    const processedTasks = trackingData.data.filter(item => item.isActive);
+    const filterByEmail = processedTasks.filter(item => item.creator == email);
+
+    return filterByEmail;
+  }
+
+  function enrichUsersWithProjectCount(users, projects) {
+    const selectedYear = dayjs().year();
+    const selectedMonth = dayjs().month() + 1; // month() is 0-based
+    if (!users || !projects) return [];
+
+    return users.map(user => {
+      const totalTime = getFormattedTimeForMonth(getTrackingByUser(user.email), selectedYear, selectedMonth);
+
+      return {
+        name: user.name,
+        totalTime,
+      };
+    });
+  }
+
+  useEffect(() => {
+    if (trackingLoading || !user?.email) return;
+    const filterByEmail = trackingData?.data?.filter(item => item.creator === user.email);
+    setTracking(filterByEmail ?? []);
+  }, [trackingLoading, trackingData, user?.email]);
+
+  useEffect(() => {
+    if (isLoading || trackingLoading) return;
+    setUserTime(enrichUsersWithProjectCount(users?.data, project));
+  }, [users?.data, project, isLoading, trackingLoading]); // Projects
+
   const timeDisplay = getDailyBreakdown(tracking);
 
   function JumpBackInSection({ scope, userRole }) {
@@ -346,6 +442,7 @@ export default function DashboardPage() {
 
     const projects = !isLoading && project;
     // const projects = scope === 'studio' ? studioProjects : myProjects;
+    // casj flow - po
 
     return (
       <div className="space-y-4">
@@ -386,9 +483,9 @@ export default function DashboardPage() {
 
   function TimeTrackedCard({ scope, userRole }) {
     const teamCapacity = [
-      // { name: 'Jane (You)', hours: 32.5, capacity: 40 },
-      // { name: 'Mike Johnson', hours: 38.0, capacity: 40 },
-      // { name: 'Sarah Wilson', hours: 35.5, capacity: 40 },
+      { name: 'Saif Hasan', hours: 0.9, capacity: 40 },
+      { name: 'David Zameen', hours: 0, capacity: 40 },
+      { name: 'Rishalat Shahriar', hours: 0, capacity: 40 },
     ];
 
     if (scope === 'studio') {
@@ -495,6 +592,18 @@ export default function DashboardPage() {
     });
   };
 
+  const calculateProjectProgress = (projectId: string, tasks: Task[] | undefined, isLoading: boolean): number => {
+    if (isLoading || !tasks) return 0;
+
+    const projectTasks = tasks.filter(item => item.projectID === projectId);
+    if (projectTasks.length === 0) return 0;
+
+    const completedTasks = projectTasks.filter(task => task.status === 'done');
+    const progress = Math.floor((completedTasks.length / projectTasks.length) * 100);
+
+    return progress;
+  };
+
   useEffect(() => {
     if (taskLoading) return;
     setMyTask(myTaskList(taskData.data));
@@ -514,9 +623,16 @@ export default function DashboardPage() {
       ];
     }
     return [
-      // { color: 'sage', text: '3 meetings today' },
+      { color: 'sage', text: 'No meetings today' },
       { color: 'clay', text: `${overDueTask?.length} overdue tasks` },
-      // { color: 'olive', text: 'Penthouse 75% complete' },
+      {
+        color: 'olive',
+        text: `${!isLoading && project[0]?.name} ${calculateProjectProgress(
+          !isLoading && project[0]?.id,
+          taskData?.data,
+          taskLoading
+        )}% complete`,
+      },
     ];
   };
 
@@ -561,15 +677,15 @@ export default function DashboardPage() {
 
   function FinancialKPIsCard({ scope, userRole }) {
     const myKPIs = [
-      { label: 'My Budget Util', value: 'Upcoming', trend: 'up', change: '+5%' },
-      { label: 'Hours This Week', value: timeDisplay?.Total ? timeDisplay?.Total : '0', trend: 'up', change: '+2h' },
+      { label: 'My Budget Util', value: `£${getFormattedTimeFromMondayToSaturday(tracking) * 20}`, trend: 'up', change: '+5%' },
+      { label: 'Hours This Week', value: getFormattedTimeFromMondayToSaturday(tracking) || '0', trend: 'up', change: '+2h' },
       { label: 'Projects Active', value: project?.length, trend: 'neutral', change: '0' },
     ];
 
     const studioKPIs = [
-      // { label: 'Studio Profit', value: '£45.2k', trend: 'up', change: '+12%' },
-      // { label: 'Utilisation', value: '89%', trend: 'up', change: '+3%' },
-      // { label: 'Cash Flow', value: '£23.8k', trend: 'down', change: '-8%' },
+      { label: 'Studio Profit', value: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)}`, trend: 'up', change: '+12%' },
+      { label: 'Utilisation', value: '89%', trend: 'up', change: '+3%' },
+      { label: 'Cash Flow', value: gbp.format(totalPurchaseOrder), trend: 'down', change: '-8%' },
     ];
 
     const kpis = scope === 'studio' ? studioKPIs : myKPIs;

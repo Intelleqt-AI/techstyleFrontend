@@ -137,11 +137,10 @@ export default function FinancePage() {
   const [customLoading, setCustomLoading] = useState(false);
   // const navigate = useNavigate()
 
-  // const { data: project } = useQuery({
-  //   queryKey: [`project ${id}`],
-  //   queryFn: () => fetchOnlyProject({ projectID: id }),
-  //   enabled: !!id,
-  // });
+  const { data: project } = useQuery({
+    queryKey: [`project`],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['pruchaseOrder'],
@@ -180,7 +179,7 @@ export default function FinancePage() {
     }, 2000);
   };
 
-  const createPurchase = useMutation({
+  const createInvoiceOrder = useMutation({
     mutationFn: createInvoice,
     onSuccess: e => {
       setTimeout(() => {
@@ -227,7 +226,7 @@ export default function FinancePage() {
   // Handle Create Invoice
   const handleInvoice = () => {
     setButtonLoadingPO(true);
-    createPurchase.mutate({
+    createInvoiceOrder.mutate({
       invoice: {
         // projectID: id,
         status: 'Pending',
@@ -366,7 +365,7 @@ export default function FinancePage() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Number</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-52">Supplier</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-40">Type</th>
-                  {/* <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-56">Project</th> */}
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-56">Project</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Date Issued</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Due Date</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Amount</th>
@@ -426,6 +425,10 @@ export default function FinancePage() {
                       </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Purchase Order</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {' '}
+                        {project?.find(item => item.id == po?.projectID)?.name || '—'}
+                      </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                         {po.issueDate ? new Date(po.issueDate).toLocaleDateString('en-GB') : new Date(po.created_at).toLocaleDateString()}
                       </td>
@@ -490,6 +493,9 @@ export default function FinancePage() {
                       <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{inv.inNumber}</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        {project?.find(item => item.id == inv?.projectID)?.name || '—'}
+                      </td>
                       <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                         {inv.issueDate
                           ? new Date(inv.issueDate).toLocaleDateString('en-GB')

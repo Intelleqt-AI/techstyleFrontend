@@ -24,6 +24,7 @@ import { getTask } from '@/supabase/API';
 import Image from 'next/image';
 import projectCover from '/public/project_cover.jpg';
 import useClient from '@/hooks/useClient';
+import { useRouter } from 'next/navigation';
 
 const timelinePhases = [
   { name: 'Discovery', date: 'Jan 15', completed: true },
@@ -42,74 +43,66 @@ const timelinePhases = [
 const blockers = [
   {
     id: 1,
-    title: 'Marble tiles delivery delayed',
+    title: 'No Active Blocker',
     assignee: 'Sarah Wilson',
     priority: 'high',
     daysBlocked: 3,
     avatar: 'SW',
   },
-  {
-    id: 2,
-    title: 'Electrical permit pending',
-    assignee: 'Mike Chen',
-    priority: 'medium',
-    daysBlocked: 1,
-    avatar: 'MC',
-  },
 ];
 
 const recentActivity = [
-  {
-    id: 1,
-    type: 'message',
-    user: 'Jane Designer',
-    avatar: 'JD',
-    action: 'shared kitchen layout revisions',
-    time: '2 hours ago',
-  },
-  {
-    id: 2,
-    type: 'file',
-    user: 'Tom Wilson',
-    avatar: 'TW',
-    action: 'uploaded electrical schematics',
-    time: '4 hours ago',
-  },
-  {
-    id: 3,
-    type: 'task',
-    user: 'Sarah Johnson',
-    avatar: 'SJ',
-    action: 'completed material selection',
-    time: '6 hours ago',
-  },
+  // {
+  //   id: 1,
+  //   type: 'message',
+  //   user: 'Jane Designer',
+  //   avatar: 'JD',
+  //   action: 'shared kitchen layout revisions',
+  //   time: '2 hours ago',
+  // },
+  // {
+  //   id: 2,
+  //   type: 'file',
+  //   user: 'Tom Wilson',
+  //   avatar: 'TW',
+  //   action: 'uploaded electrical schematics',
+  //   time: '4 hours ago',
+  // },
+  // {
+  //   id: 3,
+  //   type: 'task',
+  //   user: 'Sarah Johnson',
+  //   avatar: 'SJ',
+  //   action: 'completed material selection',
+  //   time: '6 hours ago',
+  // },
 ];
 
 const recentFiles = [
-  {
-    id: 1,
-    name: 'Kitchen_Layout_v3.pdf',
-    type: 'PDF',
-    size: '2.4 MB',
-    uploadedBy: 'Jane Designer',
-    uploadedAt: '2 hours ago',
-  },
-  {
-    id: 2,
-    name: 'Electrical_Schematics.dwg',
-    type: 'DWG',
-    size: '1.8 MB',
-    uploadedBy: 'Tom Wilson',
-    uploadedAt: '4 hours ago',
-  },
-  {
-    id: 3,
-    name: 'Material_Samples.jpg',
-    type: 'JPG',
-    size: '3.2 MB',
-    uploadedBy: 'Sarah Johnson',
-    uploadedAt: '6 hours ago',
-  },
+  // {
+  //   id: 1,
+  //   name: 'Kitchen_Layout_v3.pdf',
+  //   type: 'PDF',
+  //   size: '2.4 MB',
+  //   uploadedBy: 'Jane Designer',
+  //   uploadedAt: '2 hours ago',
+  // },
+  // {
+  //   id: 2,
+  //   name: 'Electrical_Schematics.dwg',
+  //   type: 'DWG',
+  //   size: '1.8 MB',
+  //   uploadedBy: 'Tom Wilson',
+  //   uploadedAt: '4 hours ago',
+  // },
+  // {
+  //   id: 3,
+  //   name: 'Material_Samples.jpg',
+  //   type: 'JPG',
+  //   size: '3.2 MB',
+  //   uploadedBy: 'Sarah Johnson',
+  //   uploadedAt: '6 hours ago',
+  // },
 ];
 
 const formatTodayDate = () => {
@@ -150,6 +143,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
   const [title, setTitle] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+
+  const router = useRouter();
 
   const { data: project, isLoading: projectLoading } = useProjects();
   // Get clients
@@ -268,7 +263,10 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                   <p className="text-sm font-medium text-neutral-700">Budget Utilization</p>
                   <p className="text-lg font-semibold text-neutral-900">
                     {selectedProject?.currency?.symbol || '£'}
-                    {selectedProject?.budget || 0}
+                    {Number(selectedProject?.budget).toLocaleString('en-GB', {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    })}
                   </p>
                   <p className="text-xs text-neutral-600">
                     {(() => {
@@ -291,9 +289,12 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                         utilizedAmount = 0;
                       }
 
-                      return `${utilizedPercentage}% of ${selectedProject?.currency?.symbol || '£'}${
-                        selectedProject?.budget || 0
-                      } utilized`;
+                      return `${utilizedPercentage}% of ${selectedProject?.currency?.symbol || '£'}${Number(
+                        selectedProject?.budget
+                      ).toLocaleString('en-GB', {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      })} utilized`;
                     })()}
                   </p>
                   <p className="text-xs mt-1 text-olive-700">
@@ -380,7 +381,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
             </div>
             <div className="relative">
               <div className="flex items-center justify-between">
-                {timelinePhases.map((phase, index) => (
+                {selectedProject?.phases?.map((phase, index) => (
                   <div key={phase.name} className="flex flex-col items-center relative">
                     <div
                       className={`w-3 h-3 rounded-full border-2 ${
@@ -393,7 +394,12 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                     />
                     <div className="mt-2 text-center">
                       <div className={`text-xs font-medium ${phase.current ? 'text-clay-600' : 'text-neutral-700'}`}>{phase.name}</div>
-                      <div className="text-xs text-neutral-500">{phase.date}</div>
+                      <div className="text-xs text-neutral-500">
+                        {new Date(phase.startDate).toLocaleDateString('en-GB', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </div>
                     </div>
                     {index > 0 && (
                       <div
@@ -417,7 +423,12 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                 <Package className="w-4 h-4 text-slatex-600" />
                 <h3 className="text-sm font-medium text-neutral-900">Procurement Status</h3>
               </div>
-              <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent">
+              <Button
+                onClick={() => router.push(`/projects/${selectedProject?.id}/procurement`)}
+                variant="outline"
+                size="sm"
+                className="border-greige-500/30 bg-transparent"
+              >
                 <ArrowRight className="w-4 h-4 mr-2" />
                 Open Procurement
               </Button>
@@ -474,39 +485,49 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium text-neutral-900">Active Blockers</h3>
                 <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-terracotta-600/10 text-terracotta-600 border border-terracotta-600/30">
-                  {blockers.length} Active
+                  0 Active
                 </span>
               </div>
               <div className="space-y-3">
-                {blockers.map(blocker => (
-                  <div key={blocker.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback className="bg-neutral-900 text-white text-xs font-semibold">{blocker.avatar}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="text-sm font-medium text-neutral-900">{blocker.title}</div>
-                        <div className="text-xs text-neutral-600">
-                          {blocker.assignee} • {blocker.daysBlocked} days blocked
+                {
+                  !blockers.map(blocker => (
+                    <div key={blocker.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="w-6 h-6">
+                          <AvatarFallback className="bg-neutral-900 text-white text-xs font-semibold">{blocker.avatar}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="text-sm font-medium text-neutral-900">{blocker.title}</div>
+                          <div className="text-xs text-neutral-600">
+                            {blocker.assignee} • {blocker.daysBlocked} days blocked
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
+                            blocker.priority === 'high'
+                              ? 'bg-terracotta-600/10 text-terracotta-600 border border-terracotta-600/30'
+                              : 'bg-ochre-300/20 text-ochre-700 border border-ochre-700/20'
+                          }`}
+                        >
+                          {blocker.priority}
+                        </span>
+                        <Button size="sm" variant="outline" className="text-xs border-greige-500/30 bg-transparent">
+                          Unblock
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                          blocker.priority === 'high'
-                            ? 'bg-terracotta-600/10 text-terracotta-600 border border-terracotta-600/30'
-                            : 'bg-ochre-300/20 text-ochre-700 border border-ochre-700/20'
-                        }`}
-                      >
-                        {blocker.priority}
-                      </span>
-                      <Button size="sm" variant="outline" className="text-xs border-greige-500/30 bg-transparent">
-                        Unblock
-                      </Button>
+                  ))
+                }
+
+                <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-neutral-900">No Active Blocker</div>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
             </CardContent>
           </Card>
