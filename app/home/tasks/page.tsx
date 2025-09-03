@@ -164,16 +164,20 @@ export default function MyTasksPage() {
   };
 
   const myTaskList = tasks => {
-    if (!tasks) return;
+    if (!tasks) return [];
     if (!user) return [];
     if (admins.includes(user?.email)) {
       return tasks;
     }
-    return tasks?.filter(task => {
-      if (task.assigned && Array.isArray(task.assigned) && task.assigned.length > 0) {
-        return task.assigned.some(assignee => assignee.email === user.email);
-      }
-      return false;
+
+    return tasks.filter(task => {
+      // If user is assigned
+      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some(assignee => assignee.email === user.email);
+
+      // If user is the creator
+      const isCreator = task.creator === user.email;
+
+      return isAssigned || isCreator;
     });
   };
 

@@ -170,11 +170,11 @@ export default function ProjectSettingsPage() {
     mutationFn: modifyProject,
     onSuccess: () => {
       queryClient.invalidateQueries(['projects']);
-      // toast('Project Updated');
+      toast.success('Project Updated');
     },
     onError: error => {
       console.log(error);
-      // toast('Error! Try again');
+      toast.error('Error! Try again');
     },
   });
 
@@ -214,7 +214,7 @@ export default function ProjectSettingsPage() {
             }}
             className="px-3 py-1 text-sm bg-black text-white rounded  transition-colors ml-4"
           >
-            Undo
+            Cancel
           </button>
         </div>
       );

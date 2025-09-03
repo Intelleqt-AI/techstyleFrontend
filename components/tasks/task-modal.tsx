@@ -202,10 +202,11 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     },
     onSuccess: e => {
       toast.success('Task Updated');
+      console.log(e);
       setSubTaskText('');
       setTaskValues(prev => ({
         ...prev,
-        id: e?.data?.[0]?.id,
+        id: e?.[0]?.id,
       }));
       queryClient.invalidateQueries(['tasks']);
     },
