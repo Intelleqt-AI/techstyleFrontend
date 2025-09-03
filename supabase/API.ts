@@ -220,13 +220,32 @@ export const getUsers = async () => {
   return { data };
 };
 
+// Get users currency
+export const getCurrency = async (email: string) => {
+  const { data, error } = await supabase.from('Users').select('studioCurrency').eq('email', email).single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.studioCurrency || null;
+};
+
 // Adduser
 export const addUser = async ({ user }) => {
   const { data, error } = await supabase.from('Users').insert(user);
   if (error) {
     throw new Error(error.message);
   }
-  console.log(data);
+  return { data };
+};
+
+// Updaet User Data
+export const updateUser = async userData => {
+  const { data, error } = await supabase.from('Users').update(userData).eq('email', userData.email);
+  if (error) {
+    throw new Error(error.message);
+  }
   return { data };
 };
 

@@ -8,10 +8,47 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useActionState } from '@/hooks/useActionState';
+import useUser from '@/hooks/useUser';
+import { updateUser } from '@/supabase/API';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export default function StudioGeneralPage() {
-  const { toast } = useToast();
-  const [state, formAction, pending] = useActionState(saveSettings as any, null);
+  const { user, isLoading } = useUser();
+  const [currentUser, setCurrentUser] = useState(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (isLoading) return;
+    setCurrentUser(user);
+  }, [user?.email, isLoading]);
+
+  const mutation = useMutation({
+    mutationFn: updateUser,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['users', user?.email]);
+      toast.success('Profile Updated');
+    },
+    onError: error => {
+      console.log(error);
+      toast('Error! Try again');
+    },
+  });
+
+  const handleUpdate = e => {
+    const { name, value } = e.target;
+    console.log(name, value);
+    setCurrentUser(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    mutation.mutate(currentUser);
+  };
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -21,32 +58,82 @@ export default function StudioGeneralPage() {
       </div>
 
       <Section title="General" description="Studio name, contact details, and address.">
-        <form
-          action={async fd => {
-            fd.set('section', 'Studio General');
-            const res = await (formAction as any)(fd);
-            if (res?.success) toast({ title: 'Saved', description: 'Studio general settings saved.' });
-          }}
-          className="grid gap-4 sm:grid-cols-2"
-        >
+        <form onSubmit={e => handleSubmit(e)} className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label htmlFor="studioName">Studio name</Label>
-            <Input id="studioName" name="studioName" defaultValue="Techstyles" />
+            <Input
+              value={currentUser?.studioName}
+              id="studioName"
+              name="studioName"
+              onChange={value => {
+                const e = {
+                  target: {
+                    name: 'studioName',
+                    value: value.target.value,
+                  },
+                };
+                handleUpdate(e);
+              }}
+              defaultValue="Techstyles"
+            />
           </div>
           <div>
             <Label htmlFor="studioEmail">Support email</Label>
-            <Input id="studioEmail" name="studioEmail" type="email" defaultValue="support@techstyles.com" />
+            <Input
+              value={currentUser?.studioEmail}
+              onChange={value => {
+                const e = {
+                  target: {
+                    name: 'studioEmail',
+                    value: value.target.value,
+                  },
+                };
+                handleUpdate(e);
+              }}
+              id="studioEmail"
+              name="studioEmail"
+              type="email"
+              defaultValue="support@techstyles.com"
+            />
           </div>
           <div>
             <Label htmlFor="studioPhone">Phone</Label>
-            <Input id="studioPhone" name="studioPhone" defaultValue="+1 (555) 123-4567" />
+            <Input
+              onChange={value => {
+                const e = {
+                  target: {
+                    name: 'studioPhone',
+                    value: value.target.value,
+                  },
+                };
+                handleUpdate(e);
+              }}
+              value={currentUser?.studioPhone}
+              id="studioPhone"
+              name="studioPhone"
+              defaultValue="+1 (555) 123-4567"
+            />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="address">Address</Label>
-            <Textarea id="address" name="address" placeholder="Street, City, State, Zip, Country" />
+            <Label htmlFor="studioAddress">Address</Label>
+            <Textarea
+              onChange={value => {
+                const e = {
+                  target: {
+                    name: 'studioAddress',
+                    value: value.target.value,
+                  },
+                };
+                handleUpdate(e);
+              }}
+              value={currentUser?.studioAddress}
+              id="studioAddress"
+              name="studioAddress"
+              placeholder="Street, City, State, Zip, Country"
+            />
           </div>
           <div className="sm:col-span-2 flex justify-end">
-            <Button disabled={pending}>{pending ? 'Saving...' : 'Save general'}</Button>
+            <Button>Save</Button>
           </div>
         </form>
       </Section>

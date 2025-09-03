@@ -174,9 +174,11 @@ export default function ProjectsPage() {
                             loading="lazy"
                           />
                           <div className="absolute top-3 right-3">
-                            <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
-                              {project?.phases[0]?.name}
-                            </Badge>
+                            {project?.phases && (
+                              <Badge className="bg-white/20 backdrop-blur-sm text-white border-white/30 hover:bg-white/30">
+                                {project?.phases[0]?.name}
+                              </Badge>
+                            )}
                           </div>
                         </div>
 

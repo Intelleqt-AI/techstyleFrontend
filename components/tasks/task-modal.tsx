@@ -51,17 +51,9 @@ import useUser from '@/supabase/hook/useUser';
 import { addNewTask, createNotification, fetchProjects, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
 import { toast } from 'sonner';
 import DraggableSubtasks2 from './DraggableSubtasks2';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-const phases: Phase[] = [
-  { id: 'phase-concept', name: 'Concept' },
-  { id: 'phase-design-dev', name: 'Design Development' },
-  { id: 'phase-technical', name: 'Technical Drawings' },
-  { id: 'phase-review', name: 'Client Review' },
-  { id: 'phase-procurement', name: 'Procurement' },
-  { id: 'phase-site', name: 'Site / Implementation' },
-];
 
 const initialTask: Task = {
   name: '',
@@ -108,12 +100,6 @@ type Props = {
   taskToEdit?: (Omit<Task, 'assigneeIds'> & { assignees?: string[] }) | null;
   onSave: (payload: Omit<Task, 'id'> & { id?: string }) => void;
 };
-
-const PRIORITIES: { value: Priority; label: string }[] = [
-  { value: 'Low', label: 'Low' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'High', label: 'High' },
-];
 
 export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave }: Props) {
   // Core form state
@@ -830,6 +816,44 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
               </Select>
             </Labeled>
 
+            <AnimatePresence mode="popLayout">
+              {taskValues?.projectID && (
+                <motion.div
+                  key="phase-select"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <Labeled icon={<GitBranch className="h-4 w-4" />} label="Phase">
+                    <Select
+                      value={taskValues?.phase || ''}
+                      onValueChange={value => {
+                        const e = {
+                          target: {
+                            name: 'phase',
+                            value,
+                          },
+                        };
+                        updateTask(e);
+                      }}
+                    >
+                      <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
+                        <SelectValue placeholder="No phase" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {data
+                          ?.find(item => item.id == taskValues?.projectID)
+                          ?.phases?.map(selectItem => (
+                            <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </Labeled>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <Labeled icon={<CircleDot className="h-4 w-4" />} label="Status">
               <Select
                 value={taskValues?.status || ''}
@@ -851,35 +875,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                   <SelectItem value="in-progress">In progress</SelectItem>
                   <SelectItem value="in-review">In review</SelectItem>
                   <SelectItem value="done">Done</SelectItem>
-                </SelectContent>
-              </Select>
-            </Labeled>
-
-            <Labeled icon={<GitBranch className="h-4 w-4" />} label="Phase">
-              <Select
-                value={taskValues?.phase || ''}
-                onValueChange={value => {
-                  const e = {
-                    target: {
-                      name: 'phase',
-                      value: value,
-                    },
-                  };
-                  updateTask(e);
-                }}
-              >
-                <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
-                  <SelectValue placeholder="No phase" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No phase</SelectItem>
-                  <SelectItem value="initial">Design Concepts</SelectItem>
-                  <SelectItem value="design-development">Design & Development</SelectItem>
-                  <SelectItem value="technical-drawings">Technical Drawing</SelectItem>
-                  <SelectItem value="client-review">Client Review</SelectItem>
-                  <SelectItem value="procurement">Procurement</SelectItem>
-                  <SelectItem value="site-implementation">Site Implementation</SelectItem>
-                  <SelectItem value="complete-project">Complete</SelectItem>
                 </SelectContent>
               </Select>
             </Labeled>

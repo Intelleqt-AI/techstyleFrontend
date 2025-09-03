@@ -22,6 +22,7 @@ import { addNewProject, getUsers, modifyProject } from '@/supabase/API';
 import { CurrencySelector } from '../ui/CurrencySelector';
 import useClient from '@/hooks/useClient';
 import { toast } from 'sonner';
+import useUser from '@/hooks/useUser';
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -233,6 +234,7 @@ const initialProject: ProjectData = {
 
 export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogProps) {
   const [step, setStep] = useState(1);
+  const { user, isLoading: userLoading } = useUser();
   const [data, setData] = useState(initialProject);
   const [expandedSections, setExpandedSections] = useState({
     phases: false,
@@ -243,14 +245,22 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
   const queryClient = useQueryClient();
 
   // Set default phases when project type changes
+  // useEffect(() => {
+  //   if (data.projectType && defaultPhases[data.projectType as keyof typeof defaultPhases]) {
+  //     setData(prev => ({
+  //       ...prev,
+  //       phases: defaultPhases[data.projectType as keyof typeof defaultPhases],
+  //     }));
+  //   }
+  // }, [data.projectType]);
+
   useEffect(() => {
-    if (data.projectType && defaultPhases[data.projectType as keyof typeof defaultPhases]) {
-      setData(prev => ({
-        ...prev,
-        phases: defaultPhases[data.projectType as keyof typeof defaultPhases],
-      }));
-    }
-  }, [data.projectType]);
+    if (userLoading) return;
+    setData(prev => ({
+      ...prev,
+      phases: user?.defaultPhases,
+    }));
+  }, [user?.defaultPhases, userLoading, data?.projectType]);
 
   const updateData = (updates: Partial<ProjectData>) => {
     setData(prev => ({ ...prev, ...updates }));
@@ -328,13 +338,8 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
     // Simulate project creation
     toast.success(`${data.name} has been created successfully.`);
     const finalData = { ...data, budget: +data?.budget };
-    // handleClose()
     mutation.mutate(finalData);
   };
-
-  // useEffect(() => {
-  //   console.log(clientData.data);
-  // }, [clientData]);
 
   const canProceed = () => {
     switch (step) {
@@ -718,11 +723,7 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
                         <div>
                           <h4 className="font-medium text-ink">Budget & Payment</h4>
                           <p className="text-sm text-ink-muted">
-                            {data.budget
-                              ? `${data.currency === 'USD' ? '$' : data.currency === 'EUR' ? '€' : '£'}${Number(
-                                  data.budget
-                                ).toLocaleString()}`
-                              : 'Click to configure'}
+                            {data.budget ? `${data?.currency?.symbol || '£'}${Number(data.budget).toLocaleString()}` : 'Click to configure'}
                           </p>
                         </div>
                       </div>

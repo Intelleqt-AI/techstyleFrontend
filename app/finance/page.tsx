@@ -138,7 +138,7 @@ export default function FinancePage() {
   // const navigate = useNavigate()
 
   const { data: project } = useQuery({
-    queryKey: [`project`],
+    queryKey: [`projectOnly`],
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 

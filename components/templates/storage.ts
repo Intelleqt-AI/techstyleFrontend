@@ -1,82 +1,64 @@
-import { DEFAULT_PHASES, DEFAULT_TASKS_PER_PHASE } from "./defaults"
-import type { Phase } from "./types"
+import { DEFAULT_PHASES, DEFAULT_TASKS_PER_PHASE, DEFAULT_WORK_PACKAGES } from './defaults';
+import type { Phase, WorkPackage } from './types';
 
-export interface TemplatesBundle {
-  phases: Phase[]
-  tasksPerPhase: Record<string, string>
-}
+const LS_KEYS = {
+  PHASES: 'ts_templates_phases_v1',
+  WORK: 'ts_templates_work_packages_v1',
+  TASKS: 'ts_templates_tasks_v1',
+  STUDIO_DEFAULT: 'ts_templates_studio_default_v1',
+} as const;
 
-const STORAGE_KEY = "techstyles-templates"
-const STUDIO_DEFAULT_KEY = "techstyles-studio-default"
+export type TemplatesBundle = {
+  phases: Phase[];
+  workPackages: WorkPackage[];
+  tasksPerPhase: Record<string, string>;
+};
 
 export function loadTemplates(): TemplatesBundle {
-  if (typeof window === "undefined") {
-    return {
-      phases: DEFAULT_PHASES,
-      tasksPerPhase: DEFAULT_TASKS_PER_PHASE,
-    }
+  if (typeof window === 'undefined') {
+    return { phases: DEFAULT_PHASES, workPackages: DEFAULT_WORK_PACKAGES, tasksPerPhase: DEFAULT_TASKS_PER_PHASE };
   }
-
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return {
-        phases: parsed.phases || DEFAULT_PHASES,
-        tasksPerPhase: parsed.tasksPerPhase || DEFAULT_TASKS_PER_PHASE,
-      }
-    }
-  } catch (error) {
-    console.warn("Failed to load templates from localStorage:", error)
-  }
-
-  return {
-    phases: DEFAULT_PHASES,
-    tasksPerPhase: DEFAULT_TASKS_PER_PHASE,
+    const phases = JSON.parse(localStorage.getItem(LS_KEYS.PHASES) || 'null') ?? DEFAULT_PHASES;
+    const workPackages = JSON.parse(localStorage.getItem(LS_KEYS.WORK) || 'null') ?? DEFAULT_WORK_PACKAGES;
+    const tasksPerPhase = JSON.parse(localStorage.getItem(LS_KEYS.TASKS) || 'null') ?? DEFAULT_TASKS_PER_PHASE;
+    return { phases, workPackages, tasksPerPhase };
+  } catch {
+    return { phases: DEFAULT_PHASES, workPackages: DEFAULT_WORK_PACKAGES, tasksPerPhase: DEFAULT_TASKS_PER_PHASE };
   }
 }
 
-export function saveTemplates(bundle: TemplatesBundle): void {
-  if (typeof window === "undefined") return
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bundle))
-  } catch (error) {
-    console.warn("Failed to save templates to localStorage:", error)
-  }
+export function saveTemplates(bundle: TemplatesBundle) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LS_KEYS.PHASES, JSON.stringify(bundle.phases));
+  localStorage.setItem(LS_KEYS.WORK, JSON.stringify(bundle.workPackages));
+  localStorage.setItem(LS_KEYS.TASKS, JSON.stringify(bundle.tasksPerPhase));
 }
 
 export function resetToTechstylesDefaults(): TemplatesBundle {
-  const defaults = {
-    phases: DEFAULT_PHASES,
-    tasksPerPhase: DEFAULT_TASKS_PER_PHASE,
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(LS_KEYS.PHASES);
+    localStorage.removeItem(LS_KEYS.WORK);
+    localStorage.removeItem(LS_KEYS.TASKS);
   }
-
-  saveTemplates(defaults)
-  return defaults
+  return { phases: DEFAULT_PHASES, workPackages: DEFAULT_WORK_PACKAGES, tasksPerPhase: DEFAULT_TASKS_PER_PHASE };
 }
 
-export function saveAsStudioDefault(bundle: TemplatesBundle): void {
-  if (typeof window === "undefined") return
-
-  try {
-    localStorage.setItem(STUDIO_DEFAULT_KEY, JSON.stringify(bundle))
-  } catch (error) {
-    console.warn("Failed to save studio default to localStorage:", error)
-  }
+export function saveAsStudioDefault(bundle: TemplatesBundle) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LS_KEYS.STUDIO_DEFAULT, JSON.stringify(bundle));
 }
 
-export function loadStudioDefault(): TemplatesBundle | null {
-  if (typeof window === "undefined") return null
-
-  try {
-    const stored = localStorage.getItem(STUDIO_DEFAULT_KEY)
-    if (stored) {
-      return JSON.parse(stored)
-    }
-  } catch (error) {
-    console.warn("Failed to load studio default from localStorage:", error)
+// Load previously saved studio default (if any), else fall back to current saved templates or Techstyles defaults
+export function loadStudioDefault(): TemplatesBundle {
+  if (typeof window === 'undefined') {
+    return { phases: DEFAULT_PHASES, workPackages: DEFAULT_WORK_PACKAGES, tasksPerPhase: DEFAULT_TASKS_PER_PHASE };
   }
-
-  return null
+  const raw = localStorage.getItem(LS_KEYS.STUDIO_DEFAULT);
+  if (!raw) return loadTemplates();
+  try {
+    return JSON.parse(raw) as TemplatesBundle;
+  } catch {
+    return loadTemplates();
+  }
 }
