@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -41,7 +41,7 @@ import {
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getUsers, modifyProject } from '@/supabase/API';
+import { deleteProject, getUsers, modifyProject } from '@/supabase/API';
 import { toast } from 'sonner';
 import { CurrencySelector } from '@/components/ui/CurrencySelector';
 import { TypeChip } from '@/components/chip';
@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { useDeleteDialog } from '@/hooks/useDeleteDialog';
 import { DeleteDialog } from '@/components/DeleteDialog';
+import { Circle, Ellipsis, Spinner } from '@/components/Delete Animation/DeletionAnimations';
 
 function Labeled({
   icon,
@@ -129,6 +130,7 @@ export default function ProjectSettingsPage() {
   const [selected, setSelected] = useState<SectionKey>('overview');
   const [wizardOpen, setWizardOpen] = useState(false);
   const { isOpen, item, openDialog, closeDialog } = useDeleteDialog();
+  const router = useRouter();
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     contacts: { additional: [] },
     property: {},
@@ -137,8 +139,21 @@ export default function ProjectSettingsPage() {
     preferencesConsent: {},
   });
   const [selectedProject, setSelectedProject] = useState(null);
-  const { data: project, isLoading: projectLoading } = useProjects();
+  const { data: project, isLoading: projectLoading, refetch: projectRefetch } = useProjects();
   const queryClient = useQueryClient();
+
+  // Delete Projects
+  const {
+    mutate: removeProject,
+    isLoading: isDeleting,
+    error: deleteError,
+  } = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => {
+      projectRefetch();
+      // toast('Project Deleted!');
+    },
+  });
 
   // Get Users
   const {
@@ -155,11 +170,11 @@ export default function ProjectSettingsPage() {
     mutationFn: modifyProject,
     onSuccess: () => {
       queryClient.invalidateQueries(['projects']);
-      toast('Project Updated');
+      // toast('Project Updated');
     },
     onError: error => {
       console.log(error);
-      toast('Error! Try again');
+      // toast('Error! Try again');
     },
   });
 
@@ -175,11 +190,78 @@ export default function ProjectSettingsPage() {
     mutation.mutate(selectedProject);
   }
 
-  // Delete project
   const handleDelete = id => {
-    console.log(id);
-    toast.success('Deleted!');
+    router.push('/projects');
+    setTimeout(() => {
+      let secondsLeft = 5;
+      let timer, updateInterval;
+      const createToastContent = seconds => (
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <Circle />
+            <div>
+              <div className="font-sm">Deleting project...</div>
+              <div className="text-xs opacity-70">{seconds}s remaining</div>
+            </div>
+          </div>
+          {/* Undo button inside content */}
+          <button
+            onClick={() => {
+              clearTimeout(timer);
+              clearInterval(updateInterval);
+              toast.dismiss(t);
+              toast.success('Deletion cancelled');
+            }}
+            className="px-3 py-1 text-sm bg-black text-white rounded  transition-colors ml-4"
+          >
+            Undo
+          </button>
+        </div>
+      );
+
+      const t = toast.warning(createToastContent(secondsLeft), {
+        duration: Infinity,
+      });
+
+      // Update toast content every second
+      updateInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          toast.warning(createToastContent(secondsLeft), {
+            id: t,
+            duration: Infinity,
+          });
+        }
+      }, 1000);
+
+      timer = setTimeout(() => {
+        removeProject(id);
+        clearInterval(updateInterval);
+        toast.dismiss(t);
+        toast.success('Project deleted');
+      }, 5000);
+    }, 1000);
   };
+
+  // const handleDelete = id => {
+  //   router.push('/projects');
+  //   setTimeout(() => {
+  //     const t = toast.warning('Project deleting..', {
+  //       action: {
+  //         label: 'Undo',
+  //         onClick: () => {
+  //           clearTimeout(timer);
+  //           toast.dismiss(t);
+  //         },
+  //       },
+  //     });
+
+  //     const timer = setTimeout(() => {
+  //       // removeProject(id);
+  //       toast.dismiss(t);
+  //     }, 5000);
+  //   }, 1000);
+  // };
 
   return (
     <main className="flex-1 bg-neutral-50 p-6">

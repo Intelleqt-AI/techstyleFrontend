@@ -582,7 +582,17 @@ export default function InboxPage() {
     localStorage.removeItem('gmail_access_token');
   };
 
-  const generateAIReply = async emailBody => {
+  async function generateReplyForConversation(selectedMessage) {
+    if (!selectedMessage?.messages || !Array.isArray(selectedMessage.messages)) {
+      return '';
+    }
+    const fromEmail = selectedMessage?.from?.email || '';
+    const conversation = selectedMessage.messages.map((msg, index) => `Message ${index + 1}: ${msg.snippet}`).join('\n\n');
+    const reply = await generateAIReply(conversation, fromEmail);
+    return reply;
+  }
+
+  const generateAIReply = async (emailBody, from) => {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_KEY}`,
       {
@@ -595,13 +605,31 @@ export default function InboxPage() {
             {
               parts: [
                 {
-                  text: `Write only a professional email reply to this email. If you need my name for reply , my name is : ${user?.name} , Only use my where its needed .  Do not include any explanations, subject , notes, or additional text outside the email content:\n\n${emailBody}`,
+                  text: `Write only the final professional email reply in plain text.  
+Do not include subject lines, explanations, or instructions.  
+Keep it natural, polite, and concise, written as if by a human.  
+
+If you need my name for the closing, my name is: ${user?.name}.  
+Always end with:  
+"Best regards,  
+${user?.name}"  
+
+Below is the full email conversation thread.  
+Read it carefully and reply to the most recent message.  
+
+Conversation:  
+${emailBody}  
+
+The most recent email came from ${from}. Guess the sender’s first name from the email and start with:  
+"Hi [SenderName],"
+"
+`,
                 },
               ],
             },
           ],
           generationConfig: {
-            temperature: 0.7,
+            temperature: 0.4,
             maxOutputTokens: 512,
             candidateCount: 1,
           },
@@ -617,7 +645,7 @@ export default function InboxPage() {
   const handleAiReply = async () => {
     setAiLoading(true);
     try {
-      const aiReply = await generateAIReply(selectedTopic?.snippet);
+      const aiReply = await generateReplyForConversation(selectedMessage);
       setReply(aiReply);
     } catch (error) {
       setReply('AI failed to generate a reply.');
