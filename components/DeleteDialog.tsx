@@ -77,7 +77,7 @@ export const DeleteDialog = ({
           </div>
         )}
 
-        <DialogFooter className="mt-6 flex gap-3 sm:justify-end">
+        <DialogFooter className="mt-3 flex gap-3 sm:justify-end">
           <Button type="button" variant="outline" onClick={handleClose} disabled={isDeleting}>
             {cancelText}
           </Button>

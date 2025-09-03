@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { Calendar } from '../ui/calendar';
 import { format } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { addNewProject, getUsers, modifyProject } from '@/supabase/API';
+import { addNewProject, addNewTask, getUsers, modifyProject } from '@/supabase/API';
 import { CurrencySelector } from '../ui/CurrencySelector';
 import useClient from '@/hooks/useClient';
 import { toast } from 'sonner';
@@ -311,6 +311,16 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
   // Get clients
   const { data: clientData, isLoading: loadingClient, refetch: refetchClient } = useClient();
 
+  // Define the mutation
+  const taskAddMutation = useMutation({
+    mutationFn: addNewTask,
+    onError: e => {
+      toast.error('Error! Try again');
+    },
+  });
+
+  // mutation.mutate({ newTask: taskValues, user: user });
+
   //   const handleMemberSelect = member => {
   //   setSelectedMembers([...selectedMembers, member]);
   //   setTeamMembers(teamMembers.filter(m => m.email !== member.email));
@@ -323,20 +333,40 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
 
   // Define the mutation
   const mutation = useMutation({
-    mutationFn: addNewProject,
-    onSuccess: () => {
+    mutationFn: async projectData => addNewProject(projectData),
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries(['projects']);
       handleClose();
+      // Show loading toast
+      const loadingToastId = toast.loading('Creating project and tasks...');
+      if (variables?.phases?.length > 0) {
+        // Flatten all tasks
+        const allTasks = variables.phases.flatMap(phase =>
+          phase.task.map(taskName => ({
+            name: taskName,
+            projectID: data?.data[0]?.id,
+            phase: phase.id,
+            status: 'todo',
+            priority: 'Low',
+          }))
+        );
+        // Send all tasks in a single API request
+        await taskAddMutation.mutateAsync({ newTask: allTasks, user });
+        toast.success(`${variables.name} and all tasks created successfully!`, {
+          id: loadingToastId,
+        });
+      } else {
+        toast.success(`${variables.name} created successfully!`, {
+          id: loadingToastId,
+        });
+      }
     },
-    onError: error => {
-      console.log(error);
-      toast('Error! Try again');
-    },
+    onError: () => toast.error('Error creating project'),
   });
 
   const handleCreate = async () => {
     // Simulate project creation
-    toast.success(`${data.name} has been created successfully.`);
+
     const finalData = { ...data, budget: +data?.budget };
     mutation.mutate(finalData);
   };
