@@ -15,6 +15,8 @@ import useUser from '@/hooks/useUser';
 import { updateUser } from '@/supabase/API';
 import { toast } from 'sonner';
 
+// TODO : there is some conflict with moving phase , will fix later on
+
 import SortableList, { SortableItem } from 'react-easy-sort';
 import { arrayMoveImmutable } from 'array-move';
 

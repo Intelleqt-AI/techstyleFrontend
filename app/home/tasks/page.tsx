@@ -393,7 +393,12 @@ export default function MyTasksPage() {
               </div>
 
               {/* Add Task Button */}
-              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center" size="sm">
+              <Button
+                onClick={() => openNewTask()}
+                variant="ghost"
+                className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
+                size="sm"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>

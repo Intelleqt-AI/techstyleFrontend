@@ -11,8 +11,23 @@ import type { Task, ListColumn, TeamMember, Phase } from '@/components/tasks/typ
 import TimelineView from '@/components/tasks/timeline-view';
 import ListView from '@/components/tasks/list-view';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getTask, modifyTask } from '@/supabase/API';
+import { fetchOnlyProject, getTask, modifyTask } from '@/supabase/API';
 import { toast } from 'sonner';
+
+const updateTaskListFromPhases = (data, phases) => {
+  if (!Array.isArray(phases)) return [];
+
+  return phases
+    .sort((a, b) => a.order - b.order) // keep same order as project
+    .map(phase => ({
+      id: phase.id,
+      name: phase.name, // Phase display name
+      items: data?.filter(item => item.phase === phase.id) || [], // match tasks by phase id
+      status: phase.name, // you can customize if needed
+      icon: null, // you could add an icon mapping if required
+      colorClass: phase.color ? `text-[${phase.color}]` : 'text-gray-600', // use project color
+    }));
+};
 
 const updatetaskList = data => {
   return [
@@ -126,6 +141,12 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const [activeTab, setActiveTab] = React.useState<'board' | 'list' | 'timeline'>('board');
 
+  const { data: project, isLoading } = useQuery({
+    queryKey: [`projectOnly`, projectId],
+    queryFn: () => fetchOnlyProject({ projectID: projectId }),
+    enabled: !!projectId,
+  });
+
   const queryClient = useQueryClient();
   const [columnName, setColumsName] = React.useState(null);
   // Task
@@ -150,41 +171,24 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   });
 
   React.useEffect(() => {
-    if (taskLoading) return;
+    if (taskLoading || isLoading) return;
     if (taskData) {
       if (projectId) {
         const filterdTask = taskData?.data.filter(item => item.projectID == projectId);
-        setTasks(taskData && taskData?.data.length > 0 && updatetaskList(filterdTask));
+
+        if (project?.phases) {
+          setTasks(taskData && taskData?.data.length > 0 && updateTaskListFromPhases(filterdTask, project?.phases));
+        } else {
+          setTasks(taskData && taskData?.data.length > 0 && updatetaskList(filterdTask));
+        }
       }
     }
-  }, [taskData, projectId]);
+  }, [taskData, projectId, project]);
 
   function openNewTask(phase?: string) {
-    switch (phase) {
-      case 'Design Concepts':
-        setColumsName('initial');
-        break;
-      case 'Design Development':
-        setColumsName('design-development');
-        break;
-      case 'Technical Drawings':
-        setColumsName('technical-drawings');
-        break;
-      case 'Client Review':
-        setColumsName('client-review');
-        break;
-      case 'Procurement':
-        setColumsName('procurement');
-        break;
-      case 'Site / Implementation':
-        setColumsName('site-implementation');
-        break;
-      case 'Complete':
-        setColumsName('complete-project');
-        break;
-      default:
-        setColumsName('initial');
-    }
+    console.log('phase', phase);
+    setColumsName(phase);
+    // setColumsName(getPhaseName(phase));
     setEditing(null);
     setModalOpen(true);
   }
@@ -218,14 +222,26 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
     e.preventDefault();
   };
 
+  const getPhaseName = phaseId => {
+    const phase = project?.phases?.find(p => p.id == phaseId);
+    return phase ? phase.name : null;
+  };
+
   const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
+    console.log(targetColumn);
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     const sourceColumn = e.dataTransfer.getData('sourceColumn');
     if (!taskId || !sourceColumn || sourceColumn === targetColumn) return;
 
-    // Determine the new phase
     let phase;
+
+    if (project?.phases) {
+      phase = targetColumn;
+    }
+
+    // Determine the new phase
+
     if (targetColumn === 'Design Concepts') {
       phase = 'initial';
     } else if (targetColumn === 'Design Development') {
@@ -282,7 +298,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
     // });
 
     // Show success message after UI update
-    toast.success(`Task moved to ${targetColumn}`);
+    toast.success(`Task moved to ${getPhaseName(targetColumn)}`);
 
     // Send update to server
     const modifyInfo = {
@@ -357,14 +373,14 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                     return (
                       <div
                         onDragOver={e => handleDragOver(e)}
-                        onDrop={e => handleDrop(e, col.name)}
+                        onDrop={e => handleDrop(e, project?.phases ? col?.id : col?.name)}
                         key={col?.name}
                         className="w-80 flex-shrink-0"
                       >
                         <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                              {React.createElement(col.icon, { className: `w-4 h-4 ${col.colorClass}` })}
+                              {/* {React.createElement(col?.icon, { className: `w-4 h-4 ${col?.colorClass}` })} */}
                               <span className="font-medium text-gray-900">{col.name}</span>
                               <TypeChip label={String(col?.items?.length)} />
                             </div>
@@ -374,7 +390,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                               className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600"
                               title="Add task"
                               aria-label="Add task"
-                              onClick={() => openNewTask(col.id)}
+                              onClick={() => openNewTask(project?.phases ? col?.id : col?.name)}
                             >
                               <Plus className="w-4 h-4" />
                             </Button>
@@ -456,7 +472,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                               variant="ghost"
                               className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 justify-center border-2 border-dashed border-gray-200 hover:border-gray-300 py-8"
                               size="sm"
-                              onClick={() => openNewTask(col.name)}
+                              onClick={() => openNewTask(project?.phases ? col?.id : col?.name)}
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Add Task

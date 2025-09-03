@@ -37,6 +37,7 @@ import {
   Search,
   Check,
   CalendarIcon,
+  Trash,
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -49,6 +50,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
+import { useDeleteDialog } from '@/hooks/useDeleteDialog';
+import { DeleteDialog } from '@/components/DeleteDialog';
 
 function Labeled({
   icon,
@@ -125,6 +128,7 @@ export default function ProjectSettingsPage() {
   const projectId = params?.id ?? 'project-1';
   const [selected, setSelected] = useState<SectionKey>('overview');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const { isOpen, item, openDialog, closeDialog } = useDeleteDialog();
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     contacts: { additional: [] },
     property: {},
@@ -171,6 +175,12 @@ export default function ProjectSettingsPage() {
     mutation.mutate(selectedProject);
   }
 
+  // Delete project
+  const handleDelete = id => {
+    console.log(id);
+    toast.success('Deleted!');
+  };
+
   return (
     <main className="flex-1 bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -205,8 +215,10 @@ export default function ProjectSettingsPage() {
                     return (
                       <Button
                         key={s.key}
-                        variant={active ? 'secondary' : 'ghost'}
-                        className={`justify-start ${active ? 'bg-neutral-100' : ''}`}
+                        variant={s?.key == 'delete' ? 'destructive' : active ? 'secondary' : 'ghost'}
+                        className={`justify-start ${
+                          s?.key == 'delete' ? 'bg-red-50 text-red-700 hover:bg-red-100 border-red-200' : active ? 'bg-neutral-100' : ''
+                        }`}
                         onClick={() => setSelected(s.key)}
                       >
                         <Icon className="w-4 h-4 mr-2" />
@@ -214,6 +226,15 @@ export default function ProjectSettingsPage() {
                       </Button>
                     );
                   })}
+
+                  <Button
+                    variant={'destructive'}
+                    className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
+                    onClick={() => openDialog(selectedProject?.id)}
+                  >
+                    <Trash className="w-4 h-4 mr-2" />
+                    Delete Project
+                  </Button>
                 </nav>
               </CardContent>
             </Card>
@@ -313,6 +334,18 @@ export default function ProjectSettingsPage() {
           // reflect completion in header badges
           // no-op for now; you can hook real data as needed.
         }}
+      />
+
+      <DeleteDialog
+        isOpen={isOpen}
+        onClose={closeDialog}
+        onConfirm={handleDelete}
+        id={selectedProject?.id}
+        itemName={selectedProject?.name}
+        requireConfirmation={true}
+        confirmationText={selectedProject?.name}
+        title="Delete Project"
+        description={`This will permanently delete "${selectedProject?.name}" and all its data.`}
       />
     </main>
   );
