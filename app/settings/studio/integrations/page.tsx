@@ -37,13 +37,7 @@ const initial: Integration[] = [
       { key: 'clientSecret', label: 'Client Secret' },
     ],
   },
-  {
-    id: 'slack',
-    name: 'Slack',
-    description: 'Channel notifications and mentions.',
-    status: 'connected',
-    fields: [{ key: 'botToken', label: 'Bot token', placeholder: 'xoxb-...' }],
-  },
+
   {
     id: 'notion',
     name: 'Notion',

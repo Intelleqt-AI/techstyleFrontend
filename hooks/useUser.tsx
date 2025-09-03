@@ -1,7 +1,7 @@
-import { getUsers } from "@/supabase/API";
-import supabase from "@/supabase/supabaseClient";
-import { useQuery } from "@tanstack/react-query";
-import React, { useEffect, useState } from "react";
+import { getUsers } from '@/supabase/API';
+import supabase from '@/supabase/supabaseClient';
+import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
 
 const useUser = () => {
   const [userEmail, setUserEmail] = useState(null);
@@ -24,18 +24,18 @@ const useUser = () => {
     isLoading: isUsersLoading,
     error,
   } = useQuery({
-    queryKey: ["users", userEmail],
+    queryKey: ['users', userEmail],
     queryFn: getUsers,
     staleTime: 1000 * 60 * 5,
     enabled: userEmail !== null,
   });
 
-  const currentUser = users?.data?.find((user) => user.email === userEmail);
+  const currentUser = users?.data?.find(user => user.email === userEmail);
 
   const isLoading = isSessionLoading || isUsersLoading;
 
   return {
-    user: isLoading ? null : { email: userEmail, name: currentUser?.name },
+    user: isLoading ? null : { ...currentUser },
     isLoading,
   };
 };

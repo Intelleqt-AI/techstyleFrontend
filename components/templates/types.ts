@@ -1,30 +1,28 @@
-export interface Phase {
-  id: string
-  name: string
-  color: string
-}
+export type Phase = {
+  id: string;
+  name: string;
+  color: string; // hex
+};
 
-export interface WorkPackage {
-  id: string
-  name: string
-  defaultRole?: string
-}
+export type WorkPackage = {
+  id: string;
+  name: string;
+  defaultRole?: string; // optional contractor role
+};
 
-export const DefaultRoles = [
-  "Lead Designer",
-  "Project Manager",
-  "Operations",
-  "Contractor",
-  "Consultant",
-  "Client",
-  "Electrician",
-  "Plumber",
-  "HVAC",
-  "Joinery",
-  "Painter / Decorator",
-  "Flooring",
-  "Tiling",
-  "Lighting Supplier",
-  "AV / IT",
-  "Landscaping",
-]
+// A small, opinionated set of contractor roles commonly assigned to work packages.
+// You can extend this in the UI without changing code.
+export const DefaultRoles: string[] = [
+  'General Contractor',
+  'Electrician',
+  'Plumber',
+  'HVAC',
+  'Carpentry',
+  'Joinery',
+  'Painter / Decorator',
+  'Flooring',
+  'Tiling',
+  'Lighting Supplier',
+  'AV / IT',
+  'Landscaping',
+];

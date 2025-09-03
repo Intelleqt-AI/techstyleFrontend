@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import Modal from 'react-modal';
 import { Plus, Search, Filter, Heart, MoreHorizontal, Package, ChevronDown } from 'lucide-react';
 import { LibraryNav } from '@/components/library-nav';
 import { StatusBadge, TypeChip } from '@/components/chip';
@@ -22,6 +21,7 @@ import EditProductModal from '@/components/product/EditProductModal';
 import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useCurrency } from '@/hooks/useCurrency';
 
 // Mock user permissions
 const mockUser = { permissions: ['product.write'] };
@@ -48,18 +48,12 @@ export default function ProductsPage() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState([]);
   const [editModal, setEditModal] = useState(false);
-
-  function closeEditModal() {
-    setEditModal(false);
-  }
+  const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
+  const { currency, isLoading: currencyLoading } = useCurrency();
 
   const itemsPerPage = 12;
   const queryClient = useQueryClient();
-
   const canAddProduct = hasPerm('product.write');
-
-  const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
-
   // Fetch products using React Query
   const { data, isLoading, error } = useQuery({
     queryKey: ['GetProducts', selectedCategory, searchQuery, currentPage, itemsPerPage, selectedFilter],
@@ -72,6 +66,10 @@ export default function ProductsPage() {
         filter: selectedFilter !== 'Default' ? selectedFilter : null,
       }),
   });
+
+  function closeEditModal() {
+    setEditModal(false);
+  }
 
   const typeMutation = useMutation({
     mutationFn: modifyProjectForTypeProduct,
@@ -357,7 +355,8 @@ export default function ProductsPage() {
                       <div>
                         <div className="flex  items-center justify-between">
                           <span className="tabular-nums text-sm font-semibold text-gray-900">
-                            £{Number(product?.priceRegular).toLocaleString()}
+                            {!currencyLoading && (currency?.symbol || '£')}
+                            {Number(product?.priceRegular).toLocaleString()}
                           </span>
                           {product?.type && <TypeChip label={product.type} />}
                         </div>
