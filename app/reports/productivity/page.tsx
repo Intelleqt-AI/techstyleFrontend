@@ -1,236 +1,294 @@
-"use client"
+'use client';
 
-import { useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Search, Filter, Download } from "lucide-react"
-import { SortIndicator } from "@/components/sort-indicator"
-import { exportToCSV } from "@/lib/export-csv"
-import { ChartCard } from "@/components/reports/chart-card"
-import { PeriodFilter, type Period } from "@/components/reports/period-filter"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
+import { useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Search, Filter, Download } from 'lucide-react';
+import { SortIndicator } from '@/components/sort-indicator';
+import { exportToCSV } from '@/lib/export-csv';
+import { ChartCard } from '@/components/reports/chart-card';
+import { PeriodFilter, type Period } from '@/components/reports/period-filter';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
+import useUsers from '@/hooks/useUsers';
+import { useQuery } from '@tanstack/react-query';
+import { fetchOnlyProject, getTimeTracking } from '@/supabase/API';
 
 type Member = {
-  name: string
-  role: string
-  hours: number
-  billableHours: number
-  utilisation: number
-  tasksCompleted: number
-}
+  name: string;
+  role: string;
+  hours: number;
+  billableHours: number;
+  utilisation: number;
+  tasksCompleted: number;
+};
 
-const dataByPeriod: Record<Period, { members: Member[]; weekly: { week: string; hours: number; billable: number }[] }> =
-  {
-    month: {
-      members: [
-        {
-          name: "Sarah Chen",
-          role: "Senior Designer",
-          hours: 168,
-          billableHours: 148,
-          utilisation: 88,
-          tasksCompleted: 24,
-        },
-        {
-          name: "Marcus Rodriguez",
-          role: "Project Manager",
-          hours: 172,
-          billableHours: 150,
-          utilisation: 87,
-          tasksCompleted: 31,
-        },
-        {
-          name: "Emily Watson",
-          role: "Interior Designer",
-          hours: 156,
-          billableHours: 132,
-          utilisation: 85,
-          tasksCompleted: 19,
-        },
-        {
-          name: "David Kim",
-          role: "Design Assistant",
-          hours: 164,
-          billableHours: 142,
-          utilisation: 86,
-          tasksCompleted: 22,
-        },
-      ],
-      weekly: [
-        { week: "W1", hours: 160, billable: 138 },
-        { week: "W2", hours: 166, billable: 145 },
-        { week: "W3", hours: 170, billable: 148 },
-        { week: "W4", hours: 164, billable: 139 },
-      ],
-    },
-    quarter: {
-      members: [
-        {
-          name: "Sarah Chen",
-          role: "Senior Designer",
-          hours: 512,
-          billableHours: 454,
-          utilisation: 89,
-          tasksCompleted: 74,
-        },
-        {
-          name: "Marcus Rodriguez",
-          role: "Project Manager",
-          hours: 520,
-          billableHours: 456,
-          utilisation: 88,
-          tasksCompleted: 88,
-        },
-        {
-          name: "Emily Watson",
-          role: "Interior Designer",
-          hours: 474,
-          billableHours: 402,
-          utilisation: 85,
-          tasksCompleted: 63,
-        },
-        {
-          name: "David Kim",
-          role: "Design Assistant",
-          hours: 498,
-          billableHours: 429,
-          utilisation: 86,
-          tasksCompleted: 70,
-        },
-      ],
-      weekly: [
-        { week: "W1", hours: 160, billable: 140 },
-        { week: "W2", hours: 168, billable: 147 },
-        { week: "W3", hours: 172, billable: 150 },
-        { week: "W4", hours: 166, billable: 144 },
-        { week: "W5", hours: 170, billable: 148 },
-        { week: "W6", hours: 169, billable: 147 },
-        { week: "W7", hours: 173, billable: 151 },
-        { week: "W8", hours: 165, billable: 142 },
-        { week: "W9", hours: 171, billable: 149 },
-        { week: "W10", hours: 168, billable: 146 },
-        { week: "W11", hours: 170, billable: 148 },
-        { week: "W12", hours: 167, billable: 145 },
-      ],
-    },
-    year: {
-      members: [
-        {
-          name: "Sarah Chen",
-          role: "Senior Designer",
-          hours: 2024,
-          billableHours: 1781,
-          utilisation: 88,
-          tasksCompleted: 301,
-        },
-        {
-          name: "Marcus Rodriguez",
-          role: "Project Manager",
-          hours: 2048,
-          billableHours: 1796,
-          utilisation: 88,
-          tasksCompleted: 344,
-        },
-        {
-          name: "Emily Watson",
-          role: "Interior Designer",
-          hours: 1940,
-          billableHours: 1650,
-          utilisation: 85,
-          tasksCompleted: 255,
-        },
-        {
-          name: "David Kim",
-          role: "Design Assistant",
-          hours: 1985,
-          billableHours: 1703,
-          utilisation: 86,
-          tasksCompleted: 280,
-        },
-      ],
-      weekly: Array.from({ length: 12 }).map((_, i) => {
-        const hours = 165 + Math.round(Math.sin(i) * 6)
-        const billable = Math.round(hours * 0.87)
-        return { week: `M${i + 1}`, hours, billable }
-      }),
-    },
+function getFormattedTime(tasks, range = 'month') {
+  if (!Array.isArray(tasks)) return '0.00';
+
+  const now = new Date();
+
+  let startDate, endDate;
+
+  if (range === 'month') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (range === 'quarter') {
+    const currentQuarter = Math.floor(now.getMonth() / 3); // 0 = Q1, 1 = Q2, etc.
+    startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+    endDate = new Date(now.getFullYear(), currentQuarter * 3 + 3, 0, 23, 59, 59, 999);
+  } else if (range === 'year') {
+    startDate = new Date(now.getFullYear(), 0, 1);
+    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  } else {
+    return '0.00'; // fallback for invalid range
   }
 
+  const totalMs = tasks.reduce((total, task) => {
+    if (!Array.isArray(task.session)) return total;
+
+    const sessionTime = task.session.reduce((sum, session) => {
+      const sessionDate = new Date(session.date);
+      if (!isNaN(sessionDate) && sessionDate >= startDate && sessionDate <= endDate && typeof session.totalTime === 'number') {
+        return sum + session.totalTime;
+      }
+      return sum;
+    }, 0);
+
+    return total + sessionTime;
+  }, 0);
+
+  const totalHours = totalMs / (1000 * 60 * 60);
+  return totalHours.toFixed(2);
+}
+
+const dataByPeriod: Record<Period, { members: Member[]; weekly: { week: string; hours: number; billable: number }[] }> = {
+  month: {
+    members: [
+      {
+        name: 'Sarah Chen',
+        role: 'Senior Designer',
+        hours: 168,
+        billableHours: 148,
+        utilisation: 88,
+        tasksCompleted: 24,
+      },
+      {
+        name: 'Marcus Rodriguez',
+        role: 'Project Manager',
+        hours: 172,
+        billableHours: 150,
+        utilisation: 87,
+        tasksCompleted: 31,
+      },
+      {
+        name: 'Emily Watson',
+        role: 'Interior Designer',
+        hours: 156,
+        billableHours: 132,
+        utilisation: 85,
+        tasksCompleted: 19,
+      },
+      {
+        name: 'David Kim',
+        role: 'Design Assistant',
+        hours: 164,
+        billableHours: 142,
+        utilisation: 86,
+        tasksCompleted: 22,
+      },
+    ],
+    weekly: [
+      { week: 'W1', hours: 160, billable: 138 },
+      { week: 'W2', hours: 166, billable: 145 },
+      { week: 'W3', hours: 170, billable: 148 },
+      { week: 'W4', hours: 164, billable: 139 },
+    ],
+  },
+  quarter: {
+    members: [
+      {
+        name: 'Sarah Chen',
+        role: 'Senior Designer',
+        hours: 512,
+        billableHours: 454,
+        utilisation: 89,
+        tasksCompleted: 74,
+      },
+      {
+        name: 'Marcus Rodriguez',
+        role: 'Project Manager',
+        hours: 520,
+        billableHours: 456,
+        utilisation: 88,
+        tasksCompleted: 88,
+      },
+      {
+        name: 'Emily Watson',
+        role: 'Interior Designer',
+        hours: 474,
+        billableHours: 402,
+        utilisation: 85,
+        tasksCompleted: 63,
+      },
+      {
+        name: 'David Kim',
+        role: 'Design Assistant',
+        hours: 498,
+        billableHours: 429,
+        utilisation: 86,
+        tasksCompleted: 70,
+      },
+    ],
+    weekly: [
+      { week: 'W1', hours: 160, billable: 140 },
+      { week: 'W2', hours: 168, billable: 147 },
+      { week: 'W3', hours: 172, billable: 150 },
+      { week: 'W4', hours: 166, billable: 144 },
+      { week: 'W5', hours: 170, billable: 148 },
+      { week: 'W6', hours: 169, billable: 147 },
+      { week: 'W7', hours: 173, billable: 151 },
+      { week: 'W8', hours: 165, billable: 142 },
+      { week: 'W9', hours: 171, billable: 149 },
+      { week: 'W10', hours: 168, billable: 146 },
+      { week: 'W11', hours: 170, billable: 148 },
+      { week: 'W12', hours: 167, billable: 145 },
+    ],
+  },
+  year: {
+    members: [
+      {
+        name: 'Sarah Chen',
+        role: 'Senior Designer',
+        hours: 2024,
+        billableHours: 1781,
+        utilisation: 88,
+        tasksCompleted: 301,
+      },
+      {
+        name: 'Marcus Rodriguez',
+        role: 'Project Manager',
+        hours: 2048,
+        billableHours: 1796,
+        utilisation: 88,
+        tasksCompleted: 344,
+      },
+      {
+        name: 'Emily Watson',
+        role: 'Interior Designer',
+        hours: 1940,
+        billableHours: 1650,
+        utilisation: 85,
+        tasksCompleted: 255,
+      },
+      {
+        name: 'David Kim',
+        role: 'Design Assistant',
+        hours: 1985,
+        billableHours: 1703,
+        utilisation: 86,
+        tasksCompleted: 280,
+      },
+    ],
+    weekly: Array.from({ length: 12 }).map((_, i) => {
+      const hours = 165 + Math.round(Math.sin(i) * 6);
+      const billable = Math.round(hours * 0.87);
+      return { week: `M${i + 1}`, hours, billable };
+    }),
+  },
+};
+
 function formatPercent(n: number) {
-  return `${n}%`
+  return `${n}%`;
 }
 
 export default function ProductivityReportsPage() {
-  const [period, setPeriod] = useState<Period>("month")
-  const [query, setQuery] = useState("")
-  const [roleFilter, setRoleFilter] = useState<string | "all">("all")
-  const [sortKey, setSortKey] = useState<keyof Member>("name")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const [period, setPeriod] = useState<Period>('month');
+  const [query, setQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string | 'all'>('all');
+  const [sortKey, setSortKey] = useState<keyof Member>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const { users, isLoading: usersLoading } = useUsers();
 
-  const rawMembers = dataByPeriod[period].members
-  const weekly = dataByPeriod[period].weekly
+  const { data: trackingData, isLoading: trackingLoading } = useQuery({
+    queryKey: ['Time Tracking'],
+    queryFn: getTimeTracking,
+  });
+
+  // Projects
+  const {
+    data: project,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
+
+  const rawMembers = dataByPeriod[period].members;
+  const weekly = dataByPeriod[period].weekly;
 
   const kpis = useMemo(() => {
-    const totalHours = rawMembers.reduce((sum, m) => sum + m.hours, 0)
-    const totalBillable = rawMembers.reduce((sum, m) => sum + m.billableHours, 0)
-    const avgUtil = Math.round(rawMembers.reduce((sum, m) => sum + m.utilisation, 0) / rawMembers.length)
-    const totalTasks = rawMembers.reduce((sum, m) => sum + m.tasksCompleted, 0)
+    const totalHour = getFormattedTime(trackingData?.data, period);
+    const totalBillable = rawMembers.reduce((sum, m) => sum + m.billableHours, 0);
+    const avgUtil = Math.round(rawMembers.reduce((sum, m) => sum + m.utilisation, 0) / rawMembers.length);
+    const totalTasks = rawMembers.reduce((sum, m) => sum + m.tasksCompleted, 0);
     return [
-      { label: "Avg Utilisation", value: formatPercent(avgUtil), sub: "Billable time share" },
+      { label: 'Avg Utilisation', value: formatPercent(0), sub: 'Billable time share' },
       {
-        label: "Hours Logged",
-        value: `${totalHours.toLocaleString()}`,
-        sub: period === "month" ? "This month" : period === "quarter" ? "This quarter" : "This year",
+        label: 'Hours Logged',
+        value: `${totalHour || 0.0}`,
+        sub: period === 'month' ? 'This month' : period === 'quarter' ? 'This quarter' : 'This year',
       },
-      { label: "Billable Hours", value: `${totalBillable.toLocaleString()}`, sub: "Time billed" },
-      { label: "Tasks Completed", value: `${totalTasks}`, sub: "All members" },
-    ]
-  }, [rawMembers, period])
+      { label: 'Billable Hours', value: `0`, sub: 'Time billed' },
+      { label: 'Tasks Completed', value: `${totalTasks}`, sub: 'All members' },
+    ];
+  }, [rawMembers, period, trackingLoading]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return rawMembers.filter((m) => {
-      const matchesQuery = !q || m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q)
-      const matchesRole = roleFilter === "all" || m.role === roleFilter
-      return matchesQuery && matchesRole
-    })
-  }, [rawMembers, query, roleFilter])
+    const q = query.trim().toLowerCase();
+    return rawMembers.filter(m => {
+      const matchesQuery = !q || m.name.toLowerCase().includes(q) || m.role.toLowerCase().includes(q);
+      const matchesRole = roleFilter === 'all' || m.role === roleFilter;
+      return matchesQuery && matchesRole;
+    });
+  }, [rawMembers, query, roleFilter]);
 
   const sorted = useMemo(() => {
-    const arr = [...filtered]
+    const arr = [...filtered];
     arr.sort((a, b) => {
-      const va = a[sortKey]
-      const vb = b[sortKey]
-      if (typeof va === "number" && typeof vb === "number") return sortDir === "asc" ? va - vb : vb - va
-      const sa = String(va).toLowerCase()
-      const sb = String(vb).toLowerCase()
-      return sortDir === "asc" ? sa.localeCompare(sb) : sb.localeCompare(sa)
-    })
-    return arr
-  }, [filtered, sortKey, sortDir])
+      const va = a[sortKey];
+      const vb = b[sortKey];
+      if (typeof va === 'number' && typeof vb === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+      const sa = String(va).toLowerCase();
+      const sb = String(vb).toLowerCase();
+      return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
 
   function onClickSort(key: keyof Member) {
-    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"))
+    if (sortKey === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
     else {
-      setSortKey(key)
-      setSortDir("asc")
+      setSortKey(key);
+      setSortDir('asc');
     }
   }
 
   function doExport() {
     exportToCSV(
       `productivity-${period}.csv`,
-      sorted.map((m) => ({
+      sorted.map(m => ({
         Name: m.name,
         Role: m.role,
         Hours: m.hours,
-        "Billable Hours": m.billableHours,
+        'Billable Hours': m.billableHours,
         Utilisation: m.utilisation,
-        "Tasks Completed": m.tasksCompleted,
-      })),
-    )
+        'Tasks Completed': m.tasksCompleted,
+      }))
+    );
   }
 
   return (
@@ -252,12 +310,7 @@ export default function ProductivityReportsPage() {
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search team..."
-              className="pl-7"
-            />
+            <Input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search team..." className="pl-7" />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -267,11 +320,11 @@ export default function ProductivityReportsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-44">
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setRoleFilter("all")}>
+              <DropdownMenuItem onSelect={e => e.preventDefault()} onClick={() => setRoleFilter('all')}>
                 All Roles
               </DropdownMenuItem>
-              {["Senior Designer", "Project Manager", "Interior Designer", "Design Assistant"].map((r) => (
-                <DropdownMenuItem key={r} onSelect={(e) => e.preventDefault()} onClick={() => setRoleFilter(r)}>
+              {['Senior Designer', 'Project Manager', 'Interior Designer', 'Design Assistant'].map(r => (
+                <DropdownMenuItem key={r} onSelect={e => e.preventDefault()} onClick={() => setRoleFilter(r)}>
                   {r}
                 </DropdownMenuItem>
               ))}
@@ -289,8 +342,8 @@ export default function ProductivityReportsPage() {
         <ChartCard title="Utilisation Trend" description="Billable share of time by week">
           <ChartContainer
             config={{
-              hours: { label: "Hours", color: "hsl(var(--chart-3))" },
-              billable: { label: "Billable", color: "hsl(var(--chart-1))" },
+              hours: { label: 'Hours', color: 'hsl(var(--chart-3))' },
+              billable: { label: 'Billable', color: 'hsl(var(--chart-1))' },
             }}
             className="h-[260px]"
           >
@@ -311,14 +364,14 @@ export default function ProductivityReportsPage() {
         <ChartCard title="Billable vs Non‑billable" description="Distribution of time by week">
           <ChartContainer
             config={{
-              billable: { label: "Billable", color: "hsl(var(--chart-1))" },
-              nonbillable: { label: "Non‑billable", color: "hsl(var(--chart-4))" },
+              billable: { label: 'Billable', color: 'hsl(var(--chart-1))' },
+              nonbillable: { label: 'Non‑billable', color: 'hsl(var(--chart-4))' },
             }}
             className="h-[260px]"
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={weekly.map((w) => ({
+                data={weekly.map(w => ({
                   week: w.week,
                   billable: w.billable,
                   nonbillable: Math.max(0, w.hours - w.billable),
@@ -345,53 +398,45 @@ export default function ProductivityReportsPage() {
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
               <tr>
                 <th className="w-[260px] px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  <button
-                    onClick={() => onClickSort("name")}
-                    className="group inline-flex items-center gap-1"
-                    aria-label="Sort by member"
-                  >
+                  <button onClick={() => onClickSort('name')} className="group inline-flex items-center gap-1" aria-label="Sort by member">
                     Member
-                    <SortIndicator direction={sortKey === "name" ? sortDir : null} />
+                    <SortIndicator direction={sortKey === 'name' ? sortDir : null} />
                   </button>
                 </th>
                 <th className="w-[110px] px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  <button
-                    onClick={() => onClickSort("hours")}
-                    className="group inline-flex items-center gap-1"
-                    aria-label="Sort by hours"
-                  >
+                  <button onClick={() => onClickSort('hours')} className="group inline-flex items-center gap-1" aria-label="Sort by hours">
                     Hours
-                    <SortIndicator direction={sortKey === "hours" ? sortDir : null} />
+                    <SortIndicator direction={sortKey === 'hours' ? sortDir : null} />
                   </button>
                 </th>
                 <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
                   <button
-                    onClick={() => onClickSort("billableHours")}
+                    onClick={() => onClickSort('billableHours')}
                     className="group inline-flex items-center gap-1"
                     aria-label="Sort by billable hours"
                   >
                     Billable Hours
-                    <SortIndicator direction={sortKey === "billableHours" ? sortDir : null} />
+                    <SortIndicator direction={sortKey === 'billableHours' ? sortDir : null} />
                   </button>
                 </th>
                 <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
                   <button
-                    onClick={() => onClickSort("utilisation")}
+                    onClick={() => onClickSort('utilisation')}
                     className="group inline-flex items-center gap-1"
                     aria-label="Sort by utilisation"
                   >
                     Utilisation
-                    <SortIndicator direction={sortKey === "utilisation" ? sortDir : null} />
+                    <SortIndicator direction={sortKey === 'utilisation' ? sortDir : null} />
                   </button>
                 </th>
                 <th className="w-[120px] px-4 py-3 text-left text-sm font-medium text-gray-600">
                   <button
-                    onClick={() => onClickSort("tasksCompleted")}
+                    onClick={() => onClickSort('tasksCompleted')}
                     className="group inline-flex items-center gap-1"
                     aria-label="Sort by tasks"
                   >
                     Tasks
-                    <SortIndicator direction={sortKey === "tasksCompleted" ? sortDir : null} />
+                    <SortIndicator direction={sortKey === 'tasksCompleted' ? sortDir : null} />
                   </button>
                 </th>
               </tr>
@@ -423,5 +468,5 @@ export default function ProductivityReportsPage() {
         </div>
       </ChartCard>
     </main>
-  )
+  );
 }
