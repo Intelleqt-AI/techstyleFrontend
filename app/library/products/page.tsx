@@ -1,132 +1,97 @@
-"use client";
+'use client';
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import Modal from "react-modal";
-import {
-  Plus,
-  Search,
-  Filter,
-  Heart,
-  MoreHorizontal,
-  Package,
-  ChevronDown,
-} from "lucide-react";
-import { LibraryNav } from "@/components/library-nav";
-import { StatusBadge, TypeChip } from "@/components/chip";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  ProductDetailSheet,
-  type ProductDetails,
-} from "@/components/product-detail-sheet";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getProduct, modifyProjectForTypeProduct } from "@/supabase/API";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandItem,
-} from "@/components/ui/command";
-import AddProductModal from "@/components/product/AddProductModal";
-import useProjects from "@/supabase/hook/useProject";
-import { toast } from "sonner";
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, Filter, Heart, MoreHorizontal, Package, ChevronDown } from 'lucide-react';
+import { LibraryNav } from '@/components/library-nav';
+import { StatusBadge, TypeChip } from '@/components/chip';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ProductDetailSheet, type ProductDetails } from '@/components/product-detail-sheet';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { getProduct, modifyProjectForTypeProduct } from '@/supabase/API';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandList, CommandItem } from '@/components/ui/command';
+import AddProductModal from '@/components/product/AddProductModal';
+import useProjects from '@/supabase/hook/useProject';
+import { toast } from 'sonner';
+import EditProductModal from '@/components/product/EditProductModal';
+import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useCurrency } from '@/hooks/useCurrency';
 
 // Mock user permissions
-const mockUser = { permissions: ["product.write"] };
-const hasPerm = (permission: string) =>
-  mockUser.permissions.includes(permission);
+const mockUser = { permissions: ['product.write'] };
+const hasPerm = (permission: string) => mockUser.permissions.includes(permission);
 
 // Filter options
-const options = ["Default", "Bookcase", "Shelves", "Lighting", "Wall decor"];
+const options = ['Default', 'Bookcase', 'Shelves', 'Lighting', 'Wall decor'];
 
 export default function ProductsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedFilter, setSelectedFilter] = useState("Default");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedFilter, setSelectedFilter] = useState('Default');
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [selected, setSelected] = useState<ProductDetails | undefined>(
-    undefined
-  );
+  const [selected, setSelected] = useState<ProductDetails | undefined>(undefined);
   const [addProductmodalOpen, setAddProductModalOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState([]);
-  const [productTypes, setProductTypes] = useState([]);
   const [types, setTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
-  const [confirmText, setConfirmText] = useState(
-    "Are you sure you want to delete ?"
-  );
+  const [confirmText, setConfirmText] = useState('Are you sure you want to delete ?');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState([]);
+  const [editModal, setEditModal] = useState(false);
+  const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
+  const { currency, isLoading: currencyLoading } = useCurrency();
 
   const itemsPerPage = 12;
   const queryClient = useQueryClient();
-
-  const canAddProduct = hasPerm("product.write");
-
-  const {
-    data: projectsData,
-    isLoading: projectsLoading,
-    error: projectsError,
-    refetch,
-  } = useProjects();
-
+  const canAddProduct = hasPerm('product.write');
   // Fetch products using React Query
   const { data, isLoading, error } = useQuery({
-    queryKey: [
-      "GetProducts",
-      selectedCategory,
-      searchQuery,
-      currentPage,
-      itemsPerPage,
-      selectedFilter,
-    ],
+    queryKey: ['GetProducts', selectedCategory, searchQuery, currentPage, itemsPerPage, selectedFilter],
     queryFn: () =>
       getProduct({
         page: currentPage,
         pageSize: itemsPerPage,
         searchQuery: searchQuery || null,
-        category: selectedCategory !== "All" ? selectedCategory : null,
-        filter: selectedFilter !== "Default" ? selectedFilter : null,
+        category: selectedCategory !== 'All' ? selectedCategory : null,
+        filter: selectedFilter !== 'Default' ? selectedFilter : null,
       }),
   });
+
+  function closeEditModal() {
+    setEditModal(false);
+  }
 
   const typeMutation = useMutation({
     mutationFn: modifyProjectForTypeProduct,
     onSuccess: () => {
-      toast("Product Added");
-      queryClient.invalidateQueries(["getProductByProjectID"]);
+      toast('Product Added');
+      queryClient.invalidateQueries(['getProductByProjectID']);
     },
-    onError: (error) => {
+    onError: error => {
       console.log(error);
       toast(error.message);
     },
   });
 
   // Function to handle adding a new product
-  const handleAddProduct = (newProduct) => {
+  const handleAddProduct = newProduct => {
     // This would typically call an API to add the product
-    console.log("Adding new product:", newProduct);
+    console.log('Adding new product:', newProduct);
     // In a real implementation, we would update the state or refetch products
     setAddProductModalOpen(false);
   };
 
-  const openDetails = useCallback((product) => {
+  const openDetails = useCallback(product => {
     // Map the product to the details format expected by the sheet
     const productDetails: ProductDetails = {
       id: String(product.id),
@@ -135,8 +100,8 @@ export default function ProductsPage() {
       images: [
         { src: product.image, alt: product.name },
         // Additional gallery examples
-        { src: "/images/products/pleated-table-lamp.png", alt: "Alt angle" },
-        { src: "/images/products/travertine-table-lamp.png", alt: "Detail" },
+        { src: '/images/products/pleated-table-lamp.png', alt: 'Alt angle' },
+        { src: '/images/products/travertine-table-lamp.png', alt: 'Detail' },
       ],
       prices: { retail: product.price, trade: undefined },
       productType: product.category,
@@ -144,11 +109,10 @@ export default function ProductsPage() {
       material: undefined,
       size: undefined,
       sku: undefined,
-      stockStatus: product.inStock ? "In Stock" : "Confirm Stock",
-      sampleAvailable: "No",
+      stockStatus: product.inStock ? 'In Stock' : 'Confirm Stock',
+      sampleAvailable: 'No',
       measurements: undefined,
-      description:
-        "High-quality design piece curated for modern interiors. Materials and finish align with the studio's earthy palette.",
+      description: "High-quality design piece curated for modern interiors. Materials and finish align with the studio's earthy palette.",
       tags: product.tags,
       url: undefined,
     };
@@ -163,7 +127,7 @@ export default function ProductsPage() {
     if (!isLoading) setProducts(data?.products);
   }, [data, isLoading]);
 
-  const handleOpenTypeModal = (project) => {
+  const handleOpenTypeModal = project => {
     setTypes(project);
     setModalOpen(true);
   };
@@ -175,26 +139,21 @@ export default function ProductsPage() {
     setQty(1);
   }
 
-  const afterCloseModal = () => {
-    closeModal();
-    setQty(1);
-  };
-
   const handleAddToProject = (id: string) => {
-    toast.warning("No Room ! Please Add Room");
+    toast.warning('No Room ! Please Add Room');
   };
 
   // Submit types
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
     const finalProduct = {
       id: selectedProductId,
       qty: qty,
-      status: "pending",
+      status: 'pending',
       install: null,
       delivery: null,
       sendToClient: false,
-      initialStatus: "Draft",
+      initialStatus: 'Draft',
     };
     if (selectedType) {
       typeMutation.mutate({
@@ -206,13 +165,18 @@ export default function ProductsPage() {
     }
   };
 
+  const handleSelectProduct = product => {
+    setSelectedProduct(product);
+    setEditModal(true);
+  };
+
   // useEffect(() => {
   //   console.log(products.find((product) => product?.type));
   // }, [products]);
 
-  useEffect(() => {
-    console.log(types.type);
-  }, [types]);
+  // useEffect(() => {
+  //   console.log(selectedProduct);
+  // }, [selectedProduct]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -222,25 +186,22 @@ export default function ProductsPage() {
         {/* Header - Single Line Layout */}
         <div className="mb-4 flex items-center justify-between gap-4">
           {/* Left side - Category filters */}
-          <div className="flex gap-2">
-            {["All", "Furniture", "Lighting", "Fabric", "Accessories"].map(
-              (category) => (
-                <Button
-                  key={category}
-                  variant={
-                    selectedCategory === category ? "default" : "outline"
-                  }
-                  size="sm"
-                  onClick={() => setSelectedCategory(category)}
-                  className={`h-9 ${
-                    selectedCategory === category
-                      ? "bg-gray-900 text-white"
-                      : ""
-                  }`}>
-                  {category}
-                </Button>
-              )
-            )}
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex gap-1">
+            {['All', 'Furniture', 'Lighting', 'Fabric', 'Accessories'].map(category => (
+              <Button
+                key={category}
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCategory(category)}
+                className={` font-medium px-3 ${
+                  selectedCategory == category
+                    ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`}
+              >
+                {category}
+              </Button>
+            ))}
           </div>
 
           {/* Right side - Search and actions */}
@@ -250,7 +211,7 @@ export default function ProductsPage() {
               <Input
                 placeholder="Search Product..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={e => setSearchQuery(e.target.value)}
                 className="h-9 w-48 pl-10"
               />
             </div>
@@ -280,9 +241,7 @@ export default function ProductsPage() {
             </Popover> */}
 
             {canAddProduct && (
-              <Button
-                className="h-9 gap-2"
-                onClick={() => setAddProductModalOpen(true)}>
+              <Button className="h-9 gap-2" onClick={() => setAddProductModalOpen(true)}>
                 <Plus className="h-4 w-4" />
                 Add Product
               </Button>
@@ -297,62 +256,75 @@ export default function ProductsPage() {
               {Array(itemsPerPage)
                 .fill(0)
                 .map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-64 rounded-md bg-gray-200 animate-pulse"></div>
+                  <div key={index} className="h-64 rounded-md bg-gray-200 animate-pulse"></div>
                 ))}
             </div>
           ) : error ? (
-            <div className="text-center text-red-500">
-              Error loading products. Please try again later.
-            </div>
+            <div className="text-center text-red-500">Error loading products. Please try again later.</div>
           ) : products.length === 0 ? (
             <div className="py-12 text-center">
               <Package className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-              <p className="text-gray-600">
-                No products found matching your criteria.
-              </p>
+              <p className="text-gray-600">No products found matching your criteria.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
-                <Card
-                  key={product.id}
-                  className="group overflow-hidden transition-all duration-200 hover:shadow-lg">
+              {products.map(product => (
+                <Card key={product.id} className="group flex flex-col overflow-hidden transition-all duration-200 hover:shadow-lg">
                   <div className="relative">
                     {/* Clickable image to open Product Detail Sheet */}
                     <button
                       type="button"
                       onClick={() => openDetails(product)}
                       className="block w-full cursor-pointer"
-                      aria-label={`View ${product.name}`}>
+                      aria-label={`View ${product.name}`}
+                    >
                       <div className="aspect-square overflow-hidden bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={
-                            product.image ||
-                            "/placeholder.svg?height=300&width=300&query=product+image"
-                          }
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
+                        {product?.images?.length > 0 ? (
+                          <img
+                            src={!isLoading && product?.images?.[product.images.length - 1]}
+                            alt={product?.name}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                          />
+                        ) : (
+                          product?.imageURL?.length > 0 && (
+                            <img
+                              src={product?.imageURL[0]}
+                              alt={product.name}
+                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            />
+                          )
+                        )}
                       </div>
                     </button>
 
                     {/* Overlay Actions */}
                     <div className="absolute right-3 top-3 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="h-8 w-8 bg-white/90 p-0 hover:bg-white">
+                      <Button size="sm" variant="secondary" className="h-8 w-8 bg-white/90 p-0 hover:bg-white">
                         <Heart className="h-4 w-4" />
                       </Button>
-                      <Button
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 bg-white/90 p-0 hover:bg-white"
+                            aria-label={`Open actions for`}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openDetails(product)}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSelectProduct(product)}>Edit Product</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {/* <Button
                         size="sm"
                         variant="secondary"
                         className="h-8 w-8 bg-white/90 p-0 hover:bg-white">
                         <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                      </Button> */}
                     </div>
 
                     {/* Stock Status */}
@@ -363,64 +335,63 @@ export default function ProductsPage() {
                     )} */}
                   </div>
 
-                  <CardContent className="p-4">
-                    <div className="space-y-2.5">
+                  <CardContent className="p-4 flex-1 ">
+                    <div className="space-y-2.5 flex flex-col justify-between h-full w-full ">
                       <div>
-                        {/* Clickable title also opens details */}
-                        <button
-                          type="button"
-                          onClick={() => openDetails(product)}
-                          className="text-left"
-                          aria-label={`Open ${product.name} details`}>
-                          <h3 className="truncate text-sm font-semibold tracking-tight text-gray-900">
-                            {product.name}
-                          </h3>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">
-                            {product.supplier}
-                          </p>
-                        </button>
+                        <div>
+                          {/* Clickable title also opens details */}
+                          <button
+                            type="button"
+                            onClick={() => openDetails(product)}
+                            className="text-left"
+                            aria-label={`Open ${product.name} details`}
+                          >
+                            <h3 className="truncate text-sm !capitalize font-semibold tracking-tight text-gray-900">{product.name}</h3>
+                            <p className="text-xs capitalize tracking-wide text-gray-500">{product.supplier}</p>
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="tabular-nums text-sm font-semibold text-gray-900">
-                          {product.priceRegular}
-                        </span>
-                        <TypeChip label={product.type} />
+                      <div>
+                        <div className="flex  items-center justify-between">
+                          <span className="tabular-nums text-sm font-semibold text-gray-900">
+                            {!currencyLoading && (currency?.symbol || '£')}
+                            {Number(product?.priceRegular).toLocaleString()}
+                          </span>
+                          {product?.type && <TypeChip label={product.type} />}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="w-full">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3 w-full bg-transparent opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Add to Project
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="max-w-[300px] max-h-[300px] overflow-scroll bg-white">
+                            {!projectsLoading &&
+                              projectsData?.map(project => (
+                                <DropdownMenuItem
+                                  key={project?.id}
+                                  onClick={() => {
+                                    setSelectedProductId(product?.id);
+                                    if (Array.isArray(project?.type) && project.type.length > 0) {
+                                      handleOpenTypeModal(project);
+                                    } else {
+                                      handleAddToProject(project?.id);
+                                    }
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  {project.name}
+                                </DropdownMenuItem>
+                              ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-
-                      {/* <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-3 w-full bg-transparent opacity-0 transition-opacity group-hover:opacity-100 cursor-pointer">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add to Project
-                      </Button> */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="mt-2 w-full py-2 px-4 border  rounded-[8px] text-[#0E121B] hover:bg-gray-50 text-sm font-medium flex items-center justify-center gap-2">
-                          Add to <ChevronDown className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="max-w-[300px] max-h-[300px] overflow-scroll bg-white">
-                          {!projectsLoading &&
-                            projectsData?.map((project) => (
-                              <DropdownMenuItem
-                                key={project?.id}
-                                onClick={() => {
-                                  setSelectedProductId(product?.id);
-                                  if (
-                                    Array.isArray(project?.type) &&
-                                    project.type.length > 0
-                                  ) {
-                                    handleOpenTypeModal(project);
-                                  } else {
-                                    handleAddToProject(project?.id);
-                                  }
-                                }}
-                                className="cursor-pointer">
-                                {project.name}
-                              </DropdownMenuItem>
-                            ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
@@ -428,102 +399,64 @@ export default function ProductsPage() {
             </div>
           )}
 
-          <Modal
-            className="!max-w-[500px] flex flex-col  !h-[80vh] py-6"
-            isOpen={modalOpen}
-            onRequestClose={afterCloseModal}
-            contentLabel="Example Modal">
-            <div className="navbar flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="text-sm font-semibold flex items-center gap-2"></div>
-              </div>
-              {/* Delete and Close Modal Section */}
-              <div className="buttons flex items-center gap-3 !mt-0 px-2">
-                <button
-                  onClick={() => closeModal()}
-                  className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24">
-                    <path
-                      fill="currentColor"
-                      d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            {/* Content */}
+          {/* Add to project Drawer */}
 
-            <div className="h-full">
-              <form
-                onSubmit={handleSubmit}
-                className="space-y-4 flex-col flex w-full h-full">
-                <div className=" flex-1 flex items-center justify-center">
-                  <RadioGroup
-                    value={selectedType}
-                    onValueChange={setSelectedType}>
-                    <p className="text-[24px] font-semibold mb-2">
-                      Select Project Room
-                    </p>
+          <Dialog open={modalOpen} onOpenChange={open => (!open ? closeModal() : null)}>
+            <DialogContent className="sm:max-w-[500px] flex flex-col py-6">
+              {/* Header */}
+              <DialogHeader className="flex items-center justify-between px-4">
+                <DialogTitle className="text-sm font-semibold">Select Project Room</DialogTitle>
+              </DialogHeader>
+
+              {/* Content */}
+              <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between px-6 space-y-4">
+                <div className="flex-1 w-full  flex flex-col items-start justify-center">
+                  <RadioGroup value={selectedType} onValueChange={setSelectedType}>
                     {Array.isArray(types?.type) &&
                       types?.type.length > 0 &&
-                      types?.type.map((type) => (
-                        <div
-                          key={type?.id}
-                          className="flex items-center space-x-3">
-                          <RadioGroupItem
-                            value={type?.id}
-                            id={type?.id}
-                            className="w-6 h-6"
-                          />
-                          <label
-                            htmlFor={type?.id}
-                            className="text-[20px] cursor-pointer">
+                      types?.type.map(type => (
+                        <div key={type?.id} className="flex items-center space-x-2 mb-2">
+                          <RadioGroupItem value={type?.id} id={type?.id} className="w-5 h-5" />
+                          <label htmlFor={type?.id} className="text-[18px] font-normal cursor-pointer">
                             {type?.text}
                           </label>
                         </div>
                       ))}
                   </RadioGroup>
-                </div>
-
-                {selectedType && (
-                  <div className="mb-10">
+                  <div
+                    className={`mt-6 w-full overflow-hidden transition-all duration-300 ease-in-out
+    ${selectedType ? 'opacity-100 translate-y-0 max-h-40 py-2' : 'opacity-0 -translate-y-2 max-h-0'}`}
+                    aria-hidden={!selectedType}
+                  >
                     <p className="mb-2">Quantity</p>
                     <Input
+                      className="outline-none ring-0 focus:ring-0"
+                      type="number"
                       value={qty}
-                      onChange={(e) => setQty(e.target.value)}
+                      onChange={e => setQty(e.target.value)}
                       placeholder="Enter Product Quantity"
                     />
                   </div>
-                )}
-                {/* Submit Button */}
-                <div className="flex justify-between items-center">
-                  <Button onClick={() => closeModal()}>Cancel</Button>
-                  <Button type="submit" disabled={!selectedType}>
-                    Confirm
-                  </Button>
                 </div>
+
+                <DialogFooter className="flex justify-between items-center px-0">
+                  <Button className="w-full" type="submit" disabled={!selectedType}>
+                    Add
+                  </Button>
+                </DialogFooter>
               </form>
-            </div>
-          </Modal>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       {/* Product Detail Sheet */}
-      <ProductDetailSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        product={selected}
-      />
+      <ProductDetailSheet open={sheetOpen} onOpenChange={setSheetOpen} product={selected} />
+
+      <EditProductModal productInfo={selectedProduct} closeEditModal={closeEditModal} editModal={editModal} />
 
       {/* Add Product Modal - You would need to create this component */}
-      <AddProductModal
-        closeModal={() => setAddProductModalOpen(false)}
-        modalOpen={addProductmodalOpen}
-        onAddProduct={handleAddProduct}
-      />
+      <AddProductModal closeModal={() => setAddProductModalOpen(false)} modalOpen={addProductmodalOpen} />
     </div>
   );
 }

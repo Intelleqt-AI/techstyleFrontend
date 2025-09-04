@@ -16,6 +16,7 @@ import {
   Hash,
   MoreHorizontal,
   Clock,
+  CircleX,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useUser from '@/supabase/hook/useUser';
 import { toast } from 'sonner';
 import { TaskModal } from '@/components/tasks/task-modal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const updatetaskList = data => {
   return [
@@ -82,6 +84,7 @@ export default function MyTasksPage() {
     setModalOpen(true);
   }
   const [searchText, setSearchText] = useState('');
+  const [filter, setFilter] = useState(null);
 
   function openEditTask(task) {
     setEditing(task);
@@ -124,15 +127,26 @@ export default function MyTasksPage() {
 
   useEffect(() => {
     if (taskLoading) return;
-    setMyTask(taskData?.data);
-    let myTask = myTaskList(taskData?.data);
 
+    // 1. Start with all tasks
+    let myTask = myTaskList(taskData?.data);
+    setMyTask(taskData?.data);
+
+    // 2. Apply search filter
     if (searchText.trim()) {
       myTask = myTask.filter(task => task.name?.toLowerCase().includes(searchText.toLowerCase()));
     }
 
+    // 3. Apply extra filter (today or overdue)
+    if (filter === 'today') {
+      myTask = todayTasks(myTask);
+    } else if (filter === 'overdue') {
+      myTask = myRecentTask(myTask);
+    }
+
+    // 4. Final set
     setTasks(taskData && taskData.data.length > 0 ? updatetaskList(myTask) : []);
-  }, [taskData, taskLoading, user?.email, searchText]);
+  }, [taskData, taskLoading, user?.email, searchText, filter]);
 
   const myRecentTask = tasks => {
     const now = new Date();
@@ -150,16 +164,20 @@ export default function MyTasksPage() {
   };
 
   const myTaskList = tasks => {
-    if (!tasks) return;
+    if (!tasks) return [];
     if (!user) return [];
     if (admins.includes(user?.email)) {
       return tasks;
     }
-    return tasks?.filter(task => {
-      if (task.assigned && Array.isArray(task.assigned) && task.assigned.length > 0) {
-        return task.assigned.some(assignee => assignee.email === user.email);
-      }
-      return false;
+
+    return tasks.filter(task => {
+      // If user is assigned
+      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some(assignee => assignee.email === user.email);
+
+      // If user is the creator
+      const isCreator = task.creator === user.email;
+
+      return isAssigned || isCreator;
     });
   };
 
@@ -277,10 +295,27 @@ export default function MyTasksPage() {
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1">
-            <Button variant="outline" size="sm" className="gap-2 h-9 bg-transparent">
-              <Filter className="w-4 h-4" />
-              Filter
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2 h-9 bg-transparent">
+                  <Filter className="w-4 h-4" />
+                  Filter
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="center" className="w-40">
+                <DropdownMenuItem onClick={() => setFilter('overdue')}>Overdue</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter('today')}>Added Today</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {filter && (
+              <Button size={'sm'} variant={'secondary'} className=" capitalize">
+                {filter}
+                <span onClick={() => setFilter(null)}>
+                  <CircleX />
+                </span>
+              </Button>
+            )}
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input value={searchText} onChange={e => setSearchText(e.target.value)} className="pl-10 h-9" placeholder="Search tasks..." />
@@ -312,9 +347,9 @@ export default function MyTasksPage() {
                   <TypeChip label={String(column?.items?.length)} />
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
+                  {/* <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <MoreHorizontal className="w-4 h-4" />
-                  </Button>
+                  </Button> */}
                   <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <Plus className="w-4 h-4" />
                   </Button>
@@ -348,7 +383,7 @@ export default function MyTasksPage() {
                         {task?.subtasks?.filter(subtask => subtask.selected === true).length}/{task?.subtasks?.length}
                       </span>
                       <div className="flex items-center gap-1">
-                        <StatusBadge status={task?.priority} label={task?.priority} />
+                        {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
                       </div>
                     </div>
                   </div>
@@ -362,7 +397,12 @@ export default function MyTasksPage() {
               </div>
 
               {/* Add Task Button */}
-              <Button variant="ghost" className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center" size="sm">
+              <Button
+                onClick={() => openNewTask()}
+                variant="ghost"
+                className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
+                size="sm"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>

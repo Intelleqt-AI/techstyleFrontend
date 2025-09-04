@@ -23,9 +23,11 @@ import {
   Star,
   Mail,
   Sparkles,
+  FolderPlus,
+  X,
 } from 'lucide-react';
 import useUser from '@/hooks/useUser';
-import { addProjectEmail, fetchProjects, getContact } from '@/supabase/API';
+import { addProjectEmail, fetchOnlyProject, fetchProjects, getContact } from '@/supabase/API';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -38,6 +40,9 @@ import {
 } from '@/supabase/utils';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import EmailIframe from '@/components/inbox/EmailIframe';
+import Drawer from 'react-modern-drawer';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // extend once in your app (e.g., in _app.tsx or a utils/date.ts file)
 dayjs.extend(relativeTime);
@@ -221,7 +226,7 @@ export default function InboxPage() {
   const [newMessage, setNewMessage] = useState('');
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [currentTab, setCurrentTab] = useState('Inbox');
-  const [filter, setFilter] = useState(false);
+  const [filter, setFilter] = useState('all');
   const [searchText, setSearchText] = useState('');
   const [isReply, setIsReply] = useState(false);
   const [reply, setReply] = useState('');
@@ -248,6 +253,33 @@ export default function InboxPage() {
     queryFn: getContact,
   });
 
+  // Get Project
+  const { data: project, isLoading: ProjectLoading } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => fetchProjects(),
+  });
+
+  function findProjectInText(text) {
+    if (!text || !project || !project.length) return null;
+
+    for (const item of project) {
+      // Case-insensitive match
+      const projectName = item.name;
+      if (text.toLowerCase().includes(projectName.toLowerCase())) {
+        return projectName;
+      }
+    }
+
+    return null; // No match
+  }
+
+  function decodeHtmlEntities(text) {
+    if (!text) return '';
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  }
+
   // Send emails to project
   const mutation = useMutation({
     mutationKey: ['email'],
@@ -263,10 +295,10 @@ export default function InboxPage() {
   });
 
   // Get Project
-  const { data: project, isLoading: ProjectLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => fetchProjects(),
-  });
+  // const { data: project, isLoading: ProjectLoading } = useQuery({
+  //   queryKey: ['projects'],
+  //   queryFn: () => fetchProjects(),
+  // });
 
   useEffect(() => {
     if (contactLoading) {
@@ -296,19 +328,23 @@ export default function InboxPage() {
 
   // Filter read , unread, send , inbox
   useEffect(() => {
-    let result = [];
-    if (currentTab === 'Inbox' && !isLoading) {
+    let result = inboxEmails;
+    if (filter === 'all' || (filter == 'emails' && !isLoading)) {
       result = inboxEmails;
-    } else if (currentTab === 'Sent' && !sentEmailLoading) {
-      result = sentEmails;
+    } else {
+      result = [];
     }
+
+    // else if (currentTab === 'Sent' && !sentEmailLoading) {
+    //   result = sentEmails;
+    // }
     //  else if (currentTab == 'Drafts' && !draftEmailLoading) {
     //   result = draftEmails;
     // }
 
-    if (filter) {
-      result = result.filter(item => item.labelIds?.includes('UNREAD'));
-    }
+    // if (filter) {
+    //   result = result.filter(item => item.labelIds?.includes('UNREAD'));
+    // }
 
     if (searchText.trim()) {
       const lower = searchText.toLowerCase();
@@ -321,7 +357,7 @@ export default function InboxPage() {
     }
 
     setEmails(result);
-  }, [currentTab, filter, searchText, inboxEmails, sentEmails, isLoading, sentEmailLoading]);
+  }, [searchText, inboxEmails, isLoading, filter]);
 
   // Initialize Google Identity Services
   useEffect(() => {
@@ -449,7 +485,7 @@ export default function InboxPage() {
     } catch (err) {
       signOut();
       setError(`Profile loading error: ${err.message}`);
-      window.location.href = '/settings/integration';
+      window.location.href = '/settings/studio/integrations';
     }
   };
 
@@ -506,10 +542,10 @@ export default function InboxPage() {
         'Content-Type: text/plain; charset="UTF-8"',
         'MIME-Version: 1.0',
         'Content-Transfer-Encoding: 7bit',
-        `To: ${getEmailAddressFromHeader(selectedMessage.payload.headers, 'From')}`,
-        `Subject: ${getEmailHeader(selectedMessage.payload.headers, 'Subject')}`,
-        `In-Reply-To: ${getEmailHeader(selectedMessage.payload.headers, 'Message-ID')}`,
-        `References: ${getEmailHeader(selectedMessage.payload.headers, 'Message-ID')}`,
+        `To: ${selectedMessage?.from?.email}`,
+        `Subject: ${selectedMessage?.subject}`,
+        `In-Reply-To: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
+        `References: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
         '',
         reply,
       ].join('\n');
@@ -524,7 +560,7 @@ export default function InboxPage() {
         },
         body: JSON.stringify({
           raw: rawMessage,
-          threadId: selectedMessage?.threadId,
+          threadId: selectedMessage?.id,
         }),
       });
 
@@ -546,7 +582,17 @@ export default function InboxPage() {
     localStorage.removeItem('gmail_access_token');
   };
 
-  const generateAIReply = async emailBody => {
+  async function generateReplyForConversation(selectedMessage) {
+    if (!selectedMessage?.messages || !Array.isArray(selectedMessage.messages)) {
+      return '';
+    }
+    const fromEmail = selectedMessage?.from?.email || '';
+    const conversation = selectedMessage.messages.map((msg, index) => `Message ${index + 1}: ${msg.snippet}`).join('\n\n');
+    const reply = await generateAIReply(conversation, fromEmail);
+    return reply;
+  }
+
+  const generateAIReply = async (emailBody, from) => {
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${process.env.NEXT_PUBLIC_GEMINI_KEY}`,
       {
@@ -559,13 +605,31 @@ export default function InboxPage() {
             {
               parts: [
                 {
-                  text: `Write only a professional email reply to this email. If you need my name for reply , my name is : ${user?.name} , Only use my where its needed .  Do not include any explanations, subject , notes, or additional text outside the email content:\n\n${emailBody}`,
+                  text: `Write only the final professional email reply in plain text.  
+Do not include subject lines, explanations, or instructions.  
+Keep it natural, polite, and concise, written as if by a human.  
+
+If you need my name for the closing, my name is: ${user?.name}.  
+Always end with:  
+"Best regards,  
+${user?.name}"  
+
+Below is the full email conversation thread.  
+Read it carefully and reply to the most recent message.  
+
+Conversation:  
+${emailBody}  
+
+The most recent email came from ${from}. Guess the sender’s first name from the email and start with:  
+"Hi [SenderName],"
+"
+`,
                 },
               ],
             },
           ],
           generationConfig: {
-            temperature: 0.7,
+            temperature: 0.4,
             maxOutputTokens: 512,
             candidateCount: 1,
           },
@@ -581,7 +645,7 @@ export default function InboxPage() {
   const handleAiReply = async () => {
     setAiLoading(true);
     try {
-      const aiReply = await generateAIReply(selectedTopic?.snippet);
+      const aiReply = await generateReplyForConversation(selectedMessage);
       setReply(aiReply);
     } catch (error) {
       setReply('AI failed to generate a reply.');
@@ -598,24 +662,25 @@ export default function InboxPage() {
 
   // handle send to project
   const handleSendToProject = () => {
-    if (!selectedTopic || !selectedProject) return;
-    mutation.mutate({ projectID: selectedProject?.id, emailData: selectedTopic });
+    if (!selectedMessage || !selectedProject) return;
+    mutation.mutate({ projectID: selectedProject?.id, emailData: selectedMessage });
   };
 
   const filteredMessages = useMemo(() => {
-    switch (filter) {
-      case 'mentions':
-        return messages.filter(m => m.type === 'mention');
-      case 'system':
-        return messages.filter(m => m.type === 'system');
-      case 'emails':
-        return messages.filter(m => m.type === 'email');
-      case 'ai-notes':
-        return messages.filter(m => m.type === 'ai-note');
-      case 'all':
-      default:
-        return messages;
-    }
+    return messages;
+    // switch (filter) {
+    //   case 'mentions':
+    //     return messages.filter(m => m.type === 'mention');
+    //   case 'system':
+    //     return messages.filter(m => m.type === 'system');
+    //   case 'emails':
+    //     return messages.filter(m => m.type === 'email');
+    //   case 'ai-notes':
+    //     return messages.filter(m => m.type === 'ai-note');
+    //   case 'all':
+    //   default:
+    //     return messages;
+    // }
   }, [filter]);
 
   return (
@@ -626,48 +691,67 @@ export default function InboxPage() {
         {/* Header with filters, search, and actions */}
         <div className="flex items-center justify-between">
           {/* Left: Filter buttons */}
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+          <div className="bg-white border border-gray-200 rounded-lg p-1 flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'all' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'all' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={` font-medium px-3 ${
+                filter == 'all'
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('all')}
             >
               All
             </Button>
+
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'mentions' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'mentions' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={` font-medium px-3 ${
+                filter == 'mentions'
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('mentions')}
             >
               Mentions
             </Button>
+
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'system' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'system' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={` font-medium px-3 ${
+                filter == 'system'
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('system')}
             >
               System
             </Button>
+
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'emails' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'emails' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={` font-medium px-3 ${
+                filter == 'emails'
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('emails')}
             >
               Emails
             </Button>
+
             <Button
               variant="ghost"
               size="sm"
-              className={`h-8 px-3 text-sm font-medium hover:text-white ${filter === 'ai-notes' ? 'text-white' : 'text-gray-600'}`}
-              style={filter === 'ai-notes' ? { backgroundColor: 'rgb(17, 24, 39)' } : {}}
+              className={` font-medium px-3 ${
+                filter == 'ai-notes'
+                  ? 'bg-gray-900 hover:bg-gray-900 hover:text-white text-white'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
               onClick={() => setFilter('ai-notes')}
             >
               AI Notes
@@ -700,14 +784,14 @@ export default function InboxPage() {
         </div>
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-5 gap-6 h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-5 gap-6 h-[calc(100vh+100px)]">
           {/* Left Column: Messages List */}
           <div className="col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-4 border-b border-gray-100">
               <h3 className="text-sm font-medium text-gray-900">Recent Messages</h3>
             </div>
 
-            <div className="overflow-y-auto h-full">
+            <div className="overflow-y-scroll h-full pb-12">
               <div className="divide-y divide-gray-100">
                 {emails?.length > 0 &&
                   emails.map(message => (
@@ -715,7 +799,7 @@ export default function InboxPage() {
                       key={message.id}
                       onClick={() => setSelectedMessage(message)}
                       className={`flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                        message.unread ? 'bg-[#FBEAE1]' : ''
+                        message?.labelIds?.includes('UNREAD') ? 'bg-[#FBEAE1]' : ''
                       } ${selectedMessage?.id === message.id ? 'bg-gray-100' : ''}`}
                     >
                       {/* Unread indicator */}
@@ -725,9 +809,9 @@ export default function InboxPage() {
                       <div className="flex-shrink-0">
                         {!message.avatar ? (
                           <Avatar className="w-10 h-10">
-                            <AvatarImage src={message?.avatar || '/placeholder.svg'} />
-                            <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
-                              {/* {getEmailHeader(message?.payload?.headers, 'Subject')[0]} */}S
+                            <AvatarImage src={message?.avatar} />
+                            <AvatarFallback className="bg-gray-100 text-sm font-bold text-gray-600 ">
+                              {message?.from?.email?.slice(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         ) : (
@@ -741,8 +825,8 @@ export default function InboxPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="font-medium text-gray-900 w-full truncate text-sm">
-                            {/* {getSenderName(message.payload.headers, `${currentTab == 'all' ? 'From' : 'To'}`)} */}
-                            {getEmailHeader(message?.payload?.headers, 'Subject')}
+                            {message?.subject}
+                            {/* {getEmailHeader(message?.payload?.headers, 'Subject')} */}
                           </span>
 
                           {/* Type badges (neutral/brand-aligned) */}
@@ -764,8 +848,8 @@ export default function InboxPage() {
                               Comment
                             </Badge>
                           )} */}
-                          <div className="flex items-center flex-shrink-0 gap-2">
-                            <Badge variant="outline" className="text-gray-600 border-gray-300 bg-transparent text-xs">
+                          <div className="flex items-center  flex-shrink-0 gap-2">
+                            <Badge variant="outline" className="text-gray-600 bg-white border-gray-300 text-xs">
                               <Mail className="w-3 h-3 mr-1" />
                               Email
                             </Badge>
@@ -797,16 +881,14 @@ export default function InboxPage() {
 
                         {/* Subject (if email) + snippet/message */}
                         <p className="text-gray-700 text-sm mb-2 line-clamp-2">
-                          <span className="font-medium"> {getEmailHeader(message?.payload?.headers, 'Subject')} — </span>
+                          {/* <span className="font-medium"> {getEmailHeader(message?.payload?.headers, 'Subject')}</span> */}
 
                           {/* {message.noteTitle ? <span className="font-medium">{message.noteTitle}: </span> : null} */}
-                          {message?.snippet}
+                          {decodeHtmlEntities(message?.snippet)}
                         </p>
 
                         {/* Project line (kept neutral) */}
-                        {/* <div className="text-xs text-gray-500">
-                          Project: <span className="font-medium text-gray-700">{message.project}</span>
-                        </div> */}
+                        <div className="text-xs text-gray-500">Project: {findProjectInText(message?.subject)}</div>
                       </div>
                     </div>
                   ))}
@@ -824,29 +906,20 @@ export default function InboxPage() {
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0">
-                      {selectedMessage.avatar ? (
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={selectedMessage.avatar || '/placeholder.svg'} />
-                          <AvatarFallback className="bg-gray-100 text-gray-600 text-sm">
-                            {selectedMessage.from
-                              .split(' ')
-                              .map(n => n[0])
-                              .join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Bell className="w-5 h-5 text-gray-500" />
-                        </div>
-                      )}
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={selectedMessage.avatar} />
+                        <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-bold">
+                          {selectedMessage?.from?.email?.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        {<span className="font-medium"> {getEmailHeader(selectedMessage?.payload?.headers, 'Subject')}</span>}(
-                        {getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)})
+                        {<span className="font-medium"> {selectedMessage?.subject}</span>}
+                        {/* {getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)}) */}
                       </h3>
                       {/* <p className="text-sm text-gray-500">{selectedMessage.project}</p> */}
-                      <p className="text-sm text-gray-500">{getEmailAddressFromHeader(selectedMessage?.payload?.headers, `From`)})</p>
+                      <p className="text-sm text-gray-500">{selectedMessage?.from?.email}</p>
                     </div>
                   </div>
 
@@ -1016,58 +1089,89 @@ export default function InboxPage() {
                         </div>
                       ))} */}
 
-                      <iframe
-                        className="h-full"
-                        sandbox=""
-                        style={{ width: '100%', border: 'none', minHeight: '600px' }}
-                        srcDoc={getEmailBody(selectedMessage.payload)}
-                      />
+                      {selectedMessage?.messages?.map(item => {
+                        return (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-7 h-7 flex items-center justify-center bg-gray-200 rounded-full">
+                                <span className="uppercase">
+                                  {item?.labelIds?.includes('SENT')
+                                    ? item?.to?.name
+                                      ? item?.to?.email[0]
+                                      : item?.to?.email[0]
+                                    : item?.from?.email
+                                    ? item?.from?.email[0]
+                                    : item?.from?.email[0]}
+                                </span>
+                              </div>
+                              <div>
+                                <p className=' flex items-center gap-2 text-gray-900 w-full truncate text-sm"'>
+                                  <span className="text-sm font-medium">{item?.labelIds?.includes('SENT') ? 'You' : item?.from?.name}</span>
+                                  <span className="text-sm opacity-55">
+                                    <span className="text-xs">{dayjs(Number(item?.internalDate)).fromNow()}</span>
+                                  </span>
+                                </p>
+                              </div>
+                            </div>
+                            <EmailIframe payload={item.payload} />
+                            {/* <iframe
+                              className="h-full min-h-[300px] max-h-fit"
+                              style={{ width: '100%', border: 'none' }}
+                              srcDoc={getEmailBody(item.payload)}
+                            /> */}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Reply Input */}
                     <div className="p-4 border-t border-gray-100">
-                      <button
-                        disabled={Ailoading}
-                        onClick={() => handleAiReply()}
-                        className={`
-    inline-flex items-center justify-center mb-5 ml-11 gap-2 whitespace-nowrap text-sm font-medium 
-    ring-offset-background transition-all duration-300 focus-visible:outline-none 
-    focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 
-    disabled:pointer-events-none border border-input bg-background 
-    hover:bg-accent hover:text-accent-foreground h-9 rounded-md px-3
+                      <div className="flex mb-4 items-center justify-between">
+                        <Button
+                          variant="ghost"
+                          disabled={Ailoading}
+                          onClick={() => handleAiReply()}
+                          className={` border ml-11
+  
     ${Ailoading ? 'bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-400/50' : ''}
     relative overflow-hidden
   `}
-                      >
-                        {/* Animated background shimmer effect */}
-                        {Ailoading && (
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-pulse" />
-                        )}
-
-                        {/* Icon with rotation animation */}
-                        <Sparkles
-                          className={`w-4 h-4 mr-2 transition-transform  duration-600 ${Ailoading ? 'animate-spin text-purple-500' : ''}`}
-                        />
-
-                        {/* Text with typing animation */}
-                        <span className="relative z-10">
-                          {Ailoading ? (
-                            <span className="flex items-center">
-                              Generating
-                              <span className="ml-1 animate-pulse">
-                                <span className="animate-bounce delay-0">.</span>
-                                <span className="animate-bounce delay-150">.</span>
-                                <span className="animate-bounce delay-300">.</span>
-                              </span>
-                            </span>
-                          ) : (
-                            'Reply with AI'
+                        >
+                          {/* Animated background shimmer effect */}
+                          {Ailoading && (
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/20 to-transparent animate-pulse" />
                           )}
-                        </span>
 
-                        {/* Pulse ring effect */}
-                        {Ailoading && <div className="absolute inset-0 rounded-md border-2 border-purple-400/30 animate-ping" />}
-                      </button>
+                          {/* Icon with rotation animation */}
+                          <Sparkles
+                            className={`w-4 h-4 mr-2 transition-transform  duration-600 ${Ailoading ? 'animate-spin text-purple-500' : ''}`}
+                          />
+
+                          {/* Text with typing animation */}
+                          <span className="relative z-10">
+                            {Ailoading ? (
+                              <span className="flex items-center">
+                                Generating
+                                <span className="ml-1 animate-pulse">
+                                  <span className="animate-bounce delay-0">.</span>
+                                  <span className="animate-bounce delay-150">.</span>
+                                  <span className="animate-bounce delay-300">.</span>
+                                </span>
+                              </span>
+                            ) : (
+                              'Reply with AI'
+                            )}
+                          </span>
+
+                          {/* Pulse ring effect */}
+                          {Ailoading && <div className="absolute inset-0 rounded-md border-2 border-purple-400/30 animate-ping" />}
+                        </Button>
+
+                        <Button onClick={() => setProjectOpen(true)}>
+                          <FolderPlus className="w-4 h-4 mr-2" />
+                          Share to Project
+                        </Button>
+                      </div>
                       <div className="flex gap-3">
                         <Avatar className="w-8 h-8">
                           <AvatarImage src="/placeholder.svg?height=32&width=32" />
@@ -1117,6 +1221,79 @@ export default function InboxPage() {
           </div>
         </div>
       </div>
+
+      {/* Sent to project drawer */}
+
+      <Drawer lockBackgroundScroll={true} size={550} open={projectOpen} onClose={() => setProjectOpen(false)} direction="right">
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-lg font-semibold">Share to Project</h2>
+            <button onClick={handleCancel} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-6 overflow-scroll">
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Select a project:</h3>
+
+              {ProjectLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-3 ">
+                  {project?.map(proj => (
+                    <label
+                      key={proj.id}
+                      className="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition-colors"
+                    >
+                      {/* <input
+                        type="radio"
+                        name="project"
+                        value={proj.id}
+                        checked={selectedProject?.id === proj?.id.toString()}
+                        onChange={() => setSelectedProject(proj)}
+                        className="w-4 h-4 text-black bg-black border-gray-300 "
+                      /> */}
+                      <Checkbox
+                        name="project"
+                        value={proj.id}
+                        checked={selectedProject?.id === proj?.id.toString()}
+                        onCheckedChange={() => setSelectedProject(proj)}
+                      />
+                      <span className="text-sm font-medium text-gray-900">{proj?.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t bg-gray-50">
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              {selectedProject && (
+                <button
+                  onClick={handleSendToProject}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-black border border-transparent rounded-md  transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  Send
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }

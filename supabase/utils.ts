@@ -19,7 +19,60 @@ export function formatCurrency(value: string | number): string {
 // For Fetching Emails ///////////////
 
 // For inbox
+// export const fetchInboxEmails = async ({ token }) => {
+//   const res = await fetch(
+//     `https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=in:inbox&key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
+//     {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         'Content-Type': 'application/json',
+//       },
+//     }
+//   );
+
+//   if (!res.ok) {
+//     throw new Error(`Email fetch failed: ${res.status}`);
+//   }
+
+//   const data = await res.json();
+//   const messages = data.messages || [];
+
+//   const emailDetails = await Promise.all(
+//     messages.map(async message => {
+//       const messageRes = await fetch(
+//         `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}?key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
+//         {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             'Content-Type': 'application/json',
+//           },
+//         }
+//       );
+//       return await messageRes.json();
+//     })
+//   );
+
+//   return emailDetails;
+// };
+
+// Helper to get a header value by name
+const getHeader = (headers, name) => {
+  const header = headers.find(h => h.name.toLowerCase() === name.toLowerCase());
+  return header ? header.value : null;
+};
+
+// Parse "Name <email>" or just "email" into { name, email }
+const parseEmail = str => {
+  if (!str) return { name: null, email: null };
+  const match = str.match(/(.*)<(.+)>/);
+  if (match) {
+    return { name: match[1].trim(), email: match[2].trim() };
+  }
+  return { name: null, email: str.trim() };
+};
+
 export const fetchInboxEmails = async ({ token }) => {
+  // 1. Fetch inbox message IDs
   const res = await fetch(
     `https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=20&q=in:inbox&key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
     {
@@ -37,7 +90,8 @@ export const fetchInboxEmails = async ({ token }) => {
   const data = await res.json();
   const messages = data.messages || [];
 
-  const emailDetails = await Promise.all(
+  // 2. Fetch message details to get threadIds
+  const messageDetails = await Promise.all(
     messages.map(async message => {
       const messageRes = await fetch(
         `https://www.googleapis.com/gmail/v1/users/me/messages/${message.id}?key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
@@ -52,7 +106,57 @@ export const fetchInboxEmails = async ({ token }) => {
     })
   );
 
-  return emailDetails;
+  // 3. Deduplicate threadIds
+  const uniqueThreadIds = [...new Set(messageDetails.map(m => m.threadId))];
+
+  // 4. Fetch full threads, sort messages, enrich metadata
+  const threads = await Promise.all(
+    uniqueThreadIds.map(async threadId => {
+      const threadRes = await fetch(
+        `https://www.googleapis.com/gmail/v1/users/me/threads/${threadId}?key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const thread = await threadRes.json();
+
+      // Sort messages oldest → newest
+      const sortedMessages = (thread.messages || []).sort((a, b) => Number(a.internalDate) - Number(b.internalDate));
+
+      // Enrich each message
+      const enrichedMessages = sortedMessages.map(msg => {
+        const headers = msg.payload.headers || [];
+        return {
+          ...msg, // keep full payload for body parsing
+          from: parseEmail(getHeader(headers, 'From')),
+          to: parseEmail(getHeader(headers, 'To')),
+          subject: getHeader(headers, 'Subject'),
+          date: getHeader(headers, 'Date'),
+        };
+      });
+
+      const firstMsg = enrichedMessages[0];
+      const lastMsg = enrichedMessages[enrichedMessages.length - 1];
+
+      return {
+        id: thread.id,
+        historyId: thread.historyId,
+        from: firstMsg?.from || null, // latest sender
+        to: firstMsg?.to || null, // latest recipient
+        subject: firstMsg?.subject || null, // first message subject
+        snippet: lastMsg?.snippet || null, // latest message snippet
+        internalDate: lastMsg ? Number(lastMsg.internalDate) : null,
+        labelIds: lastMsg?.labelIds || [],
+        messages: enrichedMessages, // full conversation
+      };
+    })
+  );
+
+  return threads;
 };
 
 //For Sent
@@ -129,28 +233,144 @@ export const fetchDraftEmails = async ({ token }) => {
   return draftDetails;
 };
 
-// Emails Formatting Functions
+const base64ToUtf8 = b64 => {
+  const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder('utf-8').decode(bytes);
+};
+
+const decodePart = part => {
+  if (!part.body?.data) {
+    return '';
+  }
+
+  let decoded = base64ToUtf8(part.body.data);
+  try {
+    decoded = quotedPrintable.decode(decoded);
+  } catch (e) {
+    // not quoted-printable
+  }
+  return decoded;
+};
+
+const findAlternativePart = parts => {
+  let htmlPart = null;
+  let textPart = null;
+
+  for (const part of parts) {
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      htmlPart = part;
+    } else if (part.mimeType === 'text/plain' && part.body?.data) {
+      textPart = part;
+    } else if (part.mimeType === 'multipart/alternative' && part.parts) {
+      const found = findAlternativePart(part.parts);
+      if (found.html) {
+        return { html: found.html, text: found.text || textPart };
+      }
+      if (found.text) {
+        textPart = found.text;
+      }
+    }
+  }
+
+  return { html: htmlPart, text: textPart };
+};
 
 export const getEmailBody = payload => {
   let body = '';
   if (payload?.parts) {
-    payload.parts.forEach(part => {
-      if (part.mimeType === 'text/html' && part.body.data) {
-        // base64 decode first
-        const base64Decoded = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        // then quoted-printable decode
-        body = quotedPrintable.decode(base64Decoded);
-      } else if (part.mimeType === 'text/plain' && part.body.data) {
-        const base64Decoded = atob(part.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-        body = quotedPrintable.decode(base64Decoded);
-      }
-    });
-  } else if (payload.body.data) {
-    const base64Decoded = atob(payload.body.data.replace(/-/g, '+').replace(/_/g, '/'));
-    body = quotedPrintable.decode(base64Decoded);
+    const { html: htmlPart, text: textPart } = findAlternativePart(payload.parts);
+    const partToUse = htmlPart || textPart;
+    if (partToUse) {
+      body = decodePart(partToUse);
+    }
+  } else if (payload?.body?.data) {
+    body = decodePart(payload);
   }
-  return body;
+
+  return `
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          html, body {
+            margin: 0;
+            padding: 0 0 0 18px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #333;
+            overflow: hidden;
+          }
+          ::-webkit-scrollbar { display: none; }
+          body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        </style>
+      </head>
+      <body>
+        ${body}
+      </body>
+    </html>
+  `;
 };
+
+// export const getEmailBody = payload => {
+//   const base64ToUtf8 = b64 => {
+//     const binary = atob(b64.replace(/-/g, '+').replace(/_/g, '/'));
+//     const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+//     return new TextDecoder('utf-8').decode(bytes);
+//   };
+
+//   let body = '';
+//   if (payload?.parts) {
+//     for (const part of payload.parts) {
+//       if ((part.mimeType === 'text/html' || part.mimeType === 'text/plain') && part.body?.data) {
+//         let decoded = base64ToUtf8(part.body.data);
+//         try {
+//           decoded = quotedPrintable.decode(decoded);
+//         } catch (e) {
+//           // not quoted-printable
+//         }
+//         body = decoded;
+//       }
+//     }
+//   } else if (payload?.body?.data) {
+//     let decoded = base64ToUtf8(payload.body.data);
+//     try {
+//       decoded = quotedPrintable.decode(decoded);
+//     } catch (e) {}
+//     body = decoded;
+//   }
+
+//   return `
+//     <html>
+//       <head>
+//         <meta charset="UTF-8" />
+//         <style>
+//           html, body {
+//             margin: 0;
+//             padding: 0 0 0 18px;
+//             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+//             font-size: 14px;
+//             line-height: 1.5;
+//             color: #333;
+//             overflow: hidden;
+//           }
+//           ::-webkit-scrollbar { display: none; }
+//           body {
+//             -ms-overflow-style: none;
+//             scrollbar-width: none;
+//           }
+//         </style>
+//       </head>
+//       <body>
+//         ${body}
+//       </body>
+//     </html>
+//   `;
+// };
 
 export const getEmailHeader = (headers, name) => {
   const header = headers?.find(h => h.name === name);

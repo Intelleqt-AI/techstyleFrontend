@@ -13,9 +13,18 @@ import { HomeNav } from '@/components/home-nav';
 import useFetch from '@/hooks/useFetch';
 import useUser from '@/supabase/hook/useUser';
 import useTask from '@/supabase/hook/useTask';
-import { fetchOnlyProject, fetchProjects, getTimeTracking } from '@/supabase/API';
+import { fetchOnlyProject, fetchProjects, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import useUsers from '@/hooks/useUsers';
+import { useRouter } from 'next/navigation';
 
+const gbp = new Intl.NumberFormat('en-GB', {
+  style: 'currency',
+  currency: 'GBP',
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
 const updatetaskList = data => {
   return [
     {
@@ -72,6 +81,30 @@ const updatetaskList = data => {
     },
   ];
 };
+
+function timeFromNow(isoString) {
+  const inputDate = new Date(isoString);
+  const now = new Date();
+  const diffMs = inputDate - now;
+
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffHour = Math.round(diffMin / 60);
+  const diffDay = Math.round(diffHour / 24);
+  const diffWeek = Math.round(diffDay / 7);
+
+  if (Math.abs(diffSec) < 60) {
+    return diffSec > 0 ? `in ${diffSec} seconds` : `${Math.abs(diffSec)} seconds ago`;
+  } else if (Math.abs(diffMin) < 60) {
+    return diffMin > 0 ? `in ${diffMin} minutes` : `${Math.abs(diffMin)} minutes ago`;
+  } else if (Math.abs(diffHour) < 24) {
+    return diffHour > 0 ? `in ${diffHour} hours` : `${Math.abs(diffHour)} hours ago`;
+  } else if (Math.abs(diffDay) < 7) {
+    return diffDay > 0 ? `in ${diffDay} days` : `${Math.abs(diffDay)} days ago`;
+  } else {
+    return diffWeek > 0 ? `in ${diffWeek} weeks` : `${Math.abs(diffWeek)} weeks ago`;
+  }
+}
 
 // Mock user data with role-based permissions
 const mockUser = {
@@ -229,16 +262,12 @@ function ScopeToggle({ scope, onScopeChange, canSeeStudio }) {
 // Dashboard card components with role-based data
 function TodaysMeetingsCard({ scope, userRole }) {
   const myMeetings = [
-    { id: 1, title: 'Upcoming', time: 'Upcoming', client: 'Upcoming', attendee: true },
+    // { id: 1, title: 'No Meeting', time: 'Upcoming', client: 'Upcoming', attendee: true },
     // { id: 2, title: 'Material Selection', time: '2:30 PM', client: 'TechCorp', attendee: true },
     // { id: 3, title: 'Team Standup', time: '4:00 PM', client: 'Internal', attendee: true },
   ];
 
-  const studioMeetings = [
-    ...myMeetings,
-    { id: 4, title: 'Budget Review', time: '11:30 AM', client: 'Grandeur Hotels', attendee: false },
-    { id: 5, title: 'Contractor Check-in', time: '3:15 PM', client: 'Modern Office', attendee: false },
-  ];
+  const studioMeetings = [...myMeetings];
 
   const meetings = scope === 'studio' ? studioMeetings : myMeetings;
 
@@ -249,17 +278,38 @@ function TodaysMeetingsCard({ scope, userRole }) {
         <h3 className="font-semibold text-neutral-900">Today's Meetings</h3>
       </div>
       <div className="space-y-3 flex-1">
-        {meetings.slice(0, 3).map(meeting => (
-          <div key={meeting.id} className="flex items-center gap-3">
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? 'bg-sage-500' : 'bg-greige-500'}`}></div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-neutral-900 truncate">{meeting.title}</p>
-              <p className="text-xs text-neutral-600">
-                {meeting.time} • {meeting.client}
-              </p>
+        {meetings?.length > 0 ? (
+          meetings.slice(0, 3).map(meeting => (
+            <div key={meeting.id} className="flex items-center gap-3">
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${meeting.attendee ? 'bg-sage-500' : 'bg-greige-500'}`}></div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-neutral-900 truncate">{meeting.title}</p>
+                <p className="text-xs text-neutral-600">
+                  {meeting.time} • {meeting.client}
+                </p>
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-12 w-12 text-neutral-400 mb-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7H3v12a2 2 0 002 2z"
+              />
+            </svg>
+            <p className="text-neutral-500 font-medium text-sm">No meetings today</p>
+            <p className="text-neutral-400 text-xs mt-1">Relax! You don’t have any scheduled meetings.</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -271,6 +321,8 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState([]);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [tracking, setTracking] = useState([]);
+  const [userTime, setUserTime] = useState(null);
+  const { users } = useUsers();
   const admins = [
     'david.zeeman@intelleqt.ai',
     'roxi.zeeman@souqdesign.co.uk',
@@ -279,18 +331,44 @@ export default function DashboardPage() {
     'saif@intelleqt.ai',
   ];
 
-  const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ['Time Tracking'],
-    queryFn: getTimeTracking,
+  const {
+    data: InvoiceData,
+    isLoading: InvoiceLoading,
+    refetch: InvoiceRefetch,
+  } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: getInvoices,
   });
 
-  useEffect(() => {
-    if (trackingLoading || !user?.email) return;
-    const filterByEmail = trackingData?.data?.filter(item => item.creator === user.email);
-    setTracking(filterByEmail ?? []);
-  }, [trackingLoading, trackingData, user?.email]);
+  const { data, isLoading: Poloading } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
 
-  // Projects
+  // Calculate totals for stats
+  let totalPurchaseOrder = 0;
+  let totalInvoiceOrder = 0;
+
+  InvoiceData?.data?.forEach(item => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalInvoiceOrder += temp;
+  });
+
+  data?.data?.forEach(item => {
+    const temp =
+      item?.products?.reduce((total, product) => {
+        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
+        return total + amount * product.QTY;
+      }, 0) || 0;
+
+    totalPurchaseOrder += temp;
+  });
+
   const {
     data: project,
     isLoading,
@@ -301,7 +379,99 @@ export default function DashboardPage() {
     queryFn: fetchProjects,
   });
 
+  const { data: trackingData, isLoading: trackingLoading } = useQuery({
+    queryKey: ['Time Tracking'],
+    queryFn: getTimeTracking,
+  });
+
+  function getFormattedTimeFromMondayToSaturday(tasks) {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    // Get Monday of the current week
+    const monday = new Date(now);
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    monday.setDate(now.getDate() + diffToMonday);
+    monday.setHours(0, 0, 0, 0);
+
+    // Get Friday of the same week
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4); // +4 days = Friday
+    friday.setHours(23, 59, 59, 999);
+
+    return tasks
+      .reduce((totalHours, task) => {
+        // 1. Check if the task was worked on this week (Mon–Fri)
+        const taskDate = new Date(task.timerStart);
+        if (taskDate < monday || taskDate > friday) {
+          return totalHours;
+        }
+
+        // 2. Calculate time from sessions
+        let sessionTime = 0;
+        if (Array.isArray(task.session)) {
+          sessionTime = task.session.reduce((sum, session) => {
+            const sessionDate = new Date(session.date);
+            if (sessionDate >= monday && sessionDate <= friday) {
+              if (session.endTime) {
+                // Completed session - always count
+                return sum + (Number(session.endTime) - Number(session.startTime));
+              } else if (session.startTime && task.isActive && !task.isPaused) {
+                // Active session - count current duration
+                return sum + (Date.now() - Number(session.startTime));
+              }
+            }
+            return sum;
+          }, 0);
+        }
+
+        // 3. Add saved totalWorkTime for paused/completed tasks
+        let additionalTime = 0;
+        if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
+          additionalTime = Number(task.totalWorkTime);
+        }
+
+        // 4. Convert ms → hours and add to total
+        const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
+        return totalHours + taskHours;
+      }, 0)
+      .toFixed(1);
+  }
+
+  function getTrackingByUser(email) {
+    if (trackingLoading || !trackingData?.data) return [];
+    // const processedTasks = trackingData.data.filter(item => item.isActive);
+    const filterByEmail = trackingData?.data?.filter(item => item.creator == email);
+
+    return filterByEmail;
+  }
+
+  function enrichUsersWithProjectCount(users) {
+    if (!users) return [];
+
+    return users.map(user => {
+      const totalTime = getFormattedTimeFromMondayToSaturday(getTrackingByUser(user.email));
+
+      return {
+        name: user.name,
+        totalTime,
+      };
+    });
+  }
+
+  useEffect(() => {
+    if (trackingLoading || !user?.email) return;
+    const filterByEmail = trackingData?.data?.filter(item => item.creator === user.email);
+    setTracking(filterByEmail ?? []);
+  }, [trackingLoading, trackingData, user?.email]);
+
+  useEffect(() => {
+    if (isLoading || trackingLoading) return;
+    setUserTime(enrichUsersWithProjectCount(users?.data));
+  }, [users?.data, project, isLoading, trackingLoading]); // Projects
+
   const timeDisplay = getDailyBreakdown(tracking);
+  const router = useRouter();
 
   function JumpBackInSection({ scope, userRole }) {
     const myProjects = project;
@@ -310,6 +480,7 @@ export default function DashboardPage() {
 
     const projects = !isLoading && project;
     // const projects = scope === 'studio' ? studioProjects : myProjects;
+    // casj flow - po
 
     return (
       <div className="space-y-4">
@@ -318,33 +489,28 @@ export default function DashboardPage() {
           {!isLoading &&
             projects.slice(0, 4).map(project => (
               <div
+                onClick={() => router.push(`/projects/${project?.id}`)}
                 key={project.id}
                 className="flex items-center gap-4 p-4 bg-white rounded-lg border border-greige-500/30 hover:shadow-sm transition-shadow cursor-pointer"
               >
                 <div className="flex-1 min-w-0">
                   <h4 className="font-medium text-neutral-900 truncate">{project.name}</h4>
                   <div className="flex items-center gap-4 mt-1">
-                    <Badge className="text-xs bg-greige-100 text-ink capitalize border border-greige-500/30">{project.phase}</Badge>
-                    <span className="text-xs text-neutral-600">{project.lastActivity}</span>
+                    <Badge className="text-xs bg-greige-100 text-ink capitalize border border-greige-500/30">
+                      {project.phase ? project.phase : 'Initial'}
+                    </Badge>
+                    <span className="text-xs text-neutral-600">{timeFromNow(project.created_at)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-sm font-medium text-neutral-900">{project.progress}%</div>
-                    {/* <Progress value={project.progress} className="w-16 h-1 mt-1 [&>div]:bg-clay-500" /> */}
-                    <div
-                      className={`line h-1 bg-black absolute top-0 left-0 rounded-[30px]`}
-                      style={{
-                        width: `${Math.floor(
-                          (Number(
-                            !taskLoading &&
-                              myTask?.filter(item => item.projectID === project.id).filter(taskItem => taskItem.status === 'done').length
-                          ) /
-                            Number(!taskLoading && myTask?.filter(item => item.projectID === project.id).length)) *
-                            100
-                        )}%`,
-                      }}
-                    ></div>
+                    <div className="text-sm font-medium text-neutral-900">
+                      {calculateProjectProgress(project.id, taskData?.data, isLoading)}%
+                    </div>
+                    <Progress
+                      value={calculateProjectProgress(project.id, taskData?.data, isLoading)}
+                      className="w-16 h-1 mt-1 [&>div]:bg-clay-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -356,9 +522,9 @@ export default function DashboardPage() {
 
   function TimeTrackedCard({ scope, userRole }) {
     const teamCapacity = [
-      // { name: 'Jane (You)', hours: 32.5, capacity: 40 },
-      // { name: 'Mike Johnson', hours: 38.0, capacity: 40 },
-      // { name: 'Sarah Wilson', hours: 35.5, capacity: 40 },
+      { name: 'Saif Hasan', hours: 0.9, capacity: 40 },
+      { name: 'David Zameen', hours: 0, capacity: 40 },
+      { name: 'Rishalat Shahriar', hours: 0, capacity: 40 },
     ];
 
     if (scope === 'studio') {
@@ -369,15 +535,13 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-neutral-900">Team Capacity</h3>
           </div>
           <div className="space-y-3 flex-1">
-            {teamCapacity.map(member => (
+            {userTime?.slice(0, 6).map(member => (
               <div key={member.name} className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-900">{member.name}</span>
-                  <span className="text-neutral-600">
-                    {member.hours}h / {member.capacity}h
-                  </span>
+                  <span className="text-neutral-600">{member.totalTime}h / 40h</span>
                 </div>
-                <Progress value={(member.hours / member.capacity) * 100} className="h-1 [&>div]:bg-olive-600" />
+                <Progress value={(member.totalTime / 40) * 100} className="h-1 [&>div]:bg-olive-600" />
               </div>
             ))}
           </div>
@@ -465,6 +629,18 @@ export default function DashboardPage() {
     });
   };
 
+  const calculateProjectProgress = (projectId: string, tasks: Task[] | undefined, isLoading: boolean): number => {
+    if (isLoading || !tasks) return 0;
+
+    const projectTasks = tasks.filter(item => item.projectID === projectId);
+    if (projectTasks.length === 0) return 0;
+
+    const completedTasks = projectTasks.filter(task => task.status === 'done');
+    const progress = Math.floor((completedTasks.length / projectTasks.length) * 100);
+
+    return progress;
+  };
+
   useEffect(() => {
     if (taskLoading) return;
     setMyTask(myTaskList(taskData.data));
@@ -479,14 +655,21 @@ export default function DashboardPage() {
     if (scope === 'studio') {
       return [
         { color: 'clay', text: `${overDueTask?.length} overdue tasks across 3 projects` },
-        // { color: 'sage', text: 'Team utilisation at 89%' },
-        // { color: 'olive', text: '£45k profit this month' },
+        { color: 'sage', text: `Team utilisation at ${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%` },
+        { color: 'olive', text: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)} profit this month` },
       ];
     }
     return [
-      // { color: 'sage', text: '3 meetings today' },
+      { color: 'sage', text: 'No meetings today' },
       { color: 'clay', text: `${overDueTask?.length} overdue tasks` },
-      // { color: 'olive', text: 'Penthouse 75% complete' },
+      {
+        color: 'olive',
+        text: `${!isLoading && project[0]?.name} ${calculateProjectProgress(
+          !isLoading && project[0]?.id,
+          taskData?.data,
+          taskLoading
+        )}% complete`,
+      },
     ];
   };
 
@@ -516,10 +699,10 @@ export default function DashboardPage() {
             <div key={task.id} className="flex items-center gap-3">
               <div className="w-2 h-2 bg-terracotta-600 rounded-full flex-shrink-0"></div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900 truncate">{task.name}</p>
-                <p className="text-xs text-neutral-600">
+                <p className="text-sm font-medium capitalize text-neutral-900 truncate">{task.name}</p>
+                <p className="text-xs capitalize text-neutral-600">
                   {/* {task.project} {scope === 'studio' && task.assignee !== 'me' && `• ${task.assignee}`} */}
-                  {(project && project.find(p => p.id === task?.projectID)?.name) || '  '}
+                  {(project && project.find(p => p.id === task?.projectID)?.name) || 'No Project'}
                 </p>
               </div>
             </div>
@@ -531,15 +714,15 @@ export default function DashboardPage() {
 
   function FinancialKPIsCard({ scope, userRole }) {
     const myKPIs = [
-      { label: 'My Budget Util', value: 'Upcoming', trend: 'up', change: '+5%' },
-      { label: 'Hours This Week', value: timeDisplay?.Total, trend: 'up', change: '+2h' },
+      { label: 'My Budget Util', value: `£${getFormattedTimeFromMondayToSaturday(tracking) * 20}`, trend: 'up', change: '+5%' },
+      { label: 'Hours This Week', value: getFormattedTimeFromMondayToSaturday(tracking) || '0', trend: 'up', change: '+2h' },
       { label: 'Projects Active', value: project?.length, trend: 'neutral', change: '0' },
     ];
 
     const studioKPIs = [
-      // { label: 'Studio Profit', value: '£45.2k', trend: 'up', change: '+12%' },
-      // { label: 'Utilisation', value: '89%', trend: 'up', change: '+3%' },
-      // { label: 'Cash Flow', value: '£23.8k', trend: 'down', change: '-8%' },
+      { label: 'Studio Profit', value: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)}`, trend: 'up', change: '+12%' },
+      { label: 'Utilisation', value: `${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%`, trend: 'up', change: '+3%' },
+      { label: 'Cash Flow', value: gbp.format(totalPurchaseOrder), trend: 'down', change: '-8%' },
     ];
 
     const kpis = scope === 'studio' ? studioKPIs : myKPIs;

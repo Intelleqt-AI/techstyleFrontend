@@ -98,30 +98,41 @@ export const getTask = async () => {
 
 // add new task
 export const addNewTask = async ({ newTask, user }) => {
-  const { data, error } = await supabase.from('Task').insert(newTask).select();
+  if (!newTask || !user) throw new Error('No task provided');
 
+  let tasksToInsert = Array.isArray(newTask) ? newTask : [{ ...newTask, creator: user?.email }];
+  if (Array.isArray(newTask)) {
+    tasksToInsert = newTask.map(t => ({ ...t, creator: user?.email }));
+  }
+  const { data, error } = await supabase.from('Task').insert(tasksToInsert).select();
   if (error) {
     console.log(error);
     throw new Error(error.message);
   }
-  if (data[0].assigned.length > 0) {
-    const notification = {
-      id: Date.now(),
-      link: '/my-task',
-      type: 'task',
-      itemID: data[0].id,
-      title: `${data[0].name}`,
-      isRead: false,
-      message: `${data[0].name}`,
-      timestamp: Date.now(),
-      creator: user,
-    };
-    data[0].assigned.map(item => {
-      if (item?.email == user?.email) return;
-      createNotification({ email: item.email, notification });
-    });
-  }
-  return { data };
+
+  // Handle notifications
+  data.forEach(task => {
+    if (task.assigned?.length > 0) {
+      const notification = {
+        id: Date.now(),
+        link: '/my-task',
+        type: 'task',
+        itemID: task.id,
+        title: task.name,
+        isRead: false,
+        message: task.name,
+        timestamp: Date.now(),
+        creator: user,
+      };
+
+      task.assigned.forEach(item => {
+        if (item?.email === user?.email) return;
+        createNotification({ email: item.email, notification });
+      });
+    }
+  });
+
+  return data;
 };
 
 // Modify Task
@@ -148,11 +159,9 @@ export const deleteTask = async taskId => {
 //Fetch OnlyProject data
 export const fetchOnlyProject = async ({ projectID }) => {
   if (projectID) {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
     return project;
   } else {
-    console.log('calleddd');
     const { data: project, error } = await supabase.from('Project').select('*');
     return project;
   }
@@ -172,7 +181,7 @@ export const fetchProjects = async () => {
     projects.map(async project => {
       const imagePath = `${project.id}/`;
       // List images in the folder
-      const { data: imageFiles, error: imageError } = await supabase.storage.from('Cover').list(imagePath);
+      const { data: imageFiles, error: imageError } = await supabase.storage.from('cover').list(imagePath);
       if (imageError) {
         console.error('Error fetching images:', imageError);
         return { ...project, images: [] }; // Return empty array if no images found
@@ -186,7 +195,7 @@ export const fetchProjects = async () => {
 
 // add new Project
 export const addNewProject = async newProject => {
-  const { data, error } = await supabase.from('Project').insert(newProject);
+  const { data, error } = await supabase.from('Project').insert(newProject).select();
   if (error) {
     console.log(error);
     throw new Error(error.message);
@@ -222,13 +231,32 @@ export const getUsers = async () => {
   return { data };
 };
 
+// Get users currency
+export const getCurrency = async (email: string) => {
+  const { data, error } = await supabase.from('Users').select('studioCurrency').eq('email', email).single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.studioCurrency || null;
+};
+
 // Adduser
 export const addUser = async ({ user }) => {
   const { data, error } = await supabase.from('Users').insert(user);
   if (error) {
     throw new Error(error.message);
   }
-  console.log(data);
+  return { data };
+};
+
+// Updaet User Data
+export const updateUser = async userData => {
+  const { data, error } = await supabase.from('Users').update(userData).eq('email', userData.email);
+  if (error) {
+    throw new Error(error.message);
+  }
   return { data };
 };
 
