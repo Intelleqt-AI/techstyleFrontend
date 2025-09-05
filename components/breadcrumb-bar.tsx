@@ -4,10 +4,12 @@ import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { fetchOnlyProject } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
+import useUsers from '@/hooks/useUsers';
 
 export function BreadcrumbBar() {
   const pathname = usePathname();
   const segments = pathname.split('/').filter(Boolean);
+  const { users } = useUsers();
 
   // Project ID only if first segment is "projects"
   const projectID = segments[0] === 'projects' ? segments[1] : null;
@@ -23,9 +25,9 @@ export function BreadcrumbBar() {
     if (segments.length === 0) return [{ label: 'Dashboard', href: '/' }];
 
     const breadcrumbs: { label: string; href: string }[] = [];
-
-    // --- First segment ---
     const firstSegment = segments[0];
+
+    // --- First segment handling ---
     switch (firstSegment) {
       case 'home':
         breadcrumbs.push({ label: 'Home', href: '/home' });
@@ -35,7 +37,6 @@ export function BreadcrumbBar() {
         break;
       case 'projects':
         breadcrumbs.push({ label: 'Projects', href: '/projects' });
-        // --- Second segment (project ID → project name) ---
         if (segments[1]) {
           breadcrumbs.push({
             label: projectData?.name || 'Loading...',
@@ -62,15 +63,21 @@ export function BreadcrumbBar() {
         breadcrumbs.push({ label: firstSegment, href: `/${firstSegment}` });
     }
 
-    // --- Handle remaining segments (2nd, 3rd, 4th, etc.) ---
-    // For projects route, start from index 2 since we already handled the project name
-    // For other routes, start from index 1 since we only handled the first segment
+    // --- Remaining segments ---
     const startIndex = firstSegment === 'projects' ? 2 : 1;
 
     for (let i = startIndex; i < segments.length; i++) {
       const seg = segments[i];
+      let label = seg;
+
+      // Special case: /reports/productivity/:userID
+      if (firstSegment === 'reports' && segments[1] === 'productivity' && i === 2) {
+        const user = users?.data?.find(u => u.id === seg);
+        label = user ? user.name : 'Loading..';
+      }
+
       breadcrumbs.push({
-        label: seg,
+        label,
         href: '/' + segments.slice(0, i + 1).join('/'),
       });
     }

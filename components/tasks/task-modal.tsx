@@ -731,6 +731,8 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   //   fileInputRef.current.click();
   // };
 
+  console.log(taskValues);
+
   return (
     <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
       {/* Single rounded grey surface with balanced padding (28px top/side) */}
@@ -830,6 +832,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                     <Select
                       value={taskValues?.phase || ''}
                       onValueChange={value => {
+                        console.log(data?.find(item => item.id == taskValues?.projectID));
                         const e = {
                           target: {
                             name: 'phase',

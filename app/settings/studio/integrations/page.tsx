@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { CheckCircle2, PlugZap, ExternalLink } from 'lucide-react';
 import GmailIntegration from '@/components/settings/GmailIntegration';
 import { useState } from 'react';
+import XeroIntegration from '@/components/settings/XeroIntegration';
 
 type Integration = {
   id: string;
@@ -139,6 +140,7 @@ export default function IntegrationsPage() {
           ))}
 
           <GmailIntegration />
+          <XeroIntegration />
         </div>
       </Section>
     </div>
