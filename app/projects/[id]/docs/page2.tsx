@@ -21,7 +21,6 @@ import {
   Eye,
   FolderOpen,
   ChevronDown,
-  FileIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,9 +42,6 @@ import {
   createFolder,
   uploadDoc,
   downloadFolderAsZip,
-  renameFolder,
-  deleteFile,
-  getFolderStats,
 } from "@/supabase/API";
 
 // Derived from storage
@@ -127,10 +123,6 @@ export default function ProjectDocsPage({
   const [fileQueue, setFileQueue] = React.useState<File[]>([]);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [currentDoc, setCurrentDoc] = React.useState<any>(null);
-  const [renameModalOpen, setRenameModalOpen] = React.useState(false);
-  const [selectedDoc, setSelectedDoc] = React.useState(null);
-  const [updatedFolderName, setUpdatedFolderName] = React.useState("");
-  const [totalDocs, setTotalDocs] = React.useState([]);
 
   // Fetch files/folders
   const {
@@ -149,33 +141,18 @@ export default function ProjectDocsPage({
   }, [filesResp]);
 
   const derivedFolders = React.useMemo<DerivedFolder[]>(() => {
-    return totalDocs
+    return allItems
       .filter((d: any) => d.isFolder)
       .map((f: any) => ({
         id: encodeURIComponent(f.name),
         name: f.name,
         fileCount: 0,
         lastModified: f.created_at,
-        folderStats: f?.folderStats,
       }));
-  }, [totalDocs]);
-
-  const derivedFiles = React.useMemo<DerivedFolder[]>(() => {
-    return totalDocs
-      .filter((d: any) => !d.isFolder)
-      .map((f: any) => ({
-        id: encodeURIComponent(f.name),
-        name: f.name,
-        fileCount: 0,
-        lastModified: f.created_at,
-      }));
-  }, [totalDocs]);
+  }, [allItems]);
 
   const derivedRecentFiles = React.useMemo<DerivedFile[]>(() => {
-    if (!allItems || allItems.length === 0) return []; // ⬅️ return blank
-
     const filesOnly = allItems.filter((d: any) => !d.isFolder);
-
     const toType = (mime?: string) => {
       if (!mime) return "file";
       if (mime.startsWith("image/")) return "image";
@@ -184,7 +161,6 @@ export default function ProjectDocsPage({
         return "spreadsheet";
       return "file";
     };
-
     return filesOnly
       .sort(
         (a: any, b: any) =>
@@ -199,15 +175,6 @@ export default function ProjectDocsPage({
         uploadedAt: f.created_at,
       }));
   }, [allItems]);
-
-  const RenameOpenModal = (doc) => {
-    setSelectedDoc(doc);
-    setRenameModalOpen(true);
-  };
-  function RenameCloseModal() {
-    setRenameModalOpen(false);
-    setUpdatedFolderName("");
-  }
 
   // Mutations
   const createFolderMutation = useMutation({
@@ -266,41 +233,6 @@ export default function ProjectDocsPage({
     },
   });
 
-  // Folder Rename Function
-  const renameFolderMutation = useMutation({
-    mutationFn: renameFolder,
-    onMutate: () => {
-      toast.loading("Renaming...", { id: "rename-toast" });
-    },
-    onSuccess: () => {
-      refetch();
-      setRenameModalOpen(false);
-      toast.dismiss("rename-toast");
-      toast.success(`Renamed successfully!`);
-    },
-    onError: () => {
-      toast.dismiss("rename-toast");
-      toast.error("Failed to rename folder.");
-    },
-  });
-
-  // File delete Function
-  const deleteMutation = useMutation({
-    mutationFn: deleteFile,
-    onMutate: () => {
-      toast.loading("Deleting...", { id: "delete-toast" });
-    },
-    onSuccess: () => {
-      refetch();
-      toast.dismiss("delete-toast");
-      toast.success(`Deleted successfully!`);
-    },
-    onError: () => {
-      toast.dismiss("delete-toast");
-      toast.error("Failed to delete file.");
-    },
-  });
-
   function formatSize(size?: number) {
     if (!size && size !== 0) return "-";
     if (size < 1024) return `${size} B`;
@@ -328,7 +260,6 @@ export default function ProjectDocsPage({
   }
 
   function openViewer(url: string, name: string) {
-    console.log({ uri: url, fileName: name });
     setCurrentDoc([{ uri: url, fileName: name }]);
     setViewerOpen(true);
   }
@@ -346,74 +277,6 @@ export default function ProjectDocsPage({
     setSideOpen(true);
     console.log("analytics: open_side_panel", { noteId: n.id });
   }
-
-  function RenameAfterCloseModal() {
-    RenameCloseModal();
-  }
-
-  // Rename Folder
-  const handleRenameFolder = () => {
-    renameFolderMutation.mutate({
-      projectId: params?.id,
-      currentPath: currentPath,
-      currentFolderName: selectedDoc.name,
-      newFolderName: updatedFolderName,
-    });
-
-    setUpdatedFolderName("");
-  };
-
-  const HandleFolderOpen = (folder) => {
-    router.push(`/projects/${params.id}/docs/folders/${folder.id}`);
-  };
-
-  // Delete files or folders
-  const handleDeleteTask = (name, isFolder) => {
-    const itemPath = currentPath ? `${currentPath}/${name}` : name;
-    deleteMutation.mutate({
-      file: itemPath,
-      id: params?.id,
-      isFolder: isFolder,
-    });
-  };
-
-  // Folder Stats Mutation
-  const folderStatsMutation = useMutation({
-    mutationFn: getFolderStats,
-    onSuccess: (data, variables) => {
-      setTotalDocs((prev) =>
-        prev.map((doc) =>
-          doc.name === variables.folderName
-            ? { ...doc, folderStats: data }
-            : doc
-        )
-      );
-    },
-  });
-
-  React.useEffect(() => {
-    if (isLoading) return;
-
-    // Process the data to identify folders and files
-    if (filesResp?.data) {
-      const processedDocs = filesResp.data.map((item) => ({
-        ...item,
-        isFolder: !item.metadata,
-      }));
-      setTotalDocs(processedDocs);
-
-      // Fetch stats for all folders
-      processedDocs
-        .filter((doc) => doc.isFolder)
-        .forEach((folder) => {
-          folderStatsMutation.mutate({
-            projectId: params.id,
-            folderName: folder.name,
-            path: "",
-          });
-        });
-    }
-  }, [isLoading, filesResp, params.id]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -495,211 +358,56 @@ export default function ProjectDocsPage({
             {"Folders"}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {derivedFolders.map((folder) => {
-              return (
-                <div
-                  key={folder.id}
-                  onClick={() => HandleFolderOpen(folder)}
-                  className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                  aria-label={`Open ${folder.name}`}>
-                  <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <Folder
-                            className="h-5 w-5 text-neutral-500"
-                            aria-hidden="true"
-                          />
-                          <div>
-                            <h4 className="font-medium text-neutral-900">
-                              {folder.name}
-                            </h4>
-                            <p className="mt-1 text-xs text-neutral-500">
-                              {folder?.folderStats?.fileCount} files • Updated{" "}
-                              {folder?.folderStats?.lastModified
-                                ? formatDate(folder?.folderStats?.lastModified)
-                                : "-"}
-                            </p>
-                          </div>
+            {derivedFolders.map((folder) => (
+              <Link
+                key={folder.id}
+                href={`/projects/${params.id}/docs/folders/${folder.id}`}
+                className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
+                aria-label={`Open ${folder.name}`}>
+                <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <Folder
+                          className="h-5 w-5 text-neutral-500"
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <h4 className="font-medium text-neutral-900">
+                            {folder.name}
+                          </h4>
+                          <p className="mt-1 text-xs text-neutral-500">
+                            {folder.fileCount} files • Updated{" "}
+                            {folder.lastModified
+                              ? formatDate(folder.lastModified)
+                              : "-"}
+                          </p>
                         </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            asChild
-                            onClick={(e) => e.stopPropagation()} // ⬅️ Prevent parent click
-                          >
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                              aria-label="Folder actions">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                HandleFolderOpen(folder);
-                              }}>
-                              {"Open"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                RenameOpenModal(folder);
-                              }}>
-                              {"Rename"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTask(
-                                  folder?.name,
-                                  folder?.isFolder
-                                );
-                              }}>
-                              {"Delete"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })}
-
-            {derivedFiles.map((file) => {
-              // Build file URL from Supabase (Next.js style env var)
-              const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/docs/${params.id}/${file.id}`;
-
-              return (
-                <div
-                  key={file.id}
-                  onClick={() => openViewer(fileUrl, file.name)} // ⬅️ opens modal with DocViewer
-                  className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                  aria-label={`Open ${file.name}`}>
-                  <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        {/* File Info */}
-                        <div className="flex items-center gap-3">
-                          <FileIcon
-                            className="h-5 w-5 text-blue-500"
-                            aria-hidden="true"
-                          />
-                          <div>
-                            <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
-                              {file.name}
-                            </h4>
-                            <p className="mt-1 text-xs text-neutral-500">
-                              Updated{" "}
-                              {file.lastModified
-                                ? formatDate(file.lastModified)
-                                : "-"}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* File Options */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            asChild
-                            onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                              aria-label="File actions">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openViewer(fileUrl, file.name);
-                              }}>
-                              {"Open"}
-                            </DropdownMenuItem>
-                            {/* <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                RenameOpenModal(file);
-                              }}>
-                              {"Rename"}
-                            </DropdownMenuItem> */}
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTask(file?.name, file?.isFolder);
-                              }}>
-                              {"Delete"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                downloadFile(fileUrl, file.name);
-                              }}>
-                              {"Download"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })}
-
-            {/*Rename Folder Modal */}
-            <Modal
-              className="!h-[250px] !max-w-[500px] !py-7"
-              isOpen={renameModalOpen}
-              onRequestClose={RenameAfterCloseModal}
-              contentLabel="Rename Folder Modal">
-              <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-semibold flex items-center gap-2">
-                    {/* <p> {doc?.name}</p> */}
-                  </div>
-                </div>
-                {/* Delete and Close Modal Section */}
-                <div className="buttons flex items-center gap-3 !mt-0 px-2">
-                  <button
-                    onClick={() => RenameCloseModal()}
-                    className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24">
-                      <path
-                        fill="currentColor"
-                        d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div className="py-4 my-7">
-                <Input
-                  placeholder="Folder Name"
-                  value={updatedFolderName}
-                  onChange={(e) => setUpdatedFolderName(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Button variant="outline" onClick={() => RenameCloseModal()}>
-                  Cancel
-                </Button>
-                <Button onClick={() => handleRenameFolder()}>Rename</Button>
-              </div>
-            </Modal>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
+                            aria-label="Folder actions">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>{"Open"}</DropdownMenuItem>
+                          <DropdownMenuItem>{"Rename"}</DropdownMenuItem>
+                          <DropdownMenuItem>{"Move"}</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
 
             {/* Notes smart folder */}
-            {/* <button
+            <button
               type="button"
               onClick={() => router.push(`/projects/${params.id}/docs/notes`)}
               className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
@@ -765,7 +473,7 @@ export default function ProjectDocsPage({
                   </div>
                 </CardContent>
               </Card>
-            </button> */}
+            </button>
           </div>
         </div>
 
@@ -796,7 +504,7 @@ export default function ProjectDocsPage({
 
           {activePane === "notes" ? (
             <NotesFeed
-              notes={[]}
+              notes={mockNotes}
               onOpen={(n) => openNote(n)}
               className="border border-neutral-200"
             />
@@ -979,7 +687,7 @@ export default function ProjectDocsPage({
                     file: fileQueue[0],
                     id: params.id,
                     path: currentPath,
-                    projectID: params.id,
+                    projectID: undefined,
                     task: undefined,
                   });
                 } else {
