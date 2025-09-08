@@ -182,28 +182,24 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
         ...prevValues,
         ...taskToEdit,
       }));
-    } else if (!projectId) {
-      setTaskValues(prevValues => ({
-        ...initialTask,
-      }));
     }
   }, [taskToEdit]);
 
   React.useEffect(() => {
+    if (!open) return;
     if (projectId && phase) {
       setTaskValues(prevValues => ({
         ...prevValues,
         projectID: projectId,
         phase,
       }));
-      return;
     } else if (projectId) {
       setTaskValues(prevValues => ({
         ...prevValues,
         projectID: projectId,
       }));
     }
-  }, [projectId, phase]);
+  }, [open, projectId, phase]);
 
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
