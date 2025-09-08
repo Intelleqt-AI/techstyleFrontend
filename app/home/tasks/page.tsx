@@ -82,6 +82,13 @@ const updatetaskList = (data: any[]) => {
   ];
 };
 
+const updatedColName = {
+  done: 'Done',
+  'in-review': 'In Review',
+  todo: 'To Do',
+  'in-progress': 'In Progress',
+};
+
 // Sortable Task Card Component
 function SortableTaskCard({ task, project, openEditTask, openDeleteModal }: any) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
@@ -143,7 +150,7 @@ function DroppableColumn({ column, project, openEditTask, openDeleteModal, openN
   return (
     <div
       className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
-        isDraggingOver ? '!border-gray-500 border-2 border-dashed' : ''
+        isDraggingOver ? '!border-gray-500 !border-1 border-dashed !bg-[#f9f8f6]' : ''
       }`}
     >
       {/* Column Header */}
@@ -171,7 +178,11 @@ function DroppableColumn({ column, project, openEditTask, openDeleteModal, openN
 
       {/* Add Task Button */}
       <Button
-        onClick={() => openNewTask()}
+        data-dndkit-disabled-drag-handle
+        onClick={e => {
+          e.stopPropagation();
+          openNewTask();
+        }}
         variant="ghost"
         className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
         size="sm"
@@ -201,23 +212,22 @@ export default function MyTasksPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
 
-  const [isClient, setIsClient] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  const [activeID, setActiveId] = useState<string | null>(null);
+  const [overID, setOverId] = useState<string | null>(null);
   const { user } = useUser();
   const queryClient = useQueryClient();
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 100, // drag starts only after 150ms press
+        tolerance: 5, // or minimum 5px pointer movement
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  // Fix SPA reload issue
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   function openNewTask(listId?: string) {
     setEditing(null);
@@ -289,15 +299,18 @@ export default function MyTasksPage() {
   const myTaskList = (arr: any[]) => {
     if (!arr) return [];
     if (!user) return [];
-    if (admins.includes(user?.email)) {
-      return arr;
-    }
-    return arr.filter(task => {
-      const isAssigned =
-        task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
-      const isCreator = task.creator === user.email;
-      return isAssigned || isCreator;
-    });
+
+    let filtered = admins.includes(user?.email)
+      ? arr
+      : arr.filter(task => {
+          const isAssigned =
+            task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
+          const isCreator = task.creator === user.email;
+          return isAssigned || isCreator;
+        });
+
+    // Sort by updated_at (newest first)
+    return filtered.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
   };
 
   const assignedProjectCount = project?.filter((item: any) => item.assigned?.some((person: any) => person.email == user?.email)).length;
@@ -347,6 +360,8 @@ export default function MyTasksPage() {
     const activeContainer = findContainer(activeId as string);
     const overContainer = findContainer(overId as string);
 
+    setOverId(overContainer);
+
     if (!activeContainer || !overContainer) return;
     if (activeContainer === overContainer) return;
 
@@ -382,60 +397,33 @@ export default function MyTasksPage() {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     setActiveId(null);
     setOverId(null);
-
     if (!over) return;
 
     const activeId = active.id as string;
     const overId = over.id as string;
+    if (activeId == overID) return;
 
-    const activeContainer = findContainer(activeId);
     const overContainer = findContainer(overId);
+    if (!overContainer) return;
 
-    if (!activeContainer || !overContainer) return;
+    const nextStatus = overContainer as 'todo' | 'in-progress' | 'in-review' | 'done';
 
-    if (activeContainer !== overContainer) {
-      const overColumn = tasks.find(col => col.id === overContainer);
-      if (overColumn) {
-        const nextStatus = overContainer as 'todo' | 'in-progress' | 'in-review' | 'done';
+    const payload =
+      nextStatus === 'done' ? { newTask: { status: nextStatus, id: activeId } } : { newTask: { status: nextStatus, id: activeId } };
 
-        const payload =
-          nextStatus === 'done'
-            ? { newTask: { status: nextStatus, phase: 'complete-project', id: activeId } }
-            : { newTask: { status: nextStatus, id: activeId } };
-
-        mutate(payload);
-        toast.success(`Task moved to ${overColumn.name}`);
-      }
-    } else {
-      // Reordering within the same column
-      setTasks(prev => {
-        const columnIndex = prev.findIndex(col => col.id === activeContainer);
-        if (columnIndex === -1) return prev;
-
-        const column = prev[columnIndex];
-        const oldIndex = column.items.findIndex(item => item.id === activeId);
-        const newIndex = column.items.findIndex(item => item.id === overId);
-
-        if (oldIndex === -1 || newIndex === -1) return prev;
-
-        const newItems = arrayMove(column.items, oldIndex, newIndex);
-
-        return prev.map((col, index) => (index === columnIndex ? { ...col, items: newItems } : col));
-      });
-    }
+    mutate(payload);
+    toast.success(`Task moved to ${updatedColName[overContainer]}`);
   };
 
   const findContainer = (id: string) => {
-    // Check if id is a column id
-    if (tasks.find(col => col.id === id)) {
+    if (tasks.some(col => col.id === id)) {
       return id;
     }
 
-    // Find which column contains this task
-    return tasks.find(col => col.items.some(item => item.id === id))?.id;
+    const column = tasks.find(col => col.items.some(item => item.id === id));
+    return column?.id;
   };
 
   const {
@@ -512,11 +500,11 @@ export default function MyTasksPage() {
     handleDeleteTimer(id);
   };
 
-  if (!isClient) return null; // Prevent SSR hydration errors
+  // if (!isClient) return null; // Prevent SSR hydration errors
 
   // Get the active task for drag overlay
-  const activeTask = activeId
-    ? tasks.find(col => col.items.some(item => item.id === activeId))?.items.find(item => item.id === activeId)
+  const activeTask = activeID
+    ? tasks.find(col => col.items.some(item => item.id === activeID))?.items.find(item => item.id === activeID)
     : null;
 
   return (
@@ -582,7 +570,7 @@ export default function MyTasksPage() {
                 openEditTask={openEditTask}
                 openDeleteModal={openDeleteModal}
                 openNewTask={openNewTask}
-                isDraggingOver={overId === column.id}
+                isDraggingOver={overID === column.id}
               />
             ))}
           </div>

@@ -289,15 +289,18 @@ export default function MyTasksPage() {
   const myTaskList = (arr: any[]) => {
     if (!arr) return [];
     if (!user) return [];
-    if (admins.includes(user?.email)) {
-      return arr;
-    }
-    return arr.filter(task => {
-      const isAssigned =
-        task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
-      const isCreator = task.creator === user.email;
-      return isAssigned || isCreator;
-    });
+
+    let filtered = admins.includes(user?.email)
+      ? arr
+      : arr.filter(task => {
+          const isAssigned =
+            task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
+          const isCreator = task.creator === user.email;
+          return isAssigned || isCreator;
+        });
+
+    // Sort by updated_at (newest first)
+    return filtered.sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
   };
 
   const assignedProjectCount = project?.filter((item: any) => item.assigned?.some((person: any) => person.email == user?.email)).length;
