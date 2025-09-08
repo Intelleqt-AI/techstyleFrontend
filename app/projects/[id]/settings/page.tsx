@@ -38,6 +38,7 @@ import {
   Check,
   CalendarIcon,
   Trash,
+  Save,
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -480,8 +481,11 @@ function OverviewForm({ value, onChange, onSave }: { value: any; onChange: (v: a
             onChange={e => onChange({ description: e.target.value })}
           />
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -612,8 +616,11 @@ function ContactsForm({
 
         <Separator />
 
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -772,8 +779,11 @@ function PropertyForm({
             />
           </div>
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -789,12 +799,19 @@ function RoomsForm({
   onChange: (v: OnboardingData) => void;
   onSave: (p: any) => void;
 }) {
+  const handleRemove = (idx: number) => {
+    const next = [...(value.type ?? [])];
+    next.splice(idx, 1);
+    onChange({ ...value, type: next });
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Rooms</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Add new room */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <Input
             placeholder="Room name"
@@ -816,11 +833,13 @@ function RoomsForm({
               }
             }}
           />
-          <div className="md:col-span-2 text-sm text-muted-foreground flex items-center">{'Press Enter to add room'}</div>
+          <div className="md:col-span-2 text-sm text-muted-foreground flex items-center">Press Enter to add room</div>
         </div>
+
+        {/* Room list */}
         <div className="space-y-2">
           {(value.type ?? []).map((room, idx) => (
-            <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div key={room.id ?? idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
               <Input
                 value={room.text}
                 onChange={e => {
@@ -838,20 +857,35 @@ function RoomsForm({
                   onChange({ ...value, type: next });
                 }}
               />
-              <Input
-                placeholder="Delivery constraints"
-                value={room.constraints ?? ''}
-                onChange={e => {
-                  const next = [...(value.type ?? [])];
-                  next[idx] = { ...next[idx], constraints: e.target.value };
-                  onChange({ ...value, type: next });
-                }}
-              />
+              <div className="flex items-center gap-3">
+                <Input
+                  placeholder="Delivery constraints"
+                  value={room.constraints ?? ''}
+                  onChange={e => {
+                    const next = [...(value.type ?? [])];
+                    next[idx] = { ...next[idx], constraints: e.target.value };
+                    onChange({ ...value, type: next });
+                  }}
+                />
+
+                <Button
+                  variant={'destructive'}
+                  className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
+                  onClick={() => handleRemove(idx)}
+                >
+                  <Trash className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.type)}>Save</Button>
+
+        {/* Save */}
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value.type)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -908,8 +942,11 @@ function DeliveryForm({
             />
           </div>
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1023,8 +1060,11 @@ function PreferencesForm({
             </label>
           </div> */}
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1095,8 +1135,11 @@ function TimelineForm({ value, onChange, onSave }: { value: any; onChange: (v: a
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1167,8 +1210,12 @@ function FinancialForm({ value, onChange, onSave }: { value: any; onChange: (v: 
           </Select> */}
           <CurrencySelector value={value?.currency} onChange={updateData} />
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save</Button>
+
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1192,8 +1239,11 @@ function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
             <p className="text-sm text-muted-foreground mt-1">{'Notify team when clients join the portal.'}</p>
           </div>
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave({})}>Save</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave({})}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1226,8 +1276,6 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
   };
 
   function toggleAssignee(member: any) {
-    console.log(member);
-
     const alreadyAssigned = value.assigned.some((a: any) => a.id === member.id);
 
     const updatedValue = {
@@ -1279,14 +1327,13 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
                   onChange={e => updateTeamMember(index, { role: e.target.value })}
                 />
               </div>
+
               <Button
-                variant="ghost"
-                size="sm"
+                variant={'destructive'}
+                className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
                 onClick={() => toggleAssignee(member)}
-                // onClick={() => removeTeamMember(index)}
-                className="text-red-500 hover:text-red-700 hover:bg-red-50"
               >
-                Remove
+                <Trash className="w-4 h-4" />
               </Button>
             </div>
           ))}
@@ -1397,8 +1444,11 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
           </div>
         </div>
 
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save Team</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1449,12 +1499,11 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
                       Phase {index + 1}
                     </Badge>
                     <Button
-                      variant="ghost"
-                      size="sm"
+                      variant={'destructive'}
+                      className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
                       onClick={() => removePhase(index)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
-                      Remove
+                      <Trash className="w-4 h-4" />
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1591,8 +1640,11 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value.phases)}>Save Phases</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value.phases)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -1781,8 +1833,11 @@ function ContractorsForm({ value, onChange, onSave }: { value: any; onChange: (v
           )}
         </div>
 
-        <div className="flex items-center justify-end">
-          <Button onClick={() => onSave(value)}>Save Contractors</Button>
+        <div className="flex pt-3 items-center justify-end">
+          <Button size={'sm'} onClick={() => onSave(value)}>
+            <Save />
+            Save
+          </Button>
         </div>
       </CardContent>
     </Card>

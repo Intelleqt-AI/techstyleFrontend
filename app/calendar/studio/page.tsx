@@ -192,7 +192,7 @@ function GoogleCalendarClient({ token, onTokenChange, onCreateEvent, onRefresh, 
     return (
       <div className="space-y-2">
         <div className="text-sm text-gray-600">Connect Google to view and add calendar events.</div>
-        <Button size="sm" variant="outline" onClick={() => (window.location.href = '/settings/integration')}>
+        <Button size="sm" variant="outline" onClick={() => (window.location.href = '/settings/studio/integrations')}>
           Connect Google
         </Button>
       </div>
