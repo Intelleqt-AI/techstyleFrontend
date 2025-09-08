@@ -360,12 +360,13 @@ export default function FinancePage() {
   const financeStats = [
     {
       title: 'Total Invoices',
-      value: gbp.format(totalInvoiceOrder + xeroTotal),
-      subtitle: `${invoices?.length + xeroInvoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'} (${
-        xeroInvoices?.length
-      } from Xero) `,
+      value: gbp.format((totalInvoiceOrder || 0) + (xeroTotal || 0)),
+      subtitle: `${(invoices?.length || 0) + (xeroInvoices?.length || 0)} ${
+        (invoices?.length || 0) + (xeroInvoices?.length || 0) === 1 ? 'Invoice' : 'Invoices'
+      } (${xeroInvoices?.length || 0} from Xero)`,
       icon: FileText,
     },
+
     {
       title: 'Total Purchase Orders',
       value: gbp.format(totalPurchaseOrder),

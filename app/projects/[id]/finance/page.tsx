@@ -259,8 +259,8 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
             maximumFractionDigits: 2,
           })
         : gbp.format(totalInvoiceOrder),
-      subtitle: `${invoices?.length + xeroInvoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'} (${
-        xeroInvoices?.length
+      subtitle: `${invoices?.length + xeroInvoices?.length && xeroInvoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'} (${
+        xeroInvoices && xeroInvoices?.length
       } from Xero)`,
       icon: FileText,
     },
