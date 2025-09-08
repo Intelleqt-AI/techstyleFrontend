@@ -14,6 +14,10 @@ import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContai
 import useUsers from '@/hooks/useUsers';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnlyProject, getTimeTracking } from '@/supabase/API';
+import useTask from '@/supabase/hook/useTask';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
+import useUser from '@/hooks/useUser';
 
 type Member = {
   name: string;
@@ -24,7 +28,8 @@ type Member = {
   tasksCompleted: number;
 };
 
-function getFormattedTime(tasks, range = 'month') {
+// Time Tracker Logged
+function getFormattedTime(tasks: any[], range: 'month' | 'quarter' | 'year' = 'month'): string {
   if (!Array.isArray(tasks)) return '0.00';
 
   const now = new Date();
@@ -45,12 +50,13 @@ function getFormattedTime(tasks, range = 'month') {
     return '0.00'; // fallback for invalid range
   }
 
-  const totalMs = tasks.reduce((total, task) => {
+  const totalMs = tasks.reduce((total: number, task: any) => {
     if (!Array.isArray(task.session)) return total;
 
-    const sessionTime = task.session.reduce((sum, session) => {
+    const sessionTime = task.session.reduce((sum: number, session: any) => {
       const sessionDate = new Date(session.date);
-      if (!isNaN(sessionDate) && sessionDate >= startDate && sessionDate <= endDate && typeof session.totalTime === 'number') {
+      const sessionTimeMs = sessionDate.getTime();
+      if (!Number.isNaN(sessionTimeMs) && sessionDate >= startDate && sessionDate <= endDate && typeof session.totalTime === 'number') {
         return sum + session.totalTime;
       }
       return sum;
@@ -61,6 +67,33 @@ function getFormattedTime(tasks, range = 'month') {
 
   const totalHours = totalMs / (1000 * 60 * 60);
   return totalHours.toFixed(2);
+}
+
+// Completed Task
+function countDoneTasks(tasks: any[], range: 'month' | 'quarter' | 'year' = 'month') {
+  if (!Array.isArray(tasks)) return 0;
+  const now = new Date();
+
+  let startDate, endDate;
+
+  if (range === 'month') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  } else if (range === 'quarter') {
+    const currentQuarter = Math.floor(now.getMonth() / 3); // 0 = Q1, 1 = Q2, etc.
+    startDate = new Date(now.getFullYear(), currentQuarter * 3, 1);
+    endDate = new Date(now.getFullYear(), currentQuarter * 3 + 3, 0, 23, 59, 59, 999);
+  } else if (range === 'year') {
+    startDate = new Date(now.getFullYear(), 0, 1);
+    endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+  } else {
+    return 0;
+  }
+  return tasks.filter((task: any) => {
+    if (task.status !== 'done') return false;
+    const createdAt: Date = task.created_at instanceof Date ? task.created_at : new Date(task.created_at);
+    return !Number.isNaN(createdAt.getTime()) && createdAt >= startDate && createdAt <= endDate;
+  }).length;
 }
 
 const dataByPeriod: Record<Period, { members: Member[]; weekly: { week: string; hours: number; billable: number }[] }> = {
@@ -210,6 +243,15 @@ export default function ProductivityReportsPage() {
   const [sortKey, setSortKey] = useState<keyof Member>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const { users, isLoading: usersLoading } = useUsers();
+  const { data: taskData, isLoading: taskLoading } = useTask();
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [finalUsers, setFinalUsers] = useState<any[]>([]);
+  const [customLoading, setCustomLoading] = useState(true);
+  type TeamSortKey = 'name' | 'hours' | 'pct' | 'project' | 'task';
+  const [teamSortKey, setTeamSortKey] = useState<TeamSortKey>('name');
+  const [teamSortDir, setTeamSortDir] = useState<'asc' | 'desc'>('asc');
+  const router = useRouter();
+  const { user } = useUser();
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
     queryKey: ['Time Tracking'],
@@ -227,14 +269,82 @@ export default function ProductivityReportsPage() {
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
+  const admins = [
+    'david.zeeman@intelleqt.ai',
+    'roxi.zeeman@souqdesign.co.uk',
+    'risalat.shahriar@intelleqt.ai',
+    'dev@intelleqt.ai',
+    'saif@intelleqt.ai',
+  ];
+
+  const handleProfileVisit = (email, id) => {
+    if (!id) return;
+    if (admins.includes(user?.email)) {
+      router.push(`/reports/productivity/${id}`);
+    } else if (user?.email == email) {
+      router.push(`/reports/productivity/${id}`);
+    } else {
+      return;
+    }
+  };
+
+  // Period-based calculations use getFormattedTime
+
+  function getTrackingByUser(email: string) {
+    if (trackingLoading || !trackingData?.data) return [];
+    const processedTasks = trackingData.data.filter(item => item.isActive);
+    const filterByEmail = processedTasks.filter(item => item.creator == email);
+    return filterByEmail;
+  }
+
+  const myTaskListCount = (email: string) => {
+    const tasks: any[] = (taskData as any)?.data || [];
+    return tasks.filter((task: any) => {
+      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email == email);
+      const isCreator = task.creator == email;
+      return isAssigned || isCreator;
+    }).length;
+  };
+
+  function enrichUsersWithProjectCount(teamUsers: any[], projects: any[], currentPeriod: Period) {
+    if (!teamUsers || !projects) return [];
+    return teamUsers.map((user: any) => {
+      const userTracking = getTrackingByUser(user.email);
+      const totalTask = myTaskListCount(user.email);
+      const totalTime = getFormattedTime(userTracking, currentPeriod);
+      const userEmail = user.email;
+      let totalProjects = 0;
+      projects.forEach((p: any) => {
+        if (p.assigned?.some((assignee: any) => assignee.email == userEmail)) {
+          totalProjects++;
+        }
+      });
+      return { ...user, totalProjects, totalTime, totalTask } as any;
+    });
+  }
+
+  useEffect(() => {
+    const usersData = (users as any)?.data ?? [];
+    if (!usersData || !project) return;
+    setFinalUsers(enrichUsersWithProjectCount(usersData, project, period));
+    setCustomLoading(false);
+  }, [users, project, period, trackingLoading]);
+
+  // Reactive computation for Team Performance rows so it updates on period change immediately
+  const teamUsers = useMemo(() => {
+    const usersData = (users as any)?.data ?? [];
+    if (!usersData || !project) return [] as any[];
+    return enrichUsersWithProjectCount(usersData, project, period);
+  }, [users, project, period, trackingData, taskData, trackingLoading, taskLoading]);
+
   const rawMembers = dataByPeriod[period].members;
   const weekly = dataByPeriod[period].weekly;
 
   const kpis = useMemo(() => {
-    const totalHour = getFormattedTime(trackingData?.data, period);
+    const totalHour = getFormattedTime(trackingData?.data ?? [], period);
     const totalBillable = rawMembers.reduce((sum, m) => sum + m.billableHours, 0);
     const avgUtil = Math.round(rawMembers.reduce((sum, m) => sum + m.utilisation, 0) / rawMembers.length);
-    const totalTasks = rawMembers.reduce((sum, m) => sum + m.tasksCompleted, 0);
+    const totalTasks = countDoneTasks(((taskData as any)?.data ?? []) as any[], period);
     return [
       { label: 'Avg Utilisation', value: formatPercent(0), sub: 'Billable time share' },
       {
@@ -245,7 +355,7 @@ export default function ProductivityReportsPage() {
       { label: 'Billable Hours', value: `0`, sub: 'Time billed' },
       { label: 'Tasks Completed', value: `${totalTasks}`, sub: 'All members' },
     ];
-  }, [rawMembers, period, trackingLoading]);
+  }, [rawMembers, period, trackingLoading, taskLoading]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -391,78 +501,145 @@ export default function ProductivityReportsPage() {
         </ChartCard>
       </div>
 
-      {/* 4) Team Table */}
+      {/* Team Member Performance (from provided page data) */}
       <ChartCard title="Team Performance" description="Individual productivity metrics">
+        <div className="mb-4" />
+
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
               <tr>
                 <th className="w-[260px] px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  <button onClick={() => onClickSort('name')} className="group inline-flex items-center gap-1" aria-label="Sort by member">
+                  <button
+                    onClick={() => {
+                      setTeamSortKey('name');
+                      setTeamSortDir(d => (teamSortKey === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                    }}
+                    className="group inline-flex items-center gap-1"
+                    aria-label="Sort by member"
+                  >
                     Member
-                    <SortIndicator direction={sortKey === 'name' ? sortDir : null} />
+                    <SortIndicator direction={teamSortKey === 'name' ? teamSortDir : null} />
                   </button>
                 </th>
-                <th className="w-[110px] px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  <button onClick={() => onClickSort('hours')} className="group inline-flex items-center gap-1" aria-label="Sort by hours">
+                <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
+                  {/* Active Projects */}
+                  <button
+                    onClick={() => {
+                      setTeamSortKey('project');
+                      setTeamSortDir(d => (teamSortKey === 'project' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                    }}
+                    className="group inline-flex items-center gap-1"
+                    aria-label="Sort by member"
+                  >
+                    Active Projects
+                    <SortIndicator direction={teamSortKey === 'project' ? teamSortDir : null} />
+                  </button>
+                </th>
+                <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
+                  <button
+                    onClick={() => {
+                      setTeamSortKey('hours');
+                      setTeamSortDir(d => (teamSortKey === 'hours' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                    }}
+                    className="group inline-flex items-center gap-1"
+                    aria-label="Sort by hours"
+                  >
                     Hours
-                    <SortIndicator direction={sortKey === 'hours' ? sortDir : null} />
+                    <SortIndicator direction={teamSortKey === 'hours' ? teamSortDir : null} />
                   </button>
                 </th>
+                {/* <th className="w-[110px] px-4 py-3 text-left text-sm font-medium text-gray-600">Goal</th> */}
                 <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
                   <button
-                    onClick={() => onClickSort('billableHours')}
+                    onClick={() => {
+                      setTeamSortKey('pct');
+                      setTeamSortDir(d => (teamSortKey === 'pct' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                    }}
                     className="group inline-flex items-center gap-1"
-                    aria-label="Sort by billable hours"
+                    aria-label="Sort by percent"
                   >
-                    Billable Hours
-                    <SortIndicator direction={sortKey === 'billableHours' ? sortDir : null} />
+                    % of Goal
+                    <SortIndicator direction={teamSortKey === 'pct' ? teamSortDir : null} />
                   </button>
                 </th>
+                <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">Billable Hours</th>
                 <th className="w-[140px] px-4 py-3 text-left text-sm font-medium text-gray-600">
                   <button
-                    onClick={() => onClickSort('utilisation')}
+                    onClick={() => {
+                      setTeamSortKey('task');
+                      setTeamSortDir(d => (teamSortKey === 'task' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                    }}
                     className="group inline-flex items-center gap-1"
-                    aria-label="Sort by utilisation"
+                    aria-label="Sort by Task"
                   >
-                    Utilisation
-                    <SortIndicator direction={sortKey === 'utilisation' ? sortDir : null} />
-                  </button>
-                </th>
-                <th className="w-[120px] px-4 py-3 text-left text-sm font-medium text-gray-600">
-                  <button
-                    onClick={() => onClickSort('tasksCompleted')}
-                    className="group inline-flex items-center gap-1"
-                    aria-label="Sort by tasks"
-                  >
-                    Tasks
-                    <SortIndicator direction={sortKey === 'tasksCompleted' ? sortDir : null} />
+                    Task
+                    <SortIndicator direction={teamSortKey === 'task' ? teamSortDir : null} />
                   </button>
                 </th>
               </tr>
             </thead>
             <tbody className="text-sm">
-              {sorted.map((m, idx) => (
-                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="min-w-0">
-                      <div className="truncate font-medium text-gray-900">{m.name}</div>
-                      <div className="truncate text-xs text-gray-600">{m.role}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-gray-900">{m.hours}</td>
-                  <td className="px-4 py-3 tabular-nums text-gray-900">{m.billableHours}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-24 max-w-24 rounded-full bg-gray-200">
-                        <div className="h-2 rounded-full bg-gray-900" style={{ width: `${m.utilisation}%` }} />
-                      </div>
-                      <span className="text-xs text-gray-900">{m.utilisation}%</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-gray-900">{m.tasksCompleted}</td>
-                </tr>
-              ))}
+              {usersLoading || trackingLoading || (teamUsers.length === 0 && customLoading)
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="border-b border-gray-100">
+                      {Array.from({ length: 7 }).map((_, j) => (
+                        <td key={j} className="px-4 py-3 whitespace-nowrap">
+                          <Skeleton className="h-5 w-[80px] bg-gray-200" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : (() => {
+                    const goalHours = period === 'month' ? 40 : period === 'quarter' ? 120 : 480;
+                    const rows = (teamUsers ?? []).map((member: any) => {
+                      const hours = parseFloat(member.totalTime || '0') || 0;
+                      const pct = Math.round((hours / goalHours) * 100);
+                      const project = Number(member.totalProjects || 0);
+                      const task = Number(member.totalTask || 0);
+                      return { member, project, task, hours, pct };
+                    });
+                    rows.sort((a, b) => {
+                      const dir = teamSortDir === 'asc' ? 1 : -1;
+                      if (teamSortKey === 'name') return dir * String(a.member.name ?? '').localeCompare(String(b.member.name ?? ''));
+                      if (teamSortKey === 'hours') return dir * (a.hours - b.hours);
+                      if (teamSortKey === 'project') return dir * (a.project - b.project);
+                      if (teamSortKey === 'task') return dir * (a.task - b.task);
+                      return dir * (a.pct - b.pct);
+                    });
+                    return rows.map(({ member, hours, pct }, index: number) => {
+                      const badgeClass =
+                        pct >= 100
+                          ? 'bg-green-100 border border-green-200 text-green-800'
+                          : pct >= 95
+                          ? 'border bg-[#FFE699] text-gray-800 border-[#FFCA28]'
+                          : 'bg-gray-100 border border-gray-200 text-gray-600';
+                      return (
+                        <tr
+                          onClick={() => handleProfileVisit(member.email, member.id)}
+                          key={member.id || index}
+                          className="border-b cursor-pointer border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="min-w-0">
+                              <div className="truncate font-medium text-gray-900">{member.name}</div>
+                              <div className="truncate text-xs text-gray-600">{member.email}</div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 tabular-nums text-gray-900 text-left">{member.totalProjects}</td>
+                          <td className="px-4 py-3 tabular-nums text-gray-900 text-left">
+                            {hours > 0 && hours < 1 ? '1' : Math.floor(hours)}
+                          </td>
+                          {/* <td className="px-4 py-3 tabular-nums text-gray-900 text-left">40h</td> */}
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${badgeClass}`}>{pct}%</span>
+                          </td>
+                          <td className="px-4 py-3 tabular-nums text-gray-900 text-left">0</td>
+                          <td className="px-4 py-3 tabular-nums text-gray-900 text-left">{member?.totalTask}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
             </tbody>
           </table>
         </div>

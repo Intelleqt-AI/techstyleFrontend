@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Filter, GripHorizontal, Target, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Local types to keep this component self-contained and compatible with varying task shapes
 type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -81,7 +82,14 @@ export default function TimelineView({
     assigned?: BoardAssignee[];
     created_at?: string;
   };
-  type BoardColumn = { name: string; status?: string; colorClass?: string; items: BoardItem[] };
+  type BoardColumn = { 
+    id: string;
+    name: string; 
+    status?: string; 
+    colorClass?: string; 
+    items: BoardItem[];
+    icon?: string | null;
+  };
 
   function toYMDString(d?: string | null): string | undefined {
     if (!d) return undefined;
@@ -105,12 +113,18 @@ export default function TimelineView({
     if (!isBoardShape) return { tasksView: tasks, phasesView: phases, listsView: lists };
     const cols = (tasks as unknown as BoardColumn[]) || [];
     const outTasks: UITask[] = [];
-    const phaseSet = new Map<string, string>();
+    const phaseSet = new Map<string, { name: string; colorClass?: string }>();
     const outLists: (ListColumn & { id: string; colorClass?: string })[] = [];
 
     for (const col of cols) {
-      const listId = col.status || col.name;
+      const listId = col.id || col.status || col.name;
       outLists.push({ id: listId, title: col.name, tasks: [] as any, colorClass: col.colorClass });
+      
+      // Store phase information
+      if (col.id && !phaseSet.has(col.id)) {
+        phaseSet.set(col.id, { name: col.name, colorClass: col.colorClass });
+      }
+      
       for (const it of col.items || []) {
         const start = toYMDString(it.startDate);
         const due = toYMDString(it.dueDate);
@@ -119,13 +133,8 @@ export default function TimelineView({
         const status = normalizeStatus(it.status);
         const priority = (it.priority || '').toString().toLowerCase() as any;
         const assigneeIds = (it.assigned || []).map(a => a.id);
-        const phaseId = it.phase || '__unscheduled__';
-        if (phaseId && !phaseSet.has(phaseId)) {
-          const name = phaseId
-            .replace(/[_-]+/g, ' ')
-            .replace(/\b\w/g, m => m.toUpperCase());
-          phaseSet.set(phaseId, name);
-        }
+        const phaseId = it.phase || col.id || '__unscheduled__';
+        
         outTasks.push({
           id: it.id,
           title,
@@ -146,11 +155,11 @@ export default function TimelineView({
     }
 
     // Merge detected phases with provided phases so empty phases are preserved
-    const providedPhaseMap = new Map<string, string>((phases || []).map(p => [p.id, p.name]));
-    for (const [id, name] of phaseSet.entries()) {
-      if (!providedPhaseMap.has(id)) providedPhaseMap.set(id, name);
+    const providedPhaseMap = new Map<string, { name: string; colorClass?: string }>((phases || []).map(p => [p.id, { name: p.name }]));
+    for (const [id, phaseInfo] of phaseSet.entries()) {
+      if (!providedPhaseMap.has(id)) providedPhaseMap.set(id, phaseInfo);
     }
-    const outPhases: Phase[] = Array.from(providedPhaseMap.entries()).map(([id, name]) => ({ id, name })) as any;
+    const outPhases: Phase[] = Array.from(providedPhaseMap.entries()).map(([id, phaseInfo]) => ({ id, name: phaseInfo.name })) as any;
     return { tasksView: outTasks, phasesView: outPhases, listsView: outLists };
   }, [tasks, phases, lists, isBoardShape]);
 
@@ -182,6 +191,16 @@ export default function TimelineView({
 
   // Phases with Unscheduled
   const ALL_PHASES = [{ id: '__unscheduled__', name: 'Unscheduled' }, ...(phasesView || [])];
+  
+  // Helper to get colorClass for a phase
+  const getPhaseColorClass = (phaseId: string) => {
+    if (isBoardShape) {
+      const cols = (tasks as unknown as BoardColumn[]) || [];
+      const col = cols.find(c => c.id === phaseId);
+      return col?.colorClass;
+    }
+    return undefined;
+  };
 
   // Filtered tasks for rows
   const filteredTasks = React.useMemo(() => {
@@ -222,7 +241,7 @@ export default function TimelineView({
     return out;
   }, [filteredTasks, collapsed]);
 
-  // Determine project range (min→max) from all tasks
+  // Determine project range (min→max) from all tasks, but show at least a full year
   const projectRange = React.useMemo(() => {
     let min: Date | null = null;
     let max: Date | null = null;
@@ -235,10 +254,26 @@ export default function TimelineView({
       if (!min || +sd < +min) min = sd;
       if (!max || +ed > +max) max = ed;
     }
+    
+    // If no tasks have dates, show current year
     if (!min || !max) {
       const today = new Date();
-      return { from: today, to: today };
+      const yearStart = new Date(today.getFullYear(), 0, 1);
+      const yearEnd = new Date(today.getFullYear(), 11, 31);
+      return { from: yearStart, to: yearEnd };
     }
+    
+    // Ensure we show at least 12 months
+    const rangeMonths = (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth());
+    if (rangeMonths < 12) {
+      const centerDate = new Date((+min + +max) / 2);
+      const sixMonthsBefore = new Date(centerDate);
+      sixMonthsBefore.setMonth(sixMonthsBefore.getMonth() - 6);
+      const sixMonthsAfter = new Date(centerDate);
+      sixMonthsAfter.setMonth(sixMonthsAfter.getMonth() + 6);
+      return { from: sixMonthsBefore, to: sixMonthsAfter };
+    }
+    
     return { from: min, to: max };
   }, [workingTasks]);
 
@@ -390,106 +425,125 @@ export default function TimelineView({
     startX: number;
     originalStart?: string;
     originalEnd?: string;
+    dragOffset?: number;
   } | null>(null);
 
   React.useEffect(() => {
     if (!dragging) return;
+    
+    let animationFrame: number;
+    
     function onMove(e: MouseEvent) {
-      const d = dragging!;
-      const deltaPx = e.clientX - d.startX;
-      if (timescale === 'day') {
-        const deltaDays = Math.round(deltaPx / dayWidth);
-        updateWorkingTasks(prev => {
-          const idx = prev.findIndex(t => t.id === d.taskId);
-          if (idx === -1) return prev;
-          const t = { ...prev[idx] } as UITask;
-          if (d.mode === 'move') {
-            if (t.startDate && t.endDate) {
-              t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaDays));
-              t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaDays));
-            } else if (t.dueDate) {
-              t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaDays));
-            }
-          } else if (d.mode === 'resize-start' && d.originalStart) {
-            t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
-          } else if (d.mode === 'resize-end' && d.originalEnd) {
-            t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaDays));
-          } else if (d.mode === 'schedule') {
-            if (d.originalStart) {
-              const start = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
-              t.startDate = start;
-              t.endDate = start;
-            }
-          }
-          const next = [...prev];
-          next[idx] = t;
-          return next;
-        });
-      } else if (timescale === 'week') {
-        const deltaWeeks = Math.round(deltaPx / WEEK_WIDTH);
-        updateWorkingTasks(prev => {
-          const idx = prev.findIndex(t => t.id === d.taskId);
-          if (idx === -1) return prev;
-          const t = { ...prev[idx] } as UITask;
-          if (d.mode === 'move') {
-            if (t.startDate && t.endDate) {
-              t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaWeeks * 7));
-              t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaWeeks * 7));
-            } else if (t.dueDate) {
-              t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaWeeks * 7));
-            }
-          } else if (d.mode === 'resize-start' && d.originalStart) {
-            t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
-          } else if (d.mode === 'resize-end' && d.originalEnd) {
-            t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaWeeks * 7));
-          } else if (d.mode === 'schedule') {
-            if (d.originalStart) {
-              const start = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
-              t.startDate = start;
-              t.endDate = start;
-            }
-          }
-          const next = [...prev];
-          next[idx] = t;
-          return next;
-        });
-      } else {
-        const deltaMonths = Math.round(deltaPx / MONTH_WIDTH);
-        updateWorkingTasks(prev => {
-          const idx = prev.findIndex(t => t.id === d.taskId);
-          if (idx === -1) return prev;
-          const t = { ...prev[idx] } as UITask;
-          if (d.mode === 'move') {
-            if (t.startDate && t.endDate) {
-              t.startDate = toYMD(shiftMonths(toDate(t.startDate), deltaMonths));
-              t.endDate = toYMD(shiftMonths(toDate(t.endDate), deltaMonths));
-            } else if (t.dueDate) {
-              t.dueDate = toYMD(shiftMonths(toDate(t.dueDate), deltaMonths));
-            }
-          } else if (d.mode === 'resize-start' && d.originalStart) {
-            t.startDate = toYMD(shiftMonths(toDate(d.originalStart), deltaMonths));
-          } else if (d.mode === 'resize-end' && d.originalEnd) {
-            t.endDate = toYMD(shiftMonths(toDate(d.originalEnd), deltaMonths));
-          } else if (d.mode === 'schedule') {
-            if (d.originalStart) {
-              const base = toDate(d.originalStart);
-              const start = toYMD(shiftMonths(base, deltaMonths));
-              t.startDate = start;
-              t.endDate = start;
-            }
-          }
-          const next = [...prev];
-          next[idx] = t;
-          return next;
-        });
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
       }
+      
+      animationFrame = requestAnimationFrame(() => {
+        const d = dragging!;
+        const deltaPx = e.clientX - d.startX;
+        
+        if (timescale === 'day') {
+          const deltaDays = Math.round(deltaPx / dayWidth);
+          updateWorkingTasks(prev => {
+            const idx = prev.findIndex(t => t.id === d.taskId);
+            if (idx === -1) return prev;
+            const t = { ...prev[idx] } as UITask;
+            if (d.mode === 'move') {
+              if (t.startDate && t.endDate) {
+                t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaDays));
+                t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaDays));
+              } else if (t.dueDate) {
+                t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaDays));
+              }
+            } else if (d.mode === 'resize-start' && d.originalStart) {
+              t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
+            } else if (d.mode === 'resize-end' && d.originalEnd) {
+              t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaDays));
+            } else if (d.mode === 'schedule') {
+              if (d.originalStart) {
+                const start = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
+                t.startDate = start;
+                t.endDate = start;
+              }
+            }
+            const next = [...prev];
+            next[idx] = t;
+            return next;
+          });
+        } else if (timescale === 'week') {
+          const deltaWeeks = Math.round(deltaPx / WEEK_WIDTH);
+          updateWorkingTasks(prev => {
+            const idx = prev.findIndex(t => t.id === d.taskId);
+            if (idx === -1) return prev;
+            const t = { ...prev[idx] } as UITask;
+            if (d.mode === 'move') {
+              if (t.startDate && t.endDate) {
+                t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaWeeks * 7));
+                t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaWeeks * 7));
+              } else if (t.dueDate) {
+                t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaWeeks * 7));
+              }
+            } else if (d.mode === 'resize-start' && d.originalStart) {
+              t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
+            } else if (d.mode === 'resize-end' && d.originalEnd) {
+              t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaWeeks * 7));
+            } else if (d.mode === 'schedule') {
+              if (d.originalStart) {
+                const start = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
+                t.startDate = start;
+                t.endDate = start;
+              }
+            }
+            const next = [...prev];
+            next[idx] = t;
+            return next;
+          });
+        } else {
+          const deltaMonths = Math.round(deltaPx / MONTH_WIDTH);
+          updateWorkingTasks(prev => {
+            const idx = prev.findIndex(t => t.id === d.taskId);
+            if (idx === -1) return prev;
+            const t = { ...prev[idx] } as UITask;
+            if (d.mode === 'move') {
+              if (t.startDate && t.endDate) {
+                t.startDate = toYMD(shiftMonths(toDate(t.startDate), deltaMonths));
+                t.endDate = toYMD(shiftMonths(toDate(t.endDate), deltaMonths));
+              } else if (t.dueDate) {
+                t.dueDate = toYMD(shiftMonths(toDate(t.dueDate), deltaMonths));
+              }
+            } else if (d.mode === 'resize-start' && d.originalStart) {
+              t.startDate = toYMD(shiftMonths(toDate(d.originalStart), deltaMonths));
+            } else if (d.mode === 'resize-end' && d.originalEnd) {
+              t.endDate = toYMD(shiftMonths(toDate(d.originalEnd), deltaMonths));
+            } else if (d.mode === 'schedule') {
+              if (d.originalStart) {
+                const base = toDate(d.originalStart);
+                const start = toYMD(shiftMonths(base, deltaMonths));
+                t.startDate = start;
+                t.endDate = start;
+              }
+            }
+            const next = [...prev];
+            next[idx] = t;
+            return next;
+          });
+        }
+      });
     }
+    
     function onUp() {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
       setDragging(null);
     }
-    window.addEventListener('mousemove', onMove);
+    
+    window.addEventListener('mousemove', onMove, { passive: true });
     window.addEventListener('mouseup', onUp);
     return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
@@ -901,55 +955,78 @@ export default function TimelineView({
 
               {/* Left rail rows */}
               <div className="sticky left-0 z-10 bg-white border-r border-border">
-                {rows.map(row => {
-                  if (row.type === 'phase') {
-                    const p = ALL_PHASES.find(x => x.id === row.phaseId)!;
-                    const count = filteredTasks.filter(t => {
-                      const pid = t.phaseId ?? '__unscheduled__';
-                      const uns = !t.startDate && !t.endDate && !t.dueDate;
-                      return row.phaseId === '__unscheduled__' ? uns : pid === row.phaseId;
-                    }).length;
-                    const isCollapsed = collapsed[row.phaseId];
-                    return (
-                      <div key={row.key} className="flex items-center h-10 px-4 border-b border-border">
-                        <button
-                          className="flex items-center gap-2 text-sm w-full text-left group text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0 rounded"
-                          onClick={() => setCollapsed(c => ({ ...c, [row.phaseId]: !c[row.phaseId] }))}
-                          aria-expanded={!isCollapsed}
-                          title={p.name}
+                <AnimatePresence>
+                  {rows.map(row => {
+                    if (row.type === 'phase') {
+                      const p = ALL_PHASES.find(x => x.id === row.phaseId)!;
+                      const count = filteredTasks.filter(t => {
+                        const pid = t.phaseId ?? '__unscheduled__';
+                        const uns = !t.startDate && !t.endDate && !t.dueDate;
+                        return row.phaseId === '__unscheduled__' ? uns : pid === row.phaseId;
+                      }).length;
+                      const isCollapsed = collapsed[row.phaseId];
+                      return (
+                        <motion.div 
+                          key={row.key} 
+                          className="flex items-center h-10 px-4 border-b border-border"
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.2 }}
                         >
-                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: phaseColorVar(row.phaseId) }} />
-                          <span className="truncate">{p.name}</span>
-                          <span
-                            className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-2 rounded-full text-[11px] bg-[var(--clay-filled)] text-[var(--clay-on-filled)]"
-                            aria-label={`${count} tasks`}
+                          <button
+                            className="flex items-center gap-2 text-sm w-full text-left group text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0 rounded hover:bg-gray-50 transition-colors duration-200"
+                            onClick={() => setCollapsed(c => ({ ...c, [row.phaseId]: !c[row.phaseId] }))}
+                            aria-expanded={!isCollapsed}
+                            title={p.name}
                           >
-                            {count}
-                          </span>
-                          <span className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Plus
-                              className="h-4 w-4"
-                              onClick={e => {
-                                e.stopPropagation();
-                                onCreateTask(row.phaseId);
-                              }}
-                            />
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  } else {
-                    const t = row.task!;
-                    return (
-                      <div key={row.key} className="flex items-center h-10 px-4 border-b border-border">
-                        <div className="text-sm truncate" title={t.title}>
-                          {t.title}
-                        </div>
-                      </div>
-                    );
-                  }
-                })}
+                            <motion.div
+                              animate={{ rotate: isCollapsed ? 0 : 90 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </motion.div>
+                            <span className="inline-block w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)) }} />
+                            <span className="truncate font-medium">{p.name}</span>
+                            <span
+                              className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-2 rounded-full text-[11px] bg-blue-100 text-blue-700 font-medium"
+                              aria-label={`${count} tasks`}
+                            >
+                              {count}
+                            </span>
+                            <motion.span 
+                              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <Plus
+                                className="h-4 w-4"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  onCreateTask(row.phaseId);
+                                }}
+                              />
+                            </motion.span>
+                          </button>
+                        </motion.div>
+                      );
+                    } else {
+                      const t = row.task!;
+                      return (
+                        <motion.div 
+                          key={row.key} 
+                          className="flex items-center h-10 px-4 border-b border-border hover:bg-gray-50 transition-colors duration-200"
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="text-sm truncate text-gray-700" title={t.title}>
+                            {t.title}
+                          </div>
+                        </motion.div>
+                      );
+                    }
+                  })}
+                </AnimatePresence>
               </div>
 
               {/* Right grid body */}
@@ -1049,7 +1126,7 @@ export default function TimelineView({
                                 width,
                                 top: (ROW_HEIGHT - 8) / 2,
                                 height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId),
+                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
                                 opacity: 0.18,
                               }}
                               title={`Phase period: ${pr.start} → ${pr.end}`}
@@ -1071,7 +1148,7 @@ export default function TimelineView({
                                 width,
                                 top: (ROW_HEIGHT - 8) / 2,
                                 height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId),
+                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
                                 opacity: 0.18,
                               }}
                               title={`Phase period: ${pr.start} → ${pr.end}`}
@@ -1093,7 +1170,7 @@ export default function TimelineView({
                                 width,
                                 top: (ROW_HEIGHT - 8) / 2,
                                 height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId),
+                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
                                 opacity: 0.18,
                               }}
                               title={`Phase period: ${pr.start} → ${pr.end}`}
@@ -1240,7 +1317,7 @@ function TaskBar({
   }
 
   return (
-    <div
+    <motion.div
       className="absolute"
       style={{
         left,
@@ -1248,26 +1325,46 @@ function TaskBar({
         width,
         height: BAR_HEIGHT,
       }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
     >
-      <div className="relative h-full rounded-md border border-[color:var(--neutral-300,#D1D5DB)] bg-white">
-        <div className={cn('absolute inset-0 rounded-md opacity-30', listColor)} />
-        <div className="absolute inset-0 flex items-center px-2">
-          <span className="text-[12px] text-foreground/90 truncate">{task.title}</span>
+      <div className="relative h-full rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 group">
+        <div className={cn('absolute inset-0 rounded-lg opacity-20', listColor)} />
+        <div className="absolute inset-0 flex items-center px-3">
+          <span className="text-[12px] font-medium text-gray-800 truncate">{task.title}</span>
         </div>
-        {/* resize handles */}
+        
+        {/* Modern resize handles */}
         <div
-          className="absolute left-0 top-0 h-full w-2 cursor-ew-resize"
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-blue-400 rounded-l-lg"
           onMouseDown={e => onDragStart('resize-start', e)}
           title="Resize start"
         />
         <div
-          className="absolute right-0 top-0 h-full w-2 cursor-ew-resize"
+          className="absolute right-0 top-0 h-full w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-blue-400 rounded-r-lg"
           onMouseDown={e => onDragStart('resize-end', e)}
           title="Resize end"
         />
-        <div className="absolute inset-0 cursor-move" onMouseDown={e => onDragStart('move', e)} title="Drag to move" />
+        
+        {/* Drag handle */}
+        <div 
+          className="absolute inset-0 cursor-move rounded-lg" 
+          onMouseDown={e => onDragStart('move', e)} 
+          title="Drag to move"
+        />
+        
+        {/* Priority indicator */}
+        <div className={cn(
+          "absolute top-1 right-1 w-2 h-2 rounded-full",
+          task.priority === 'high' ? 'bg-red-500' :
+          task.priority === 'medium' ? 'bg-yellow-500' :
+          task.priority === 'low' ? 'bg-green-500' : 'bg-gray-400'
+        )} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1290,37 +1387,49 @@ function DueDiamond({
   weekWidth: number;
   monthWidth: number;
 }) {
-  const size = 12;
+  const size = 14;
   const top = (ROW_HEIGHT - size) / 2;
 
   if (mode === 'day') {
     const idx = indexOfDate(dates, task.dueDate!);
     const center = idx * dayWidth + dayWidth / 2;
     return (
-      <div
-        className="absolute bg-[var(--clay-filled)]/80 rotate-45"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 2 }}
+      <motion.div
+        className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
+        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
         title={task.title}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        whileHover={{ scale: 1.1 }}
       />
     );
   } else if (mode === 'week') {
     const idx = weekIndexFromYMD(task.dueDate!, weeks);
     const center = idx * weekWidth + weekWidth / 2;
     return (
-      <div
-        className="absolute bg-[var(--clay-filled)]/80 rotate-45"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 2 }}
+      <motion.div
+        className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
+        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
         title={task.title}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        whileHover={{ scale: 1.1 }}
       />
     );
   } else {
     const idx = monthIndexFromYMD(task.dueDate!, months);
     const center = idx * monthWidth + monthWidth / 2;
     return (
-      <div
-        className="absolute bg-[var(--clay-filled)]/80 rotate-45"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 2 }}
+      <motion.div
+        className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
+        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
         title={task.title}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        whileHover={{ scale: 1.1 }}
       />
     );
   }
@@ -1373,15 +1482,24 @@ function ScheduleHint({
 
 /* Utilities */
 
-function phaseColorVar(phaseId: string) {
+function phaseColorVar(phaseId: string, colorClass?: string) {
+  // If colorClass is provided, extract the color from it
+  if (colorClass) {
+    const colorMatch = colorClass.match(/#[0-9A-Fa-f]{6}/);
+    if (colorMatch) {
+      return colorMatch[0];
+    }
+  }
+  
   const colorMap: Record<string, string> = {
     __unscheduled__: '#9CA3AF',
-    'phase-concept': '#8B5CF6',
-    'phase-design-dev': '#D97706',
-    'phase-technical': '#F97316',
-    'phase-review': '#F43F5E',
-    'phase-procurement': '#10B981',
-    'phase-site': '#64748B',
+    'phase-discovery': '#6B7280',
+    'phase-concept': '#C7654F',
+    'phase-dd': '#9CA3AF',
+    'phase-technical': '#3B82F6',
+    'phase-procurement': '#8B5CF6',
+    'phase-implementation': '#10B981',
+    'e06f2b59-6fac-4b47-b0e1-3a667efe37c0': '#9CA3AF', // Test Phase
   };
   const fallback = colorMap[phaseId] || '#CF7A5A';
   return `var(--phase-${phaseId}, ${fallback})`;
