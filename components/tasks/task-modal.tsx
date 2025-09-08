@@ -1,35 +1,18 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Command,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import * as React from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   CalendarIcon,
   Check,
@@ -56,52 +39,35 @@ import {
   Circle,
   Hammer,
   CheckCircle2,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { TypeChip } from "@/components/chip";
-import type {
-  ListColumn,
-  Phase,
-  TeamMember,
-  Task,
-  Subtask,
-  Priority,
-  Status,
-  Attachment,
-} from "@/components/tasks/types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import useProjects from "@/supabase/hook/useProject";
-import useUser from "@/supabase/hook/useUser";
-import {
-  addNewTask,
-  createNotification,
-  fetchProjects,
-  getAllFiles,
-  getUsers,
-  modifyTask,
-  uploadDoc,
-} from "@/supabase/API";
-import { toast } from "sonner";
-import DraggableSubtasks2 from "./DraggableSubtasks2";
-import { AnimatePresence, motion } from "framer-motion";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { TypeChip } from '@/components/chip';
+import type { ListColumn, Phase, TeamMember, Task, Subtask, Priority, Status, Attachment } from '@/components/tasks/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import useProjects from '@/supabase/hook/useProject';
+import useUser from '@/supabase/hook/useUser';
+import { addNewTask, createNotification, fetchProjects, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
+import { toast } from 'sonner';
+import DraggableSubtasks2 from './DraggableSubtasks2';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const initialTask: Task = {
-  name: "",
-  tag: "",
+  name: '',
+  tag: '',
   progress: 0,
-  dueDate: "",
+  dueDate: '',
   subtasks: [],
   attachments: [],
-  priority: "",
-  description: "",
-  status: "todo",
-  assignee: "",
-  phase: "initial",
-  projectID: "",
+  priority: '',
+  description: '',
+  status: 'todo',
+  assignee: '',
+  phase: 'initial',
+  projectID: '',
   comments: [],
   assigned: [],
   startTime: 0,
@@ -109,51 +75,51 @@ const initialTask: Task = {
   isActive: false,
   isPaused: false,
   totalWorkTime: 0,
-  note: "",
+  note: '',
 };
 
 const lists: (ListColumn & { icon: any; colorClass: string; id: string })[] = [
   {
-    id: "concept",
-    title: "Design Concepts",
+    id: 'concept',
+    title: 'Design Concepts',
     icon: Palette,
-    colorClass: "text-purple-600",
+    colorClass: 'text-purple-600',
   },
   {
-    id: "design-dev",
-    title: "Design Development",
+    id: 'design-dev',
+    title: 'Design Development',
     icon: CircleDot,
-    colorClass: "text-amber-600",
+    colorClass: 'text-amber-600',
   },
   {
-    id: "technical",
-    title: "Technical Drawings",
+    id: 'technical',
+    title: 'Technical Drawings',
     icon: FileText,
-    colorClass: "text-orange-600",
+    colorClass: 'text-orange-600',
   },
   {
-    id: "review",
-    title: "Client Review",
+    id: 'review',
+    title: 'Client Review',
     icon: Eye,
-    colorClass: "text-rose-600",
+    colorClass: 'text-rose-600',
   },
   {
-    id: "procurement",
-    title: "Procurement",
+    id: 'procurement',
+    title: 'Procurement',
     icon: Circle,
-    colorClass: "text-emerald-600",
+    colorClass: 'text-emerald-600',
   },
   {
-    id: "site",
-    title: "Site / Implementation",
+    id: 'site',
+    title: 'Site / Implementation',
     icon: Hammer,
-    colorClass: "text-slate-600",
+    colorClass: 'text-slate-600',
   },
   {
-    id: "complete",
-    title: "Complete",
+    id: 'complete',
+    title: 'Complete',
     icon: CheckCircle2,
-    colorClass: "text-gray-600",
+    colorClass: 'text-gray-600',
   },
 ];
 
@@ -166,31 +132,20 @@ type Props = {
   phases: Phase[];
   team: TeamMember[];
   defaultListId?: string;
-  taskToEdit?: (Omit<Task, "assigneeIds"> & { assignees?: string[] }) | null;
-  onSave: (payload: Omit<Task, "id"> & { id?: string }) => void;
+  taskToEdit?: (Omit<Task, 'assigneeIds'> & { assignees?: string[] }) | null;
+  onSave: (payload: Omit<Task, 'id'> & { id?: string }) => void;
 };
 
-export function TaskModal({
-  open,
-  onOpenChange,
-  projectId,
-  projectName,
-  team,
-  phase,
-  taskToEdit,
-  onSave,
-}: Props) {
+export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave }: Props) {
   // Core form state
-  const [taskValues, setTaskValues] = React.useState(
-    taskToEdit ? taskToEdit : initialTask
-  );
+  const [taskValues, setTaskValues] = React.useState(taskToEdit ? taskToEdit : initialTask);
   const [activeTab, setActiveTab] = React.useState(1);
-  const [subTaskText, setSubTaskText] = React.useState("");
+  const [subTaskText, setSubTaskText] = React.useState('');
   const [comment, setComment] = React.useState({
-    name: "",
-    value: "",
-    time: "",
-    profileImg: "",
+    name: '',
+    value: '',
+    time: '',
+    profileImg: '',
   });
 
   const queryClient = useQueryClient();
@@ -223,12 +178,12 @@ export function TaskModal({
 
   React.useEffect(() => {
     if (taskToEdit) {
-      setTaskValues((prevValues) => ({
+      setTaskValues(prevValues => ({
         ...prevValues,
         ...taskToEdit,
       }));
     } else if (!projectId) {
-      setTaskValues((prevValues) => ({
+      setTaskValues(prevValues => ({
         ...initialTask,
       }));
     }
@@ -236,14 +191,14 @@ export function TaskModal({
 
   React.useEffect(() => {
     if (projectId && phase) {
-      setTaskValues((prevValues) => ({
+      setTaskValues(prevValues => ({
         ...prevValues,
         projectID: projectId,
         phase,
       }));
       return;
     } else if (projectId) {
-      setTaskValues((prevValues) => ({
+      setTaskValues(prevValues => ({
         ...prevValues,
         projectID: projectId,
       }));
@@ -251,12 +206,10 @@ export function TaskModal({
   }, [projectId, phase]);
 
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(
-    taskToEdit?.subtasks?.length
-      ? taskToEdit.subtasks
-      : [{ id: crypto.randomUUID(), title: "", done: false }]
+    taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
   );
 
-  const handleCloseModal = (e) => {
+  const handleCloseModal = e => {
     onOpenChange(false);
     setTaskValues(initialTask);
     onOpenChange(false);
@@ -269,31 +222,31 @@ export function TaskModal({
     error,
     refetch,
   } = useQuery({
-    queryKey: ["users"],
+    queryKey: ['users'],
     queryFn: getUsers,
   });
 
   // Define the mutation
   const mutation = useMutation({
-    mutationFn: async (input) => {
+    mutationFn: async input => {
       if (taskToEdit || taskValues?.id) {
         return modifyTask(input);
       } else {
         return addNewTask(input);
       }
     },
-    onSuccess: (e) => {
-      toast.success("Task Updated");
+    onSuccess: e => {
+      toast.success('Task Updated');
       console.log(e);
-      setSubTaskText("");
-      setTaskValues((prev) => ({
+      setSubTaskText('');
+      setTaskValues(prev => ({
         ...prev,
         id: e?.[0]?.id,
       }));
-      queryClient.invalidateQueries(["tasks"]);
+      queryClient.invalidateQueries(['tasks']);
     },
-    onError: (e) => {
-      toast.error("Error! Try again");
+    onError: e => {
+      toast.error('Error! Try again');
     },
   });
 
@@ -306,25 +259,25 @@ export function TaskModal({
       setNotification(null);
     },
     onError: () => {
-      toast("Error! Try again");
+      toast('Error! Try again');
     },
   });
 
   // Task submit
   const handleSubmit = () => {
     if (taskValues?.name?.trim().length < 1) {
-      toast.error("Enter task name");
+      toast.error('Enter task name');
       return;
     }
     if (selectedMembers.length > 0 && taskToEdit) {
-      selectedMembers.map((item) => {
+      selectedMembers.map(item => {
         if (item.email == user?.email) {
           return;
         } else {
           const notification = {
             id: Date.now(),
-            link: "/my-task",
-            type: "task",
+            link: '/my-task',
+            type: 'task',
             itemID: taskToEdit?.id,
             title: `${taskValues.name}`,
             isRead: false,
@@ -337,14 +290,14 @@ export function TaskModal({
       });
     }
     if (mentionSub.length > 0) {
-      mentionSub.map((item) => {
+      mentionSub.map(item => {
         if (item.email == user.email) {
           return;
         } else {
           const notification = {
             id: Date.now(),
-            link: "/my-task",
-            type: "subtask",
+            link: '/my-task',
+            type: 'subtask',
             itemID: taskToEdit?.id,
             title: `${user.name}`,
             isRead: false,
@@ -380,16 +333,16 @@ export function TaskModal({
     const newComment = {
       ...comment,
       time: new Date().toLocaleString(),
-      name: user?.name || "Anonymous",
-      profileImg: user?.photoURL || "",
+      name: user?.name || 'Anonymous',
+      profileImg: user?.photoURL || '',
     };
 
     // Update notifications if mention exists
     if (mention) {
       const notification = {
         id: Date.now(),
-        link: "/my-task",
-        type: "comment",
+        link: '/my-task',
+        type: 'comment',
         itemID: taskValues?.id || taskValues?.id,
         title: taskValues?.name,
         isRead: false,
@@ -401,7 +354,7 @@ export function TaskModal({
     }
 
     // Update local task state
-    setTaskValues((prev) => ({
+    setTaskValues(prev => ({
       ...prev,
       comments: [...(prev.comments || []), newComment],
     }));
@@ -416,7 +369,7 @@ export function TaskModal({
     });
 
     // Clear input
-    setComment({ value: "", name: "", time: "", profileImg: "" });
+    setComment({ value: '', name: '', time: '', profileImg: '' });
   };
 
   // Update taskValues with the values from task
@@ -438,18 +391,16 @@ export function TaskModal({
   // }, [taskToEdit, projectId]);
 
   // Handle changes in the textarea
-  const handleCommentChanges = (e) => {
+  const handleCommentChanges = e => {
     const { value } = e.target;
-    setComment((prev) => ({ ...prev, value: value }));
-    if (value.includes("@")) {
+    setComment(prev => ({ ...prev, value: value }));
+    if (value.includes('@')) {
       const cursorPosition = e.target.selectionStart;
       const textBeforeCursor = value.slice(0, cursorPosition);
-      const lastAtSymbolIndex = textBeforeCursor.lastIndexOf("@");
+      const lastAtSymbolIndex = textBeforeCursor.lastIndexOf('@');
       if (lastAtSymbolIndex !== -1) {
         const searchText = textBeforeCursor.slice(lastAtSymbolIndex + 1);
-        const filtered = teamMembers.filter((user) =>
-          user.name.toLowerCase().includes(searchText.toLowerCase())
-        );
+        const filtered = teamMembers.filter(user => user.name.toLowerCase().includes(searchText.toLowerCase()));
         setFilteredUsers(filtered);
         setShowDropdown(true);
       } else {
@@ -461,17 +412,14 @@ export function TaskModal({
   };
 
   // Handle selecting a user from the dropdown
-  const handleSelectUser = (user) => {
+  const handleSelectUser = user => {
     const { value } = comment;
     const cursorPosition = textareaRef.current.selectionStart;
     const textBeforeCursor = value.slice(0, cursorPosition);
     const textAfterCursor = value.slice(cursorPosition);
-    const lastAtSymbolIndex = textBeforeCursor.lastIndexOf("@");
-    const newText =
-      textBeforeCursor.slice(0, lastAtSymbolIndex) +
-      `@${user.name}` +
-      textAfterCursor;
-    setComment((prev) => ({ ...prev, value: newText }));
+    const lastAtSymbolIndex = textBeforeCursor.lastIndexOf('@');
+    const newText = textBeforeCursor.slice(0, lastAtSymbolIndex) + `@${user.name}` + textAfterCursor;
+    setComment(prev => ({ ...prev, value: newText }));
     setShowDropdown(false);
     textareaRef.current.focus();
     const newCursorPosition = lastAtSymbolIndex + user.name.length + 1;
@@ -482,7 +430,7 @@ export function TaskModal({
   const draggableSubtasksRef = React.useRef(null);
   // create new Subtask
   const handleCreateSubTask = () => {
-    setTaskValues((prevTask) => ({
+    setTaskValues(prevTask => ({
       ...prevTask,
       subtasks: [
         ...prevTask.subtasks,
@@ -501,11 +449,9 @@ export function TaskModal({
 
   const handleModifySubTask = (e, id) => {
     const newText = e.target.value;
-    setTaskValues((prev) => ({
+    setTaskValues(prev => ({
       ...prev,
-      subtasks: prev.subtasks.map((subtask) =>
-        subtask.id === id ? { ...subtask, text: newText } : subtask
-      ),
+      subtasks: prev.subtasks.map(subtask => (subtask.id === id ? { ...subtask, text: newText } : subtask)),
     }));
   };
 
@@ -527,41 +473,35 @@ export function TaskModal({
   }, [isLoading, users]);
 
   const handleSubTaskSelect = (id: number) => {
-    const updatedSubTasks = taskValues?.subtasks?.map((item) =>
-      item?.id === id ? { ...item, selected: !item.selected } : item
-    );
-    setTaskValues((prevTask) => ({
+    const updatedSubTasks = taskValues?.subtasks?.map(item => (item?.id === id ? { ...item, selected: !item.selected } : item));
+    setTaskValues(prevTask => ({
       ...prevTask,
       subtasks: updatedSubTasks,
     }));
   };
 
-  const handleMemberSelect = (member) => {
+  const handleMemberSelect = member => {
     setSelectedMembers([...selectedMembers, member]);
-    setTeamMembers(teamMembers.filter((m) => m.email !== member.email));
-    setTaskValues((prev) => ({
+    setTeamMembers(teamMembers.filter(m => m.email !== member.email));
+    setTaskValues(prev => ({
       ...prev,
       assigned: prev.assigned ? [...prev.assigned, member] : [member],
     }));
     setIsOpen(false);
   };
 
-  const handleMemberRemove = (member) => {
-    setSelectedMembers((prev) => prev.filter((m) => m.email !== member.email));
-    setTeamMembers((prev) => [...prev, member]);
-    setTaskValues((prev) => ({
+  const handleMemberRemove = member => {
+    setSelectedMembers(prev => prev.filter(m => m.email !== member.email));
+    setTeamMembers(prev => [...prev, member]);
+    setTaskValues(prev => ({
       ...prev,
-      assigned: prev.assigned
-        ? prev.assigned.filter((m) => m.email !== member.email)
-        : [],
+      assigned: prev.assigned ? prev.assigned.filter(m => m.email !== member.email) : [],
     }));
   };
 
-  const updateTask = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const updateTask = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setTaskValues((prevTask) => {
+    setTaskValues(prevTask => {
       const newValues = {
         ...prevTask,
         [name]: value,
@@ -570,10 +510,10 @@ export function TaskModal({
     });
 
     // Check if the status is done , then also change the phase to complete
-    if (value == "done") {
-      setTaskValues((prevTask) => ({
+    if (value == 'done') {
+      setTaskValues(prevTask => ({
         ...prevTask,
-        phase: "complete-project",
+        phase: 'complete-project',
       }));
     }
   };
@@ -581,7 +521,7 @@ export function TaskModal({
   // Submit Task after enter name
   const handleSubmitOnBlur = () => {
     if (taskValues?.name.length < 1) {
-      toast.error("Enter Task Name");
+      toast.error('Enter Task Name');
       return;
     }
     mutation.mutate({ newTask: taskValues, user: user });
@@ -589,9 +529,9 @@ export function TaskModal({
 
   const handleDeleteSubTask = (e, id) => {
     e.stopPropagation();
-    setTaskValues((prevTask) => ({
+    setTaskValues(prevTask => ({
       ...prevTask,
-      subtasks: prevTask.subtasks.filter((subtask) => subtask.id !== id),
+      subtasks: prevTask.subtasks.filter(subtask => subtask.id !== id),
     }));
   };
 
@@ -600,21 +540,16 @@ export function TaskModal({
   const titleRef = React.useRef<HTMLInputElement>(null);
 
   // Cmd/Ctrl + Enter to save
-  const handleKeyDown = React.useCallback(
-    (e: React.KeyboardEvent<HTMLFormElement>) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-        e.preventDefault();
-        formRef.current?.requestSubmit();
-      }
-    },
-    []
-  );
+  const handleKeyDown = React.useCallback((e: React.KeyboardEvent<HTMLFormElement>) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      formRef.current?.requestSubmit();
+    }
+  }, []);
 
   function toggleAssignee(member: any) {
-    setTaskValues((prev) => {
-      const alreadyAssigned = prev.assigned.some(
-        (a: any) => a.id === member.id
-      );
+    setTaskValues(prev => {
+      const alreadyAssigned = prev.assigned.some((a: any) => a.id === member.id);
 
       return {
         ...prev,
@@ -640,11 +575,7 @@ export function TaskModal({
     }) => {
       return (
         <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
-          <div
-            className={cn(
-              "flex items-center gap-2 text-[13px] text-gray-600",
-              alignTop && "self-start pt-1"
-            )}>
+          <div className={cn('flex items-center gap-2 text-[13px] text-gray-600', alignTop && 'self-start pt-1')}>
             <span className="text-gray-500">{icon}</span>
             <span className="truncate">{label}</span>
           </div>
@@ -655,7 +586,7 @@ export function TaskModal({
   );
 
   function initialsOf(name: string): string {
-    if (!name) return "";
+    if (!name) return '';
 
     const parts = name.trim().split(/\s+/);
 
@@ -682,31 +613,23 @@ export function TaskModal({
                 variant="outline"
                 role="combobox"
                 aria-expanded={openPop}
-                className="w-full justify-between bg-white h-9 text-sm rounded-xl">
+                className="w-full justify-between bg-white h-9 text-sm rounded-xl"
+              >
                 <span className="flex items-center gap-2 overflow-hidden">
                   {selected?.length > 0 ? (
                     <>
                       <div className="flex -space-x-2">
-                        {selected.slice(0, 4).map((m) => (
-                          <Avatar
-                            key={m.id}
-                            className="h-6 w-6 ring-2 ring-white">
+                        {selected.slice(0, 4).map(m => (
+                          <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
                             {/* @ts-ignore optional avatarUrl */}
-                            <AvatarImage
-                              src={(m as any).avatarUrl || ""}
-                              alt={m.name}
-                            />
-                            <AvatarFallback className="text-[10px]">
-                              {initialsOf(m?.name)}
-                            </AvatarFallback>
+                            <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                         ))}
                       </div>
                       <span className="truncate text-sm text-gray-600">
                         {selected.length} selected
-                        {selected.length > 4
-                          ? " +" + (selected.length - 4)
-                          : ""}
+                        {selected.length > 4 ? ' +' + (selected.length - 4) : ''}
                       </span>
                     </>
                   ) : (
@@ -718,9 +641,7 @@ export function TaskModal({
                 </span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent
-              className="p-0 w-[360px] rounded-xl border border-gray-200 shadow-md"
-              align="start">
+            <PopoverContent className="p-0 w-[360px] rounded-xl border border-gray-200 shadow-md" align="start">
               <Command>
                 <CommandInput
                   placeholder="Search teammates…"
@@ -729,30 +650,21 @@ export function TaskModal({
                 <CommandEmpty>No people found.</CommandEmpty>
                 <CommandList className="max-h-64">
                   <CommandGroup>
-                    {users?.data?.map((m) => {
-                      const checked = taskValues?.assigned?.some(
-                        (a) => a.id === m.id
-                      );
+                    {users?.data?.map(m => {
+                      const checked = taskValues?.assigned?.some(a => a.id === m.id);
                       return (
-                        <CommandItem
-                          key={m.id}
-                          value={m.name}
-                          className="flex items-center gap-2">
+                        <CommandItem key={m.id} value={m.name} className="flex items-center gap-2">
                           <Checkbox
                             checked={checked}
                             onCheckedChange={() => toggleAssignee(m)}
                             className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                           />
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={m.avatarUrl || ""} alt={m.name} />
-                            <AvatarFallback className="text-[10px]">
-                              {initialsOf(m?.name)}
-                            </AvatarFallback>
+                            <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                            <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                           <span className="truncate">{m.name}</span>
-                          {taskValues?.assigned?.some((a) => a.id === m.id) && (
-                            <Check className="ml-auto h-4 w-4 text-gray-500" />
-                          )}
+                          {taskValues?.assigned?.some(a => a.id === m.id) && <Check className="ml-auto h-4 w-4 text-gray-500" />}
                         </CommandItem>
                       );
                     })}
@@ -767,11 +679,12 @@ export function TaskModal({
               variant="ghost"
               size="sm"
               onClick={() =>
-                setTaskValues((prev) => ({
+                setTaskValues(prev => ({
                   ...prev,
                   assigned: [],
                 }))
-              }>
+              }
+            >
               Clear
             </Button>
           )}
@@ -779,13 +692,9 @@ export function TaskModal({
 
         {taskValues?.assigned?.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {taskValues?.assigned?.map((m) => (
+            {taskValues?.assigned?.map(m => (
               <span onClick={() => toggleAssignee(m)}>
-                <TypeChip
-                  key={m.id}
-                  label={m.name}
-                  className="cursor-pointer"
-                />
+                <TypeChip key={m.id} label={m.name} className="cursor-pointer" />
               </span>
             ))}
           </div>
@@ -797,21 +706,19 @@ export function TaskModal({
   function handleAddComment() {
     const body = newComment.trim();
     if (!body) return;
-    const me =
-      team.find((t) => t.id === assignees[0]) ??
-      ({ id: "me", name: "You" } as TeamMember);
+    const me = team.find(t => t.id === assignees[0]) ?? ({ id: 'me', name: 'You' } as TeamMember);
     const c: Comment = {
       id: crypto.randomUUID(),
-      author: { id: me.id, name: (me as any).name || "You" },
+      author: { id: me.id, name: (me as any).name || 'You' },
       body,
       createdAt: Date.now(),
     };
-    setComments((prev) => [c, ...prev]);
-    setNewComment("");
-    setActivity((prev) => [
+    setComments(prev => [c, ...prev]);
+    setNewComment('');
+    setActivity(prev => [
       {
         id: crypto.randomUUID(),
-        text: "Added a comment",
+        text: 'Added a comment',
         createdAt: Date.now(),
       },
       ...prev,
@@ -819,7 +726,7 @@ export function TaskModal({
   }
 
   // handle Task Save
-  const handleSave = (e) => {
+  const handleSave = e => {
     e.preventDefault();
     handleClickSave();
   };
@@ -833,7 +740,7 @@ export function TaskModal({
     error: attachentError,
     refetch: attachentRefetch,
   } = useQuery({
-    queryKey: ["GetAllFiles", taskValues?.id],
+    queryKey: ['GetAllFiles', taskValues?.id],
     queryFn: () => getAllFiles(taskValues?.id),
     enabled: !!taskValues?.id,
   });
@@ -842,26 +749,26 @@ export function TaskModal({
   const attachmentMutation = useMutation({
     mutationFn: uploadDoc,
     onMutate: () => {
-      toast.loading("Uploading...", { id: "upload-toast" });
+      toast.loading('Uploading...', { id: 'upload-toast' });
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       // queryClient.invalidateQueries(['tasks']);
       attachentRefetch();
-      toast.dismiss("upload-toast");
+      toast.dismiss('upload-toast');
       toast.success(`Uploaded successfully!`);
     },
     onError: () => {
-      toast.dismiss("upload-toast");
-      toast.error("Failed to upload document.");
+      toast.dismiss('upload-toast');
+      toast.error('Failed to upload document.');
     },
   });
 
-  const handleFileChange = (event) => {
+  const handleFileChange = event => {
     const selectedFile = event.target.files[0];
     if (selectedFile) {
       if (selectedFile.size > MAX_FILE_SIZE) {
         setFile(null);
-        toast("File size must be less than 5MB!");
+        toast('File size must be less than 5MB!');
       } else {
         setFile(selectedFile);
         attachmentMutation.mutate({
@@ -879,21 +786,21 @@ export function TaskModal({
   //   fileInputRef.current.click();
   // };
 
-  console.log(taskValues);
-
   return (
-    <Sheet open={open} onOpenChange={(e) => handleCloseModal(e)}>
+    <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
       {/* Single rounded grey surface with balanced padding (28px top/side) */}
       <SheetContent
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        onOpenAutoFocus={e => e.preventDefault()}
         side="right"
-        className="v0-task-sheet w-full sm:max-w-[700px] md:max-w-[720px] h-full px-8 md:px-9 pt-10 md:pt-10 pb-0 bg-gray-50 rounded-2xl shadow-xl flex flex-col overflow-hidden">
+        className="v0-task-sheet w-full sm:max-w-[700px] md:max-w-[720px] h-full px-8 md:px-9 pt-10 md:pt-10 pb-0 bg-gray-50 rounded-2xl shadow-xl flex flex-col overflow-hidden"
+      >
         <form
           ref={formRef}
-          onSubmit={(e) => handleSave(e)}
+          onSubmit={e => handleSave(e)}
           onKeyDown={handleKeyDown}
           className="flex-1 pt-5 overflow-auto thin-scrollbar pr-2 overscroll-contain pb-20"
-          aria-label="Task form">
+          aria-label="Task form"
+        >
           {/* Title row */}
           <div className="pb-6">
             <div className="grid grid-cols-[160px_1fr] gap-4 items-center">
@@ -910,10 +817,8 @@ export function TaskModal({
                 autoFocus={false}
                 placeholder="Add task name..."
                 className={cn(
-                  "bg-white h-10 text-[16px] md:text-[17px] font-medium rounded-xl",
-                  !taskValues.name.trim() &&
-                    touched &&
-                    "border-red-300 focus-visible:ring-red-200"
+                  'bg-white h-10 text-[16px] md:text-[17px] font-medium rounded-xl',
+                  !taskValues.name.trim() && touched && 'border-red-300 focus-visible:ring-red-200'
                 )}
                 aria-invalid={!taskValues.name.trim() && touched}
               />
@@ -924,16 +829,17 @@ export function TaskModal({
           <div className="space-y-4">
             <Labeled icon={<Folder className="h-4 w-4" />} label="Project">
               <Select
-                value={taskValues?.projectID || projectId || ""}
-                onValueChange={(value) => {
+                value={taskValues?.projectID || projectId || ''}
+                onValueChange={value => {
                   const e = {
                     target: {
-                      name: "projectID",
+                      name: 'projectID',
                       value: value,
                     },
                   };
                   updateTask(e);
-                }}>
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="Select Project" />
                 </SelectTrigger>
@@ -945,19 +851,19 @@ export function TaskModal({
                   )}
                   {projectId
                     ? data
-                        ?.filter((item) => item.id == projectId)
-                        .map((item) => (
+                        ?.filter(item => item.id == projectId)
+                        .map(item => (
                           <SelectItem key={item.id} value={item?.id}>
                             {item.name}
                           </SelectItem>
                         ))
                     : data
-                    ? data?.map((item) => (
+                    ? data?.map(item => (
                         <SelectItem key={item.id} value={item?.id}>
                           {item.name}
                         </SelectItem>
                       ))
-                    : data?.map((item) => (
+                    : data?.map(item => (
                         <SelectItem key={item.id} value={item?.id}>
                           {item.name}
                         </SelectItem>
@@ -973,34 +879,30 @@ export function TaskModal({
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}>
-                  <Labeled
-                    icon={<GitBranch className="h-4 w-4" />}
-                    label="Phase">
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                >
+                  <Labeled icon={<GitBranch className="h-4 w-4" />} label="Phase">
                     <Select
-                      value={taskValues?.phase || ""}
-                      onValueChange={(value) => {
-                        console.log(
-                          data?.find((item) => item.id == taskValues?.projectID)
-                        );
+                      value={taskValues?.phase || ''}
+                      onValueChange={value => {
+                        console.log(data?.find(item => item.id == taskValues?.projectID));
                         const e = {
                           target: {
-                            name: "phase",
+                            name: 'phase',
                             value,
                           },
                         };
                         updateTask(e);
-                      }}>
+                      }}
+                    >
                       <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                         <SelectValue placeholder="No phase" />
                       </SelectTrigger>
                       <SelectContent>
                         {data
-                          ?.find((item) => item.id == taskValues?.projectID)
-                          ?.phases?.map((selectItem) => (
-                            <SelectItem value={selectItem?.id}>
-                              {selectItem?.name}
-                            </SelectItem>
+                          ?.find(item => item.id == taskValues?.projectID)
+                          ?.phases?.map(selectItem => (
+                            <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
                           ))}
                       </SelectContent>
                     </Select>
@@ -1011,16 +913,17 @@ export function TaskModal({
 
             <Labeled icon={<CircleDot className="h-4 w-4" />} label="Status">
               <Select
-                value={taskValues?.status || ""}
-                onValueChange={(value) => {
+                value={taskValues?.status || ''}
+                onValueChange={value => {
                   const e = {
                     target: {
-                      name: "status",
+                      name: 'status',
                       value: value,
                     },
                   };
                   updateTask(e);
-                }}>
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -1035,16 +938,17 @@ export function TaskModal({
 
             <Labeled icon={<Flag className="h-4 w-4" />} label="Priority">
               <Select
-                value={taskValues?.priority || ""}
-                onValueChange={(value) => {
+                value={taskValues?.priority || ''}
+                onValueChange={value => {
                   const e = {
                     target: {
-                      name: "priority",
+                      name: 'priority',
                       value: value,
                     },
                   };
                   updateTask(e);
-                }}>
+                }}
+              >
                 <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
@@ -1056,9 +960,7 @@ export function TaskModal({
               </Select>
             </Labeled>
 
-            <Labeled
-              icon={<CalendarIcon className="h-4 w-4" />}
-              label="Start Date">
+            <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Start Date">
               <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -1066,29 +968,22 @@ export function TaskModal({
                       type="button"
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                        !taskValues?.startDate && "text-muted-foreground"
-                      )}>
+                        'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                        !taskValues?.startDate && 'text-muted-foreground'
+                      )}
+                    >
                       <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                      {taskValues?.startDate
-                        ? format(toDateFromYMD(taskValues?.startDate), "PPP")
-                        : "Pick start date"}
+                      {taskValues?.startDate ? format(toDateFromYMD(taskValues?.startDate), 'PPP') : 'Pick start date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent
-                    className="p-0 rounded-xl border border-gray-200 shadow-md"
-                    align="start">
+                  <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                     <Calendar
                       mode="single"
-                      selected={
-                        taskValues?.startDate
-                          ? toDateFromYMD(taskValues?.startDate)
-                          : null
-                      }
-                      onSelect={(d) =>
-                        setTaskValues((prev) => ({
+                      selected={taskValues?.startDate ? toDateFromYMD(taskValues?.startDate) : null}
+                      onSelect={d =>
+                        setTaskValues(prev => ({
                           ...prev,
-                          startDate: d ? format(d, "yyyy-MM-dd") : undefined,
+                          startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                         }))
                       }
                       initialFocus
@@ -1097,22 +992,14 @@ export function TaskModal({
                   </PopoverContent>
                 </Popover>
                 {taskValues?.startDate && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setTaskValues((prev) => ({ ...prev, startDate: null }))
-                    }>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, startDate: null }))}>
                     Clear
                   </Button>
                 )}
               </div>
             </Labeled>
 
-            <Labeled
-              icon={<CalendarIcon className="h-4 w-4" />}
-              label="Due Date">
+            <Labeled icon={<CalendarIcon className="h-4 w-4" />} label="Due Date">
               <div className="grid grid-cols-1 sm:grid-cols-1 gap-2.5">
                 <div className="flex items-center gap-2">
                   <Popover>
@@ -1121,29 +1008,22 @@ export function TaskModal({
                         type="button"
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                          !taskValues?.dueDate && "text-muted-foreground"
-                        )}>
+                          'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                          !taskValues?.dueDate && 'text-muted-foreground'
+                        )}
+                      >
                         <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
-                        {taskValues?.dueDate
-                          ? format(toDateFromYMD(taskValues?.dueDate), "PPP")
-                          : "Pick due date"}
+                        {taskValues?.dueDate ? format(toDateFromYMD(taskValues?.dueDate), 'PPP') : 'Pick due date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent
-                      className="p-0 rounded-xl border border-gray-200 shadow-md"
-                      align="start">
+                    <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                       <Calendar
                         mode="single"
-                        selected={
-                          taskValues?.dueDate
-                            ? toDateFromYMD(taskValues?.dueDate)
-                            : undefined
-                        }
-                        onSelect={(d) =>
-                          setTaskValues((prev) => ({
+                        selected={taskValues?.dueDate ? toDateFromYMD(taskValues?.dueDate) : undefined}
+                        onSelect={d =>
+                          setTaskValues(prev => ({
                             ...prev,
-                            dueDate: d ? format(d, "yyyy-MM-dd") : undefined,
+                            dueDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                           }))
                         }
                         initialFocus
@@ -1151,13 +1031,7 @@ export function TaskModal({
                     </PopoverContent>
                   </Popover>
                   {taskValues?.dueDate && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setTaskValues((prev) => ({ ...prev, dueDate: null }))
-                      }>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setTaskValues(prev => ({ ...prev, dueDate: null }))}>
                       Clear
                     </Button>
                   )}
@@ -1247,9 +1121,9 @@ export function TaskModal({
                   id="description"
                   name="description"
                   rows={5}
-                  value={taskValues?.description || ""}
-                  onChange={(e) => {
-                    setTaskValues((prev) => ({
+                  value={taskValues?.description || ''}
+                  onChange={e => {
+                    setTaskValues(prev => ({
                       ...prev,
                       description: e.target.value,
                     }));
@@ -1259,21 +1133,12 @@ export function TaskModal({
               </div>
             </div>
 
-            <Labeled
-              icon={<Paperclip className="h-4 w-4" />}
-              label="Attachment"
-              alignTop>
+            <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
               <div className="space-y-2">
-                <Input
-                  id="files"
-                  type="file"
-                  multiple
-                  onChange={handleFileChange}
-                  className="bg-white h-9 text-sm rounded-xl"
-                />
+                <Input id="files" type="file" multiple onChange={handleFileChange} className="bg-white h-9 text-sm rounded-xl" />
                 {files?.data?.length > 0 && (
                   <ul className="text-xs text-gray-600 list-disc pl-5">
-                    {files?.data?.map((a) => (
+                    {files?.data?.map(a => (
                       <li key={a.name + a.size}>
                         {a.name} ({Math.round(a.size / 1024)} KB)
                       </li>
@@ -1283,10 +1148,7 @@ export function TaskModal({
               </div>
             </Labeled>
 
-            <Labeled
-              icon={<ListTodo className="h-4 w-4" />}
-              label="Sub Tasks"
-              alignTop>
+            <Labeled icon={<ListTodo className="h-4 w-4" />} label="Sub Tasks" alignTop>
               {/* <div className="space-y-2">
                 {subtasks.map((s, idx) => (
                   <div
@@ -1353,12 +1215,14 @@ export function TaskModal({
                 <TabsList className="bg-gray-200/60 rounded-full p-1 h-10">
                   <TabsTrigger
                     value="comments"
-                    className="rounded-full h-8 px-4 text-sm font-medium text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
+                    className="rounded-full h-8 px-4 text-sm font-medium text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                  >
                     Comments
                   </TabsTrigger>
                   <TabsTrigger
                     value="activity"
-                    className="rounded-full h-8 px-4 text-sm font-medium text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm">
+                    className="rounded-full h-8 px-4 text-sm font-medium text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                  >
                     Activity
                   </TabsTrigger>
                 </TabsList>
@@ -1380,13 +1244,15 @@ export function TaskModal({
                     {showDropdown && (
                       <div
                         ref={mentionRef}
-                        className="absolute w-[300px] max-h-[230px] overflow-auto bg-white z-[9999] top-[20%] left-[40%] border border-gray-200 shadow-lg rounded-lg mt-2">
+                        className="absolute w-[300px] max-h-[230px] overflow-auto bg-white z-[9999] top-[20%] left-[40%] border border-gray-200 shadow-lg rounded-lg mt-2"
+                      >
                         <ul>
-                          {filteredUsers.map((user) => (
+                          {filteredUsers.map(user => (
                             <li
                               key={user.id}
                               className="py-2 text-sm px-4 hover:bg-gray-100 cursor-pointer"
-                              onClick={() => handleSelectUser(user)}>
+                              onClick={() => handleSelectUser(user)}
+                            >
                               {user.name}
                             </li>
                           ))}
@@ -1395,44 +1261,29 @@ export function TaskModal({
                     )}
 
                     <div className="flex justify-between items-center mt-2">
-                      <button
-                        onClick={handleCommentSubmit}
-                        type="button"
-                        className="py-2 mt-3 px-4 bg-[#17181B] rounded-lg text-white">
+                      <button onClick={handleCommentSubmit} type="button" className="py-2 mt-3 px-4 bg-[#17181B] rounded-lg text-white">
                         Comment
                       </button>
 
-                      <div className="flex items-center gap-1">
-                        {/* Your additional buttons/icons here */}
-                      </div>
+                      <div className="flex items-center gap-1">{/* Your additional buttons/icons here */}</div>
                     </div>
                   </form>
                 </div>
 
                 {taskValues?.comments?.length > 0 && (
                   <ul className="mt-4 space-y-3">
-                    {taskValues?.comments?.map((c) => (
-                      <li
-                        key={c.id}
-                        className="rounded-xl border border-gray-200 bg-white p-4">
+                    {taskValues?.comments?.map(c => (
+                      <li key={c.id} className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className="text-[10px]">
-                              {initialsOf(c?.name)}
-                            </AvatarFallback>
+                            <AvatarFallback className="text-[10px]">{initialsOf(c?.name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 text-sm">
-                              <span className="font-medium text-gray-900">
-                                {c?.name}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {c?.time}
-                              </span>
+                              <span className="font-medium text-gray-900">{c?.name}</span>
+                              <span className="text-xs text-gray-500">{c?.time}</span>
                             </div>
-                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">
-                              {c?.value}
-                            </p>
+                            <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap">{c?.value}</p>
                           </div>
                         </div>
                       </li>
@@ -1463,25 +1314,22 @@ export function TaskModal({
         {/* Sticky footer dock with aligned actions */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
           <div className="h-16 px-7 md:px-7 flex items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10"
-              onClick={handleCloseModal}>
+            <Button type="button" variant="ghost" className="h-10" onClick={handleCloseModal}>
               Cancel
             </Button>
             <Button
               type="button"
               className="h-10 bg-gray-900 text-white hover:bg-gray-800"
-              onClick={() => formRef.current?.requestSubmit()}>
-              Save <span className="ml-2 text-xs opacity-70">{"⌘⏎"}</span>
+              onClick={() => formRef.current?.requestSubmit()}
+            >
+              Save <span className="ml-2 text-xs opacity-70">{'⌘⏎'}</span>
             </Button>
           </div>
         </div>
 
         {/* Scoped styles: neutral focus ring, rounded overlays, subtle scrollbar, close button inset */}
         <style jsx global>{`
-          .v0-task-sheet > button[aria-label="Close"] {
+          .v0-task-sheet > button[aria-label='Close'] {
             top: 22px !important;
             right: 18px !important;
           }
@@ -1506,15 +1354,7 @@ export function TaskModal({
           .v0-task-sheet {
             --ring: 0 0% 65%;
           }
-          .v0-task-sheet
-            :is(
-              input,
-              textarea,
-              select,
-              button,
-              [role="combobox"],
-              .cmdk-input
-            ):focus {
+          .v0-task-sheet :is(input, textarea, select, button, [role='combobox'], .cmdk-input):focus {
             outline: none !important;
           }
           .v0-task-sheet .cmdk-input:focus-visible {
@@ -1540,6 +1380,6 @@ export function TaskModal({
 }
 
 function toDateFromYMD(ymd: string) {
-  const [y, m, d] = ymd.split("-").map(Number);
+  const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
