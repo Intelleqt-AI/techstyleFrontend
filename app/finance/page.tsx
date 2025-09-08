@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/chip';
 import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
-import { fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
+import { deleteInvoices, deletePurchaseOrder, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
@@ -17,117 +17,8 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const gbp = new Intl.NumberFormat('en-GB', {
-  style: 'currency',
-  currency: 'GBP',
-});
-
-const financeStats = [
-  {
-    title: 'Total Invoices',
-    value: '£425,000',
-    subtitle: '24 Invoices',
-    icon: FileText,
-  },
-  {
-    title: 'Total Purchase Orders',
-    value: '£128,500',
-    subtitle: '18 Purchase Orders',
-    icon: ShoppingCart,
-  },
-];
-
-const studioFinanceData = [
-  {
-    id: 1,
-    number: 'INV-001',
-    supplier: 'Smith Family',
-    type: 'Invoice',
-    project: 'Luxury Penthouse',
-    dateIssued: '2024-11-01',
-    dueDate: '2024-12-01',
-    amount: '£25,000.00',
-    status: 'paid',
-  },
-  {
-    id: 2,
-    number: 'PO-002',
-    supplier: 'West Elm',
-    type: 'Purchase Order',
-    project: 'Modern Office',
-    dateIssued: '2024-11-03',
-    dueDate: '2024-11-17',
-    amount: '£2,450.00',
-    status: 'approved',
-  },
-  {
-    id: 3,
-    number: 'INV-003',
-    supplier: 'TechCorp Inc.',
-    type: 'Invoice',
-    project: 'Modern Office',
-    dateIssued: '2024-11-03',
-    dueDate: '2024-12-03',
-    amount: '£15,000.00',
-    status: 'pending',
-  },
-  {
-    id: 4,
-    number: 'PO-004',
-    supplier: 'John Lewis',
-    type: 'Purchase Order',
-    project: 'Boutique Hotel',
-    dateIssued: '2024-10-28',
-    dueDate: '2024-11-11',
-    amount: '£1,890.00',
-    status: 'approved',
-  },
-  {
-    id: 5,
-    number: 'INV-005',
-    supplier: 'Grandeur Hotels',
-    type: 'Invoice',
-    project: 'Boutique Hotel',
-    dateIssued: '2024-10-25',
-    dueDate: '2024-11-25',
-    amount: '£8,500.00',
-    status: 'overdue',
-  },
-  {
-    id: 6,
-    number: 'INV-006',
-    supplier: 'Johnson Family',
-    type: 'Invoice',
-    project: 'Kitchen Remodel',
-    dateIssued: '2024-11-05',
-    dueDate: '2024-12-05',
-    amount: '£12,000.00',
-    status: 'draft',
-  },
-  {
-    id: 7,
-    number: 'PO-007',
-    supplier: 'Habitat',
-    type: 'Purchase Order',
-    project: 'Luxury Penthouse',
-    dateIssued: '2024-11-02',
-    dueDate: '2024-11-16',
-    amount: '£3,200.00',
-    status: 'pending',
-  },
-  {
-    id: 8,
-    number: 'INV-008',
-    supplier: 'Design Studio Ltd',
-    type: 'Invoice',
-    project: 'Corporate Headquarters',
-    dateIssued: '2024-11-04',
-    dueDate: '2024-12-04',
-    amount: '£18,750.00',
-    status: 'paid',
-  },
-];
+import { DeleteDialog } from '@/components/DeleteDialog';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function FinancePage() {
   const [purchaseOrder, setPurchaseOrder] = useState([]);
@@ -135,7 +26,10 @@ export default function FinancePage() {
   const [checkedItems, setCheckedItems] = useState([]);
   const [buttonLoadingPO, setButtonLoadingPO] = useState(false);
   const [customLoading, setCustomLoading] = useState(false);
-  // const navigate = useNavigate()
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedPo, setSelectedPo] = useState(null);
+  const [isPo, setIsPo] = useState(null);
+  const { currency, isLoading: currencyLoading } = useCurrency();
 
   const { data: project } = useQuery({
     queryKey: [`projectOnly`],
@@ -360,7 +254,7 @@ export default function FinancePage() {
   const financeStats = [
     {
       title: 'Total Invoices',
-      value: gbp.format((totalInvoiceOrder || 0) + (xeroTotal || 0)),
+      value: `${!currencyLoading && (currency?.symbol || '£')}${totalInvoiceOrder || 0 + xeroTotal || 0}`,
       subtitle: `${(invoices?.length || 0) + (xeroInvoices?.length || 0)} ${
         (invoices?.length || 0) + (xeroInvoices?.length || 0) === 1 ? 'Invoice' : 'Invoices'
       } (${xeroInvoices?.length || 0} from Xero)`,
@@ -369,7 +263,7 @@ export default function FinancePage() {
 
     {
       title: 'Total Purchase Orders',
-      value: gbp.format(totalPurchaseOrder),
+      value: `${!currencyLoading && (currency?.symbol || '£')}${totalPurchaseOrder || 0}`,
       subtitle: `${purchaseOrder?.length} ${purchaseOrder?.length === 1 ? 'Purchase Order' : 'Purchase Orders'}`,
       icon: ShoppingCart,
     },
@@ -387,6 +281,41 @@ export default function FinancePage() {
         return 'bg-[#C5E7D9] text-green-900';
       default:
         return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const deletePO = useMutation({
+    mutationFn: deletePurchaseOrder,
+    onSuccess: () => {
+      toast.success('PO Deleted');
+      handleRefetch();
+    },
+    onError: error => {
+      toast.error(error);
+    },
+  });
+
+  const deleteInvoice = useMutation({
+    mutationFn: deleteInvoices,
+    onSuccess: () => {
+      toast.success('Invoice Deleted');
+      handleRefetch();
+    },
+    onError: error => {
+      toast.error(error);
+    },
+  });
+
+  const openDeleteModal = po => {
+    setIsDeleteOpen(true);
+    setSelectedPo(po);
+  };
+
+  const handleDelete = (id, tag) => {
+    if (tag == 'po') {
+      deletePO.mutate({ orderID: id });
+    } else {
+      deleteInvoice.mutate({ id });
     }
   };
 
@@ -541,7 +470,7 @@ export default function FinancePage() {
                           {po?.dueDate ? new Date(po.dueDate).toLocaleDateString('en-GB') : '-'}
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {/* {project?.currency?.symbol ? project?.currency?.symbol : '£'} */}£
+                          {!currencyLoading && (currency?.symbol || '£')}
                           {(
                             po?.products?.reduce((total, product) => {
                               return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
@@ -584,6 +513,7 @@ export default function FinancePage() {
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDeleteModal(po, 'po')}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -615,7 +545,7 @@ export default function FinancePage() {
                           {inv?.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '-'}
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {/* {project?.currency?.symbol ? project?.currency?.symbol : '£'} */}£
+                          {!currencyLoading && (currency?.symbol || '£')}
                           {Number(
                             (
                               (inv?.products?.reduce((total, product) => {
@@ -659,6 +589,7 @@ export default function FinancePage() {
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDeleteModal(inv, 'inv')}>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -747,6 +678,16 @@ export default function FinancePage() {
           )} */}
         </div>
       </div>
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedPo?.id)}
+        title="Delete PO/IN?"
+        description="Are you sure you want to delete this? This action cannot be undone."
+        itemName={selectedPo?.poNumber}
+        requireConfirmation={false} // 👈 disables the typing step
+      />
     </div>
   );
 }

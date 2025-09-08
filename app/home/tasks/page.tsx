@@ -17,17 +17,20 @@ import {
   MoreHorizontal,
   Clock,
   CircleX,
+  Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TypeChip, StatusBadge } from '@/components/chip';
 import useTask from '@/supabase/hook/useTask';
-import { fetchOnlyProject, fetchProjects, modifyTask } from '@/supabase/API';
+import { deleteTask, fetchOnlyProject, fetchProjects, modifyTask } from '@/supabase/API';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useUser from '@/supabase/hook/useUser';
 import { toast } from 'sonner';
 import { TaskModal } from '@/components/tasks/task-modal';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DeleteDialog } from '@/components/DeleteDialog';
+import { Circle as AnimateCircle, CircleFilled, Ellipsis, Spinner } from '@/components/Delete Animation/DeletionAnimations';
 
 const updatetaskList = data => {
   return [
@@ -77,6 +80,9 @@ export default function MyTasksPage() {
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [modalOpen, setModalOpen] = React.useState(false);
   const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+
   const { user } = useUser();
   function openNewTask(listId?: string) {
     setEditing(null);
@@ -188,9 +194,24 @@ export default function MyTasksPage() {
 
   // CRM-style stat cards
   const dataCards: DataCardItem[] = [
-    { title: 'Total Tasks', value: myTask?.length, subtitle: 'Across all assigned projects', icon: Hash },
-    { title: 'Overdue Tasks', value: overDueTask?.length, subtitle: 'Past due dates', icon: AlertTriangle },
-    { title: 'Task Added Today', value: todayCreatedTask?.length, subtitle: 'Created today', icon: CalendarIcon },
+    {
+      title: 'Total Tasks',
+      value: myTask?.length,
+      subtitle: 'Across all assigned projects',
+      icon: Hash,
+    },
+    {
+      title: 'Overdue Tasks',
+      value: overDueTask?.length,
+      subtitle: 'Past due dates',
+      icon: AlertTriangle,
+    },
+    {
+      title: 'Task Added Today',
+      value: todayCreatedTask?.length,
+      subtitle: 'Created today',
+      icon: CalendarIcon,
+    },
     {
       title: 'Active Projects',
       value: admins.some(item => item == user?.email) ? project?.length : assignedProjectCount,
@@ -282,6 +303,82 @@ export default function MyTasksPage() {
     }
     // Update to DB
     mutate({ newTask: modifyInfo });
+  };
+
+  const {
+    mutate: removeTask,
+    isLoading: isDeleting,
+    error: deleteError2,
+  } = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tasks']);
+      toast.success('Task Deleted', {
+        duration: 1000,
+        dismissible: true,
+      });
+      setIsDeleteOpen(false);
+    },
+  });
+
+  const openDeleteModal = task => {
+    setIsDeleteOpen(true);
+    setSelectedTask(task);
+  };
+
+  const handleDeleteTimer = id => {
+    setTimeout(() => {
+      let secondsLeft = 5;
+      let timer, updateInterval;
+      const createToastContent = seconds => (
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <CircleFilled />
+            <div>
+              <div className="font-sm">Deleting Task...</div>
+              <div className="text-xs opacity-70">{seconds}s remaining</div>
+            </div>
+          </div>
+          {/* Undo button inside content */}
+          <button
+            onClick={() => {
+              clearTimeout(timer);
+              clearInterval(updateInterval);
+              toast.dismiss(t);
+              toast.success('Deletion cancelled');
+            }}
+            className="px-3 py-1 text-sm bg-black text-white rounded  transition-colors ml-4"
+          >
+            Cancel
+          </button>
+        </div>
+      );
+
+      const t = toast.warning(createToastContent(secondsLeft), {
+        duration: Infinity,
+      });
+
+      // Update toast content every second
+      updateInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          toast.warning(createToastContent(secondsLeft), {
+            id: t,
+            duration: Infinity,
+          });
+        }
+      }, 1000);
+
+      timer = setTimeout(() => {
+        removeTask(id);
+        clearInterval(updateInterval);
+        toast.dismiss(t);
+      }, 5000);
+    }, 100);
+  };
+
+  const handleDelete = id => {
+    handleDeleteTimer(id);
   };
 
   return (
@@ -382,7 +479,20 @@ export default function MyTasksPage() {
                         {task?.subtasks?.filter(subtask => subtask.selected === true).length}/{task?.subtasks?.length}
                       </span>
                       <div className="flex items-center gap-1">
-                        {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
+                        <div className="flex items-center gap-1">
+                          {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              openDeleteModal(task);
+                            }}
+                            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-gray-400  hover:text-red-600 transition"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -419,6 +529,17 @@ export default function MyTasksPage() {
         taskToEdit={editing}
         onSave={handleSave}
         setEditing={setEditing}
+        openDeleteModal={openDeleteModal}
+      />
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedTask?.id)}
+        title="Delete Task"
+        description="Are you sure you want to delete this task? This action cannot be undone."
+        itemName={selectedTask?.name}
+        requireConfirmation={false}
       />
     </div>
   );

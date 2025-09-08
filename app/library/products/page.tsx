@@ -11,7 +11,7 @@ import { StatusBadge, TypeChip } from '@/components/chip';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ProductDetailSheet, type ProductDetails } from '@/components/product-detail-sheet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { getProduct, modifyProjectForTypeProduct } from '@/supabase/API';
+import { deleteProduct, getProduct, modifyProjectForTypeProduct } from '@/supabase/API';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandItem } from '@/components/ui/command';
 import AddProductModal from '@/components/product/AddProductModal';
@@ -22,6 +22,7 @@ import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerT
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCurrency } from '@/hooks/useCurrency';
+import { DeleteDialog } from '@/components/DeleteDialog';
 
 // Mock user permissions
 const mockUser = { permissions: ['product.write'] };
@@ -48,6 +49,8 @@ export default function ProductsPage() {
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState([]);
   const [editModal, setEditModal] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
   const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
   const { currency, isLoading: currencyLoading } = useCurrency();
 
@@ -177,6 +180,26 @@ export default function ProductsPage() {
   // useEffect(() => {
   //   console.log(selectedProduct);
   // }, [selectedProduct]);
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      toast.success('Product Deleted');
+      queryClient.invalidateQueries(['GetAllProduct']);
+    },
+    onError: error => {
+      toast(error.message);
+    },
+  });
+
+  const handleDeleOpenModal = product => {
+    setIsDeleteOpen(true);
+    setSelectedProduct(product);
+  };
+
+  const handleDelete = id => {
+    deleteMutation.mutate(id);
+  };
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -317,6 +340,7 @@ export default function ProductsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openDetails(product)}>View Details</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSelectProduct(product)}>Edit Product</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleOpenModal(product)}>Delete Product</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {/* <Button
@@ -457,6 +481,16 @@ export default function ProductsPage() {
 
       {/* Add Product Modal - You would need to create this component */}
       <AddProductModal closeModal={() => setAddProductModalOpen(false)} modalOpen={addProductmodalOpen} />
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedProduct?.id)}
+        title="Delete Product"
+        description="Are you sure you want to delete this product? This action cannot be undone."
+        itemName={selectedProduct?.name}
+        requireConfirmation={false} // 👈 disables the typing step
+      />
     </div>
   );
 }
