@@ -13,7 +13,7 @@ const GmailIntegration = () => {
   // Configuration - Replace with your actual values
   const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest';
   const SCOPES =
-    'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify';
+    'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar';
 
   // Initialize Google Identity Services
   useEffect(() => {

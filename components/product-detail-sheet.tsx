@@ -187,21 +187,6 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                     {data?.images?.length > 0 && (
                       <Image src={activeImage} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
                     )}
-                    {/* {product?.images?.length > 0 && (
-                      <Slider {...settings}>
-                        {product.images.map((image, index) => (
-                          <div key={index} className="h-full  rounded-[10px] overflow-hidden">
-                            <Image
-                              width={400}
-                              height={400}
-                              className="h-[400px] w-full object-contain"
-                              src={image}
-                              alt={`Product image ${index + 1}`}
-                            />
-                          </div>
-                        ))}
-                      </Slider>
-                    )} */}
                   </div>
                 </div>
 
@@ -228,16 +213,6 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
               {/* Right: details */}
               <section className="flex flex-col gap-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* {data.product_url ? (
-                    <a
-                      href={data.product_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center rounded-md border border-greige-500/30 bg-white px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-50">
-                      View Product
-                      <ExternalLink className="ml-2 h-4 w-4" />
-                    </a>
-                  ) : null} */}
                   <Button variant="outline" className="border-greige-500/30 bg-white" onClick={copyUrl}>
                     <LinkIcon className="mr-2 h-4 w-4" />
                     Copy Link

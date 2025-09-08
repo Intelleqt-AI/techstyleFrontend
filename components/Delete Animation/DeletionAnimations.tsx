@@ -13,14 +13,45 @@ const Pinwheel = ({ className, ...props }: SpinnerVariantProps) => (
   <LoaderPinwheelIcon className={cn('animate-spin', className)} {...props} />
 );
 
-export const CircleFilled = ({ className, size = 24, ...props }: SpinnerVariantProps) => (
-  <div className="relative" style={{ width: size, height: size }}>
-    <div className="absolute inset-0 rotate-180">
-      <LoaderCircleIcon className={cn('animate-spin', className, 'text-foreground opacity-20')} size={size} {...props} />
-    </div>
-    <LoaderCircleIcon className={cn('relative animate-spin', className)} size={size} {...props} />
-  </div>
-);
+export const CircleFilled = ({ className, size = 24 }: SpinnerVariantProps) => {
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <svg width={size} height={size} className={className} viewBox={`0 0 ${size} ${size}`}>
+      {/* Background circle */}
+      <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} className="opacity-20" fill="none" />
+
+      {/* Animated circle (fills in 5s, starts from top) */}
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        stroke="currentColor"
+        strokeWidth={strokeWidth}
+        fill="none"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference}
+        style={{
+          transform: `rotate(-90deg)`,
+          transformOrigin: '50% 50%',
+          animation: `fillCircle 5s linear forwards`,
+        }}
+      />
+      <style jsx>{`
+        @keyframes fillCircle {
+          from {
+            stroke-dashoffset: ${circumference};
+          }
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+      `}</style>
+    </svg>
+  );
+};
 
 export const Ellipsis = ({ size = 24, ...props }: SpinnerVariantProps) => {
   return (

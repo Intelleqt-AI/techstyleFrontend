@@ -8,8 +8,8 @@ import { StatusBadge } from '@/components/chip';
 import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
-import { useEffect, useState } from 'react';
+import { fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
 import { toast } from 'sonner';
@@ -33,8 +33,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const [checkedItems, setCheckedItems] = useState([]);
   const [buttonLoadingPO, setButtonLoadingPO] = useState(false);
   const [customLoading, setCustomLoading] = useState(false);
-  // const navigate = useNavigate()
-  const router = useRouter();
+
   const id = params.id;
 
   const { data: project } = useQuery({
@@ -46,6 +45,17 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['pruchaseOrder'],
     queryFn: getPurchaseOrder,
+  });
+
+  const {
+    data: xeroInvoices,
+    isLoading: XeroLoading,
+    isError,
+    error,
+    refetch: fetchInvoice,
+  } = useQuery({
+    queryKey: ['xeroInvoices'],
+    queryFn: fetchInvoices,
   });
 
   const {
@@ -166,16 +176,92 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     totalPurchaseOrder += temp;
   });
 
+  const viewInvoicePDF = async invoiceId => {
+    try {
+      const accessToken = localStorage.getItem('xero_access_token');
+      const tenantId = localStorage.getItem('xero_tenant_id');
+
+      if (!accessToken || !tenantId) {
+        alert('Missing authentication tokens');
+        return;
+      }
+
+      const url = `https://xero-backend-pi.vercel.app/api/get-invoice-pdf?invoiceId=${invoiceId}`;
+
+      const response = await fetch(url, {
+        method: 'GET', // Explicitly set method
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'xero-tenant-id': tenantId,
+          Accept: 'application/pdf',
+        },
+      });
+
+      if (!response.ok) {
+        // Try to get error details
+        const contentType = response.headers.get('content-type');
+        let errorDetail;
+
+        if (contentType && contentType.includes('application/json')) {
+          errorDetail = await response.json();
+          console.error('JSON Error:', errorDetail);
+        } else {
+          errorDetail = await response.text();
+          console.error('Text Error:', errorDetail);
+        }
+
+        alert(`Failed to get PDF: ${response.status} - ${JSON.stringify(errorDetail)}`);
+        return;
+      }
+
+      const blob = await response.blob();
+
+      if (blob.size === 0) {
+        alert('Received empty PDF file');
+        return;
+      }
+
+      const fileURL = URL.createObjectURL(blob);
+      const newWindow = window.open(fileURL);
+
+      if (!newWindow) {
+        alert('Popup blocked. Please allow popups for this site.');
+        // Fallback: create download link
+        const link = document.createElement('a');
+        link.href = fileURL;
+        link.download = `invoice-${invoiceId}.pdf`;
+        link.click();
+      }
+
+      // Clean up the object URL after some time
+      setTimeout(() => URL.revokeObjectURL(fileURL), 10000);
+    } catch (error) {
+      console.error('PDF view error:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const xeroTotal = useMemo(() => {
+    let totalInvoiceOrder = 0;
+    xeroInvoices?.forEach(item => {
+      const temp = item?.Total || 0;
+      totalInvoiceOrder += temp;
+    });
+    return totalInvoiceOrder;
+  }, [xeroInvoices]);
+
   const financeStats = [
     {
       title: 'Total Invoices',
       value: project?.currency?.symbol
         ? project.currency.symbol +
-          totalInvoiceOrder.toLocaleString('en-US', {
+          (totalInvoiceOrder + xeroTotal).toLocaleString('en-US', {
             maximumFractionDigits: 2,
           })
         : gbp.format(totalInvoiceOrder),
-      subtitle: `${invoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'}`,
+      subtitle: `${invoices?.length + xeroInvoices?.length && xeroInvoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'} (${
+        xeroInvoices && xeroInvoices?.length
+      } from Xero)`,
       icon: FileText,
     },
     {
@@ -266,7 +352,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                 <colgroup>
                   <col style={{ width: '44px' }} />
                   <col style={{ width: '160px' }} />
-                  <col />
+                  <col style={{ width: '132px' }} />
                   <col style={{ width: '132px' }} />
                   <col style={{ width: '140px' }} />
                   <col style={{ width: '140px' }} />
@@ -324,148 +410,216 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                     ))}
 
                   <>
-                    {purchaseOrder.map(po => (
-                      <tr key={po.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <Checkbox
-                            checked={!!checkedItems.find(checkItem => checkItem.id == po.id)}
-                            onCheckedChange={checked => handleChange({ target: { value: po, checked } })}
-                            aria-label={`Select ${po.poNumber}`}
-                          />
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          <Link className="hover:underline" href={`/finance/purchase-order/${po.id}`}>
-                            {po.poNumber}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Purchase Order</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {po.issueDate ? new Date(po.issueDate).toLocaleDateString('en-GB') : new Date(po.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {po?.dueDate ? new Date(po.dueDate).toLocaleDateString('en-GB') : '-'}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {project?.currency?.symbol ? project?.currency?.symbol : '£'}
-                          {(
-                            po?.products?.reduce((total, product) => {
-                              return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
-                            }, 0) || 0
-                          ).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={po.status} label={po.status} className={getStatusStyle(po.status)} />
-                        </td>
-                        <td className="px-2 pr-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                                aria-label={`Actions for ${po.poNumber}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/purchase-order/pdf/${po.id}`}>
-                                  Download PDF
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Send Email</DropdownMenuItem>
-                              <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
-                                  Edit
-                                </Link>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {invoices.map(inv => (
-                      <tr key={inv.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
-                            {inv.inNumber}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {inv.issueDate
-                            ? new Date(inv.issueDate).toLocaleDateString('en-GB')
-                            : new Date(inv.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {inv?.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '-'}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {project?.currency?.symbol ? project?.currency?.symbol : '£'}
-                          {Number(
-                            (
-                              (inv?.products?.reduce((total, product) => {
+                    {!customLoading &&
+                      purchaseOrder.map(po => (
+                        <tr key={po.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <Checkbox
+                              checked={!!checkedItems.find(checkItem => checkItem.id == po.id)}
+                              onCheckedChange={checked => handleChange({ target: { value: po, checked } })}
+                              aria-label={`Select ${po.poNumber}`}
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            <Link className="hover:underline" href={`/finance/purchase-order/${po.id}`}>
+                              {po.poNumber}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Purchase Order</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {po.issueDate
+                              ? new Date(po.issueDate).toLocaleDateString('en-GB')
+                              : new Date(po.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {po?.dueDate ? new Date(po.dueDate).toLocaleDateString('en-GB') : '-'}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            {project?.currency?.symbol ? project?.currency?.symbol : '£'}
+                            {(
+                              po?.products?.reduce((total, product) => {
                                 return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
-                              }, 0) || 0) + Number(inv.delivery_charge)
-                            ).toFixed(2)
-                          ).toLocaleString('en-US', {
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={inv.status} label={inv.status} className={getStatusStyle(inv.status)} />
-                        </td>
-                        <td className="px-2 pr-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                                aria-label={`Actions for ${inv.inNumber}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/invoices/pdf/${inv.id}`}>
-                                  Download PDF
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Send Email</DropdownMenuItem>
-                              <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
-                              <DropdownMenuItem>
+                              }, 0) || 0
+                            ).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={po.status} label={po.status} className={getStatusStyle(po.status)} />
+                          </td>
+                          <td className="px-2 pr-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                  aria-label={`Actions for ${po.poNumber}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
+                                    View Details
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/purchase-order/pdf/${po.id}`}>
+                                    Download PDF
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>Send Email</DropdownMenuItem>
+                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
+                                    Edit
+                                  </Link>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
+
+                    {!customLoading &&
+                      invoices.map(inv => (
+                        <tr key={inv.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
+                              {inv.inNumber}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv.issueDate
+                              ? new Date(inv.issueDate).toLocaleDateString('en-GB')
+                              : new Date(inv.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv?.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '-'}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            {project?.currency?.symbol ? project?.currency?.symbol : '£'}
+                            {Number(
+                              (
+                                (inv?.products?.reduce((total, product) => {
+                                  return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                                }, 0) || 0) + Number(inv.delivery_charge)
+                              ).toFixed(2)
+                            ).toLocaleString('en-US', {
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={inv.status} label={inv.status} className={getStatusStyle(inv.status)} />
+                          </td>
+                          <td className="px-2 pr-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                  aria-label={`Actions for ${inv.inNumber}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
+                                    View Details
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/invoices/pdf/${inv.id}`}>
+                                    Download PDF
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>Send Email</DropdownMenuItem>
+                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
+                                    Edit
+                                  </Link>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
+
+                    {!customLoading &&
+                      !XeroLoading &&
+                      xeroInvoices?.length > 0 &&
+                      xeroInvoices.map(inv => (
+                        <tr key={inv.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <Checkbox disabled aria-label={`Select ${inv.InvoiceNumber}`} />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            <button onClick={() => viewInvoicePDF(item.InvoiceID)} className="hover:underline">
+                              {inv.InvoiceNumber}
+                            </button>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
+
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv?.DateString ? new Date(inv.DateString).toLocaleDateString('en-GB') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv?.DueDateString ? new Date(inv.DueDateString).toLocaleDateString('en-GB') : '-'}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            {inv?.CurrencyCode} {inv?.Total}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={inv.Status} label={inv.Status} className={getStatusStyle(inv.Status)} />
+                          </td>
+                          <td className="px-2 pr-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                  aria-label={`Actions for ${inv.inNumber}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <p className="w-full" onClick={() => viewInvoicePDF(inv.InvoiceID)}>
+                                    View Details
+                                  </p>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <p className="w-full" onClick={() => viewInvoicePDF(inv.InvoiceID)}>
+                                    Download PDF
+                                  </p>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>Send Email</DropdownMenuItem>
+                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                {/* <DropdownMenuItem>
                                 <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
                                   Edit
                                 </Link>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
+                              </DropdownMenuItem> */}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
                   </>
                   {/* {!isLoading && !InvoiceLoading && !customLoading && (
                   )} */}

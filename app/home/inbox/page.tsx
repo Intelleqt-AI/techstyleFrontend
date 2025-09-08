@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { HomeNav } from '@/components/home-nav';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import EmailIframe from '@/components/inbox/EmailIframe';
 import Drawer from 'react-modern-drawer';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useTypingEffect } from './useTypingEffect';
 
 // extend once in your app (e.g., in _app.tsx or a utils/date.ts file)
 dayjs.extend(relativeTime);
@@ -246,6 +247,15 @@ export default function InboxPage() {
   });
   const [selectedProject, setSelectedProject] = useState('');
   const [projectOpen, setProjectOpen] = useState(false);
+  const [aiReply, setAiReply] = useState('');
+  const displayedReply = useTypingEffect(aiReply, 30);
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (selectedMessage && scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedMessage]);
 
   // Get Contact for filter
   const { data: contactData, isLoading: contactLoading } = useQuery({
@@ -489,6 +499,12 @@ export default function InboxPage() {
     }
   };
 
+  useEffect(() => {
+    if (selectedMessage) {
+      setSelectedMessage(emails?.find(mail => mail.id == selectedMessage.id));
+    }
+  }, [emails]);
+
   // Send Email
   const sendEmail = async () => {
     if (!emailForm.to || !emailForm.subject || !emailForm.body) {
@@ -532,12 +548,13 @@ export default function InboxPage() {
 
   //Reply Email
   const replyEmail = async () => {
-    if (reply.length == 0) {
+    if (reply.length == 0 && aiReply.length == 0) {
       setError('Missing required fields for reply');
       return;
     }
 
     try {
+      setIsReply(true);
       const replyEmailText = [
         'Content-Type: text/plain; charset="UTF-8"',
         'MIME-Version: 1.0',
@@ -547,7 +564,7 @@ export default function InboxPage() {
         `In-Reply-To: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
         `References: ${getEmailHeader(selectedMessage.messages[0].payload.headers, 'Message-ID')}`,
         '',
-        reply,
+        `${reply || aiReply}`,
       ].join('\n');
 
       const rawMessage = btoa(replyEmailText).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -565,8 +582,10 @@ export default function InboxPage() {
       });
 
       if (!res.ok) throw new Error(`Reply failed: ${res.status}`);
+      refetch();
       setIsReply(false);
       setReply('');
+      setAiReply('');
       toast.success('Reply sent!');
     } catch (err) {
       setError(`Reply error: ${err.message}`);
@@ -645,10 +664,10 @@ The most recent email came from ${from}. Guess the sender’s first name from th
   const handleAiReply = async () => {
     setAiLoading(true);
     try {
-      const aiReply = await generateReplyForConversation(selectedMessage);
-      setReply(aiReply);
+      const generated = await generateReplyForConversation(selectedMessage);
+      setAiReply(generated); // set full AI response
     } catch (error) {
-      setReply('AI failed to generate a reply.');
+      setAiReply('AI failed to generate a reply.');
     } finally {
       setAiLoading(false);
     }
@@ -1122,6 +1141,7 @@ The most recent email came from ${from}. Guess the sender’s first name from th
                           </div>
                         );
                       })}
+                      <div ref={scrollRef}></div>
                     </div>
 
                     {/* Reply Input */}
@@ -1173,16 +1193,26 @@ The most recent email came from ${from}. Guess the sender’s first name from th
                         </Button>
                       </div>
                       <div className="flex gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarImage src="/placeholder.svg?height=32&width=32" />
-                          <AvatarFallback className="bg-gray-100 text-gray-600 text-xs">JD</AvatarFallback>
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={null} />
+                          <AvatarFallback className="bg-gray-100 text-sm font-bold text-gray-600 ">
+                            {user?.email?.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <Textarea
                             placeholder="Type your reply..."
                             rows={reply?.length > 200 ? 20 : 5}
-                            value={reply}
-                            onChange={e => setReply(e.target.value)}
+                            value={reply || displayedReply}
+                            onClick={() => {
+                              if (aiReply) {
+                                setReply(aiReply);
+                                setAiReply('');
+                              }
+                            }}
+                            onChange={e => {
+                              setReply(e.target.value);
+                            }}
                             className="min-h-[80px] resize-none border-gray-200 focus:border-gray-300 focus:ring-0"
                           />
                           <div className="flex items-center justify-between mt-3">
@@ -1195,7 +1225,7 @@ The most recent email came from ${from}. Guess the sender’s first name from th
                               </Button>
                             </div>
                             <Button
-                              disabled={reply.length < 1}
+                              disabled={(reply.length < 1 && aiReply.length < 1) || isReply}
                               onClick={() => replyEmail()}
                               size="sm"
                               className="bg-gray-900 text-white hover:bg-gray-800"

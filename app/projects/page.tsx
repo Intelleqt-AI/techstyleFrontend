@@ -240,13 +240,13 @@ export default function ProjectsPage() {
                             <span className="text-ink-muted">Budget</span>
                             <div className="text-right">
                               <div className="font-medium text-ink">
-                                {project?.currency?.symbol}
+                                {project?.currency?.symbol || '£'}
                                 {Number(project?.budget).toLocaleString('en-GB', {
                                   minimumFractionDigits: 1,
                                   maximumFractionDigits: 1,
                                 })}
                               </div>
-                              <div className="text-xs text-ink-muted"> {project?.currency?.symbol}0 spent</div>
+                              <div className="text-xs text-ink-muted"> {project?.currency?.symbol || '£'}0 spent</div>
                             </div>
                           </div>
 
@@ -270,19 +270,26 @@ export default function ProjectsPage() {
                           </div>
 
                           {/* Next Milestone */}
-                          {nextPhase && (
+                          {
                             <div className="pt-2 border-t border-borderSoft">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-ink-muted">Next milestone</span>
-                                <div className="text-right">
-                                  <div className="font-medium text-ink">{nextPhase?.name}</div>
-                                  <div className="text-xs text-ink-muted">
-                                    {daysUntilMilestone === 0 ? 'Due today' : `${daysUntilMilestone} days`}
+                                {nextPhase ? (
+                                  <div className="text-right">
+                                    <div className="font-medium text-ink">{nextPhase?.name}</div>
+                                    <div className="text-xs text-ink-muted">
+                                      {daysUntilMilestone === 0 ? 'Due today' : `${daysUntilMilestone} days`}
+                                    </div>
                                   </div>
-                                </div>
+                                ) : (
+                                  <div className="text-right">
+                                    <div className="font-medium text-ink">Not applicable</div>
+                                    <div className="text-xs text-ink-muted">Please add phase</div>
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          )}
+                          }
                         </div>
                       </CardContent>
                     </Card>
@@ -377,10 +384,10 @@ export default function ProjectsPage() {
                         <td className="py-4 px-4">
                           <div className="text-sm">
                             <div className="font-medium text-ink">
-                              {project?.currency?.symbol}
+                              {project?.currency?.symbol || '£'}
                               {Number(project?.budget).toLocaleString()}
                             </div>
-                            <div className="text-ink-muted">{project?.currency?.symbol}0 spent</div>
+                            <div className="text-ink-muted">{project?.currency?.symbol || '£'}0 spent</div>
                           </div>
                         </td>
                         <td className="py-4 px-4 text-sm text-ink">
@@ -400,7 +407,7 @@ export default function ProjectsPage() {
                               ))}
                             {project?.assigned && project.assigned.length > 3 && (
                               <div className="w-6 h-6 rounded-full bg-greige-200 border-2 border-white flex items-center justify-center">
-                                <span className="text-xs text-ink-muted">+{project.assigned.length - 3}</span>
+                                <span className="text-xs text-ink-muted">+{project?.assigned.length - 3}</span>
                               </div>
                             )}
                           </div>

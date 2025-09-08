@@ -79,13 +79,48 @@ const initialTask: Task = {
 };
 
 const lists: (ListColumn & { icon: any; colorClass: string; id: string })[] = [
-  { id: 'concept', title: 'Design Concepts', icon: Palette, colorClass: 'text-purple-600' },
-  { id: 'design-dev', title: 'Design Development', icon: CircleDot, colorClass: 'text-amber-600' },
-  { id: 'technical', title: 'Technical Drawings', icon: FileText, colorClass: 'text-orange-600' },
-  { id: 'review', title: 'Client Review', icon: Eye, colorClass: 'text-rose-600' },
-  { id: 'procurement', title: 'Procurement', icon: Circle, colorClass: 'text-emerald-600' },
-  { id: 'site', title: 'Site / Implementation', icon: Hammer, colorClass: 'text-slate-600' },
-  { id: 'complete', title: 'Complete', icon: CheckCircle2, colorClass: 'text-gray-600' },
+  {
+    id: 'concept',
+    title: 'Design Concepts',
+    icon: Palette,
+    colorClass: 'text-purple-600',
+  },
+  {
+    id: 'design-dev',
+    title: 'Design Development',
+    icon: CircleDot,
+    colorClass: 'text-amber-600',
+  },
+  {
+    id: 'technical',
+    title: 'Technical Drawings',
+    icon: FileText,
+    colorClass: 'text-orange-600',
+  },
+  {
+    id: 'review',
+    title: 'Client Review',
+    icon: Eye,
+    colorClass: 'text-rose-600',
+  },
+  {
+    id: 'procurement',
+    title: 'Procurement',
+    icon: Circle,
+    colorClass: 'text-emerald-600',
+  },
+  {
+    id: 'site',
+    title: 'Site / Implementation',
+    icon: Hammer,
+    colorClass: 'text-slate-600',
+  },
+  {
+    id: 'complete',
+    title: 'Complete',
+    icon: CheckCircle2,
+    colorClass: 'text-gray-600',
+  },
 ];
 
 type Props = {
@@ -397,7 +432,14 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   const handleCreateSubTask = () => {
     setTaskValues(prevTask => ({
       ...prevTask,
-      subtasks: [...prevTask.subtasks, { order: taskValues.subtasks.length + 1 || 1, id: Date.now(), text: subTaskText }],
+      subtasks: [
+        ...prevTask.subtasks,
+        {
+          order: taskValues.subtasks.length + 1 || 1,
+          id: Date.now(),
+          text: subTaskText,
+        },
+      ],
     }));
     // Focus on the last input in the DraggableSubtasks component
     if (draggableSubtasksRef.current) {
@@ -586,7 +628,8 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                         ))}
                       </div>
                       <span className="truncate text-sm text-gray-600">
-                        {selected.length} selected{selected.length > 4 ? ' +' + (selected.length - 4) : ''}
+                        {selected.length} selected
+                        {selected.length > 4 ? ' +' + (selected.length - 4) : ''}
                       </span>
                     </>
                   ) : (
@@ -672,7 +715,14 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     };
     setComments(prev => [c, ...prev]);
     setNewComment('');
-    setActivity(prev => [{ id: crypto.randomUUID(), text: 'Added a comment', createdAt: Date.now() }, ...prev]);
+    setActivity(prev => [
+      {
+        id: crypto.randomUUID(),
+        text: 'Added a comment',
+        createdAt: Date.now(),
+      },
+      ...prev,
+    ]);
   }
 
   // handle Task Save
@@ -721,7 +771,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
         toast('File size must be less than 5MB!');
       } else {
         setFile(selectedFile);
-        attachmentMutation.mutate({ file: selectedFile, id: taskValues?.id, projectID: taskValues?.projectID, task: taskValues });
+        attachmentMutation.mutate({
+          file: selectedFile,
+          id: taskValues?.id,
+          projectID: taskValues?.projectID,
+          task: taskValues,
+        });
       }
     }
   };
@@ -830,6 +885,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                     <Select
                       value={taskValues?.phase || ''}
                       onValueChange={value => {
+                        console.log(data?.find(item => item.id == taskValues?.projectID));
                         const e = {
                           target: {
                             name: 'phase',
@@ -924,7 +980,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                     <Calendar
                       mode="single"
                       selected={taskValues?.startDate ? toDateFromYMD(taskValues?.startDate) : null}
-                      onSelect={d => setTaskValues(prev => ({ ...prev, startDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
+                      onSelect={d =>
+                        setTaskValues(prev => ({
+                          ...prev,
+                          startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                        }))
+                      }
                       initialFocus
                       // setStartDate(d ? format(d, 'yyyy-MM-dd') : undefined)
                     />
@@ -959,7 +1020,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                       <Calendar
                         mode="single"
                         selected={taskValues?.dueDate ? toDateFromYMD(taskValues?.dueDate) : undefined}
-                        onSelect={d => setTaskValues(prev => ({ ...prev, dueDate: d ? format(d, 'yyyy-MM-dd') : undefined }))}
+                        onSelect={d =>
+                          setTaskValues(prev => ({
+                            ...prev,
+                            dueDate: d ? format(d, 'yyyy-MM-dd') : undefined,
+                          }))
+                        }
                         initialFocus
                       />
                     </PopoverContent>
