@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { HomeNav } from '@/components/home-nav';
-import { DataCardsGrid, type DataCardItem } from '@/components/data-cards';
+import React, { useEffect, useMemo, useState } from "react";
+import { HomeNav } from "@/components/home-nav";
+import { DataCardsGrid, type DataCardItem } from "@/components/data-cards";
 import {
   CalendarIcon,
   AlertTriangle,
@@ -17,58 +17,70 @@ import {
   MoreHorizontal,
   Clock,
   CircleX,
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { TypeChip, StatusBadge } from '@/components/chip';
-import useTask from '@/supabase/hook/useTask';
-import { fetchOnlyProject, fetchProjects, modifyTask } from '@/supabase/API';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import useUser from '@/supabase/hook/useUser';
-import { toast } from 'sonner';
-import { TaskModal } from '@/components/tasks/task-modal';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+  Trash2,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { TypeChip, StatusBadge } from "@/components/chip";
+import useTask from "@/supabase/hook/useTask";
+import {
+  deleteTask,
+  fetchOnlyProject,
+  fetchProjects,
+  modifyTask,
+} from "@/supabase/API";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import useUser from "@/supabase/hook/useUser";
+import { toast } from "sonner";
+import { TaskModal } from "@/components/tasks/task-modal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DeleteDialog } from "@/components/DeleteDialog";
 
-const updatetaskList = data => {
+const updatetaskList = (data) => {
   return [
     {
-      name: 'To Do',
-      items: data?.filter(item => item.status == 'todo'),
-      status: 'To Do',
+      name: "To Do",
+      items: data?.filter((item) => item.status == "todo"),
+      status: "To Do",
       icon: Circle,
-      color: 'text-gray-600',
+      color: "text-gray-600",
     },
     {
-      name: 'In Progress',
-      items: data?.filter(item => item.status == 'in-progress'),
-      status: 'In Progress',
+      name: "In Progress",
+      items: data?.filter((item) => item.status == "in-progress"),
+      status: "In Progress",
       icon: CircleDot,
-      color: 'text-blue-600',
+      color: "text-blue-600",
     },
     {
-      name: 'In Review',
-      items: data?.filter(item => item.status == 'in-review'),
-      status: 'In Review',
-      color: 'text-orange-600',
+      name: "In Review",
+      items: data?.filter((item) => item.status == "in-review"),
+      status: "In Review",
+      color: "text-orange-600",
       icon: Eye,
     },
     {
-      name: 'Done',
-      items: data?.filter(item => item.status == 'done'),
-      status: 'Done',
+      name: "Done",
+      items: data?.filter((item) => item.status == "done"),
+      status: "Done",
       icon: CheckCircle2,
-      color: 'text-green-600',
+      color: "text-green-600",
     },
   ];
 };
 
 export default function MyTasksPage() {
   const admins = [
-    'david.zeeman@intelleqt.ai',
-    'roxi.zeeman@souqdesign.co.uk',
-    'risalat.shahriar@intelleqt.ai',
-    'dev@intelleqt.ai',
-    'saif@intelleqt.ai',
+    "david.zeeman@intelleqt.ai",
+    "roxi.zeeman@souqdesign.co.uk",
+    "risalat.shahriar@intelleqt.ai",
+    "dev@intelleqt.ai",
+    "saif@intelleqt.ai",
   ];
 
   const [myTask, setMyTask] = useState([]);
@@ -76,14 +88,19 @@ export default function MyTasksPage() {
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
+  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(
+    undefined
+  );
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+
   const { user } = useUser();
   function openNewTask(listId?: string) {
     setEditing(null);
     setDefaultListId(listId);
     setModalOpen(true);
   }
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState(null);
 
   function openEditTask(task) {
@@ -92,11 +109,11 @@ export default function MyTasksPage() {
     setModalOpen(true);
   }
 
-  const handleClose = e => {
+  const handleClose = (e) => {
     setModalOpen(e);
   };
 
-  function handleSave(payload: Omit<Task, 'id'> & { id?: string }) {
+  function handleSave(payload: Omit<Task, "id"> & { id?: string }) {
     // if (payload.id) {
     //   setTasks(prev => prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t)));
     // } else {
@@ -110,7 +127,7 @@ export default function MyTasksPage() {
   const { mutate, error: deleteError } = useMutation({
     mutationFn: modifyTask,
     onSuccess: () => {
-      queryClient.invalidateQueries(['tasks']);
+      queryClient.invalidateQueries(["tasks"]);
     },
   });
 
@@ -121,7 +138,7 @@ export default function MyTasksPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ["projects"],
     queryFn: fetchProjects,
   });
 
@@ -134,45 +151,56 @@ export default function MyTasksPage() {
 
     // 2. Apply search filter
     if (searchText.trim()) {
-      myTask = myTask.filter(task => task.name?.toLowerCase().includes(searchText.toLowerCase()));
+      myTask = myTask.filter((task) =>
+        task.name?.toLowerCase().includes(searchText.toLowerCase())
+      );
     }
 
     // 3. Apply extra filter (today or overdue)
-    if (filter === 'today') {
+    if (filter === "today") {
       myTask = todayTasks(myTask);
-    } else if (filter === 'overdue') {
+    } else if (filter === "overdue") {
       myTask = myRecentTask(myTask);
     }
 
     // 4. Final set
-    setTasks(taskData && taskData.data.length > 0 ? updatetaskList(myTask) : []);
+    setTasks(
+      taskData && taskData.data.length > 0 ? updatetaskList(myTask) : []
+    );
   }, [taskData, taskLoading, user?.email, searchText, filter]);
 
-  const myRecentTask = tasks => {
+  const myRecentTask = (tasks) => {
     const now = new Date();
-    return tasks?.filter(task => task.status !== 'done' && new Date(task.dueDate) < now);
+    return tasks?.filter(
+      (task) => task.status !== "done" && new Date(task.dueDate) < now
+    );
   };
 
-  const todayTasks = tasks => {
+  const todayTasks = (tasks) => {
     const now = new Date();
-    return tasks?.filter(task => {
+    return tasks?.filter((task) => {
       const createdAt = new Date(task.created_at);
       return (
-        createdAt.getDate() === now.getDate() && createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear()
+        createdAt.getDate() === now.getDate() &&
+        createdAt.getMonth() === now.getMonth() &&
+        createdAt.getFullYear() === now.getFullYear()
       );
     });
   };
 
-  const myTaskList = tasks => {
+  const myTaskList = (tasks) => {
     if (!tasks) return [];
     if (!user) return [];
     if (admins.includes(user?.email)) {
       return tasks;
     }
 
-    return tasks.filter(task => {
+    return tasks.filter((task) => {
       // If user is assigned
-      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some(assignee => assignee.email === user.email);
+      const isAssigned =
+        task.assigned &&
+        Array.isArray(task.assigned) &&
+        task.assigned.some((assignee) => assignee.email === user.email);
 
       // If user is the creator
       const isCreator = task.creator === user.email;
@@ -181,28 +209,51 @@ export default function MyTasksPage() {
     });
   };
 
-  const assignedProjectCount = project?.filter(item => item.assigned?.some(person => person.email == user?.email)).length;
+  const assignedProjectCount = project?.filter((item) =>
+    item.assigned?.some((person) => person.email == user?.email)
+  ).length;
 
   const todayCreatedTask = todayTasks(myTask);
   const overDueTask = myRecentTask(myTask);
 
   // CRM-style stat cards
   const dataCards: DataCardItem[] = [
-    { title: 'Total Tasks', value: myTask?.length, subtitle: 'Across all assigned projects', icon: Hash },
-    { title: 'Overdue Tasks', value: overDueTask?.length, subtitle: 'Past due dates', icon: AlertTriangle },
-    { title: 'Task Added Today', value: todayCreatedTask?.length, subtitle: 'Created today', icon: CalendarIcon },
     {
-      title: 'Active Projects',
-      value: admins.some(item => item == user?.email) ? project?.length : assignedProjectCount,
-      subtitle: 'Assigned to you',
+      title: "Total Tasks",
+      value: myTask?.length,
+      subtitle: "Across all assigned projects",
+      icon: Hash,
+    },
+    {
+      title: "Overdue Tasks",
+      value: overDueTask?.length,
+      subtitle: "Past due dates",
+      icon: AlertTriangle,
+    },
+    {
+      title: "Task Added Today",
+      value: todayCreatedTask?.length,
+      subtitle: "Created today",
+      icon: CalendarIcon,
+    },
+    {
+      title: "Active Projects",
+      value: admins.some((item) => item == user?.email)
+        ? project?.length
+        : assignedProjectCount,
+      subtitle: "Assigned to you",
       icon: Hash,
     },
   ];
 
   // Task Drag and drop section
-  const handleDragStart = (e: React.DragEvent, taskId: string, sourceColumn: string) => {
-    e.dataTransfer.setData('taskId', taskId);
-    e.dataTransfer.setData('sourceColumn', sourceColumn);
+  const handleDragStart = (
+    e: React.DragEvent,
+    taskId: string,
+    sourceColumn: string
+  ) => {
+    e.dataTransfer.setData("taskId", taskId);
+    e.dataTransfer.setData("sourceColumn", sourceColumn);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -211,32 +262,39 @@ export default function MyTasksPage() {
 
   const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
     e.preventDefault();
-    const taskId = e.dataTransfer.getData('taskId');
-    const sourceColumn = e.dataTransfer.getData('sourceColumn');
+    const taskId = e.dataTransfer.getData("taskId");
+    const sourceColumn = e.dataTransfer.getData("sourceColumn");
     if (!taskId || !sourceColumn || sourceColumn === targetColumn) return;
 
     // Determine the new status
     let status;
-    if (targetColumn === 'To Do') {
-      status = 'todo';
-    } else if (targetColumn === 'In Progress') {
-      status = 'in-progress';
-    } else if (targetColumn === 'In Review') {
-      status = 'in-review';
-    } else if (targetColumn === 'Done') {
-      status = 'done';
+    if (targetColumn === "To Do") {
+      status = "todo";
+    } else if (targetColumn === "In Progress") {
+      status = "in-progress";
+    } else if (targetColumn === "In Review") {
+      status = "in-review";
+    } else if (targetColumn === "Done") {
+      status = "done";
     }
 
-    setTasks(prevColumns => {
+    setTasks((prevColumns) => {
       // Find the source and target column indices
-      const sourceColumnIndex = prevColumns.findIndex(col => col.name === sourceColumn);
-      const targetColumnIndex = prevColumns.findIndex(col => col.name === targetColumn);
+      const sourceColumnIndex = prevColumns.findIndex(
+        (col) => col.name === sourceColumn
+      );
+      const targetColumnIndex = prevColumns.findIndex(
+        (col) => col.name === targetColumn
+      );
 
       // Ensure columns exist
-      if (sourceColumnIndex === -1 || targetColumnIndex === -1) return prevColumns;
+      if (sourceColumnIndex === -1 || targetColumnIndex === -1)
+        return prevColumns;
 
       // Find the task within the source column
-      const taskIndex = prevColumns[sourceColumnIndex].items.findIndex(task => task.id === taskId);
+      const taskIndex = prevColumns[sourceColumnIndex].items.findIndex(
+        (task) => task.id === taskId
+      );
 
       // Ensure task exists
       if (taskIndex === -1) return prevColumns;
@@ -253,7 +311,9 @@ export default function MyTasksPage() {
       const newColumns = [...prevColumns];
       newColumns[sourceColumnIndex] = {
         ...newColumns[sourceColumnIndex],
-        items: newColumns[sourceColumnIndex].items.filter((_, idx) => idx !== taskIndex),
+        items: newColumns[sourceColumnIndex].items.filter(
+          (_, idx) => idx !== taskIndex
+        ),
       };
 
       // Add the updated task to the target column
@@ -268,10 +328,10 @@ export default function MyTasksPage() {
 
     // Send update to server
     let modifyInfo;
-    if (status === 'done') {
+    if (status === "done") {
       modifyInfo = {
         status,
-        phase: 'complete-project',
+        phase: "complete-project",
         id: taskId,
       };
     } else {
@@ -282,6 +342,31 @@ export default function MyTasksPage() {
     }
     // Update to DB
     mutate({ newTask: modifyInfo });
+  };
+
+  const {
+    mutate: removeTask,
+    isLoading: isDeleting,
+    error: deleteError2,
+  } = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries(["tasks"]);
+      toast("Task Updated", {
+        duration: 1000,
+        dismissible: true,
+      });
+      setIsDeleteOpen(false);
+    },
+  });
+
+  const openDeleteModal = (task) => {
+    setIsDeleteOpen(true);
+    setSelectedTask(task);
+  };
+
+  const handleDelete = (id) => {
+    removeTask(id);
   };
 
   return (
@@ -296,19 +381,26 @@ export default function MyTasksPage() {
           <div className="flex items-center gap-3 flex-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 h-9 bg-transparent">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 h-9 bg-transparent">
                   <Filter className="w-4 h-4" />
                   Filter
                 </Button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="center" className="w-40">
-                <DropdownMenuItem onClick={() => setFilter('overdue')}>Overdue</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilter('today')}>Added Today</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("overdue")}>
+                  Overdue
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter("today")}>
+                  Added Today
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             {filter && (
-              <Button size={'sm'} variant={'secondary'} className=" capitalize">
+              <Button size={"sm"} variant={"secondary"} className=" capitalize">
                 {filter}
                 <span onClick={() => setFilter(null)}>
                   <CircleX />
@@ -317,11 +409,19 @@ export default function MyTasksPage() {
             )}
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input value={searchText} onChange={e => setSearchText(e.target.value)} className="pl-10 h-9" placeholder="Search tasks..." />
+              <Input
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="pl-10 h-9"
+                placeholder="Search tasks..."
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={() => openNewTask()} size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
+            <Button
+              onClick={() => openNewTask()}
+              size="sm"
+              className="gap-2 bg-gray-900 hover:bg-gray-800">
               <Plus className="w-4 h-4" />
               Add Task
             </Button>
@@ -330,26 +430,30 @@ export default function MyTasksPage() {
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {tasks?.map(column => (
+          {tasks?.map((column) => (
             <div
-              onDragOver={e => handleDragOver(e)}
-              onDrop={e => handleDrop(e, column.name)}
+              onDragOver={(e) => handleDragOver(e)}
+              onDrop={(e) => handleDrop(e, column.name)}
               key={column.name}
-              className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
-            >
+              className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
               {/* Column Header */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <column.icon className={`w-4 h-4 ${column.color}`} />
 
-                  <span className="font-medium text-gray-900">{column.name}</span>
+                  <span className="font-medium text-gray-900">
+                    {column.name}
+                  </span>
                   <TypeChip label={String(column?.items?.length)} />
                 </div>
                 <div className="flex items-center gap-1">
                   {/* <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <MoreHorizontal className="w-4 h-4" />
                   </Button> */}
-                  <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
@@ -357,32 +461,63 @@ export default function MyTasksPage() {
 
               {/* Task Cards */}
               <div className="space-y-3 mb-4">
-                {column.items.map(task => (
+                {column.items.map((task) => (
                   <div
                     key={task.id}
                     className="p-3 h-[105px] active:cursor-grabbing cursor-pointer flex flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
                     draggable
-                    onDragStart={e => handleDragStart(e, task.id, column.name)}
-                    onClick={() => openEditTask(task)}
-                  >
+                    onDragStart={(e) =>
+                      handleDragStart(e, task.id, column.name)
+                    }
+                    onClick={() => openEditTask(task)}>
                     <div>
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">{task.name}</h4>
-                        <Button variant="ghost" size="sm" className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
+                        <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">
+                          {task.name}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
                           <Clock className="w-3 h-3" />
                         </Button>
                       </div>
 
                       <div className="text-xs truncate text-gray-600 mb-2">
-                        {(project && project.find(p => p.id === task?.projectID)?.name) || ''}
+                        {(project &&
+                          project.find((p) => p.id === task?.projectID)
+                            ?.name) ||
+                          ""}
                       </div>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-gray-500">
-                        {task?.subtasks?.filter(subtask => subtask.selected === true).length}/{task?.subtasks?.length}
+                        {
+                          task?.subtasks?.filter(
+                            (subtask) => subtask.selected === true
+                          ).length
+                        }
+                        /{task?.subtasks?.length}
                       </span>
                       <div className="flex items-center gap-1">
-                        {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
+                        <div className="flex items-center gap-1">
+                          {task?.priority && (
+                            <StatusBadge
+                              status={task?.priority}
+                              label={task?.priority}
+                            />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // prevent opening the edit task modal
+                              openDeleteModal(task);
+                            }}
+                            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-red-500 hover:text-red-600 transition">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -400,8 +535,7 @@ export default function MyTasksPage() {
                 onClick={() => openNewTask()}
                 variant="ghost"
                 className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
-                size="sm"
-              >
+                size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Task
               </Button>
@@ -419,6 +553,17 @@ export default function MyTasksPage() {
         taskToEdit={editing}
         onSave={handleSave}
         setEditing={setEditing}
+        openDeleteModal={openDeleteModal}
+      />
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedTask?.id)}
+        title="Delete Task"
+        description="Are you sure you want to delete this task? This action cannot be undone."
+        itemName={selectedTask?.name}
+        requireConfirmation={false} // 👈 disables the typing step
       />
     </div>
   );
