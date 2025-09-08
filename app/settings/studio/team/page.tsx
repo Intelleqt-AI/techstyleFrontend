@@ -134,9 +134,9 @@ export default function TeamPage() {
   };
 
   const handleSuspend = (userId: string) => {
-    if (confirm("Are you sure you want to suspend this user?")) {
-      suspendMutation.mutate(userId);
-    }
+    // if (confirm("Are you sure you want to suspend this user?")) {
+    //   suspendMutation.mutate(userId);
+    // }
   };
 
   const handleAddUser = (user) => {
@@ -369,9 +369,10 @@ export default function TeamPage() {
                 </div>
 
                 <div>
+                  {/* {m?.role} */}
                   <Select
                     defaultValue={m.role}
-                    onValueChange={(value) => handleRoleChange(m.id, value)}
+                    // onValueChange={(value) => handleRoleChange(m.id, value)}
                     disabled={updateRoleMutation.isLoading}>
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Role" />
@@ -385,11 +386,11 @@ export default function TeamPage() {
                 </div>
 
                 <div>
-                  <StatusBadge status={m.status} />
+                  <StatusBadge status={m.status || "Active"} />
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
-                  {m.status === "invited" && (
+                  {/* {m.status === "invited" && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -397,13 +398,20 @@ export default function TeamPage() {
                       disabled={resendInviteMutation.isLoading}>
                       Resend invite
                     </Button>
-                  )}
-                  <Button
+                  )} */}
+                  {/* <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleSuspend(m.id)}
                     disabled={suspendMutation.isLoading}>
                     {m.status === "suspended" ? "Reinstate" : "Suspend"}
+                  </Button> */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleSuspend(m.id)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                    Remove
                   </Button>
                 </div>
               </li>

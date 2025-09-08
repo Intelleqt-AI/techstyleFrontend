@@ -51,8 +51,8 @@ const TeamAssignment = ({ users, setSelectedTeammates, selectedTeammates }) => {
   // Filter teammates based on search query
   const filteredTeammates = users.filter(
     (member) =>
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.title.toLowerCase().includes(searchQuery.toLowerCase())
+      member?.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
+      member?.title?.toLowerCase().includes(searchQuery?.toLowerCase())
   );
 
   // Toggle teammate selection
