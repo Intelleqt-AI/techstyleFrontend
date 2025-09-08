@@ -147,6 +147,11 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
     enabled: !!projectId,
   });
 
+  const handleModalClose = e => {
+    setModalOpen(e);
+    setEditing(null);
+  };
+
   const queryClient = useQueryClient();
   const [columnName, setColumsName] = React.useState(null);
   // Task
@@ -186,7 +191,6 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   }, [taskData, projectId, project]);
 
   function openNewTask(phase?: string) {
-    console.log('phase', phase);
     setColumsName(phase);
     // setColumsName(getPhaseName(phase));
     setEditing(null);
@@ -314,7 +318,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
       toast.error('Failed to update task on server');
     }
   };
-  
+
   console.log(tasks);
 
   return (
@@ -510,7 +514,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
 
       <TaskModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalClose}
         projectId={projectId}
         team={TEAM}
         defaultListId={defaultListId}

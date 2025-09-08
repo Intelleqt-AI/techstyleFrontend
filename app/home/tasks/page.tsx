@@ -246,6 +246,7 @@ export default function MyTasksPage() {
 
   const handleClose = (e: boolean) => {
     setModalOpen(e);
+    setEditing(null);
   };
 
   function handleSave(_payload: Omit<any, 'id'> & { id?: string }) {
