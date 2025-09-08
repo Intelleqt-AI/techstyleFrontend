@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
-import { HomeNav } from "@/components/home-nav";
-import { DataCardsGrid, type DataCardItem } from "@/components/data-cards";
+import React, { useEffect, useState } from 'react';
+import { HomeNav } from '@/components/home-nav';
+import { DataCardsGrid, type DataCardItem } from '@/components/data-cards';
 import {
   CalendarIcon,
   AlertTriangle,
@@ -14,112 +14,100 @@ import {
   CircleDot,
   Eye,
   Hash,
-  MoreHorizontal,
   Clock,
   CircleX,
   Trash2,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { TypeChip, StatusBadge } from "@/components/chip";
-import useTask from "@/supabase/hook/useTask";
-import {
-  deleteTask,
-  fetchOnlyProject,
-  fetchProjects,
-  modifyTask,
-} from "@/supabase/API";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import useUser from "@/supabase/hook/useUser";
-import { toast } from "sonner";
-import { TaskModal } from "@/components/tasks/task-modal";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { DeleteDialog } from "@/components/DeleteDialog";
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { TypeChip, StatusBadge } from '@/components/chip';
+import useTask from '@/supabase/hook/useTask';
+import { deleteTask, fetchProjects, modifyTask } from '@/supabase/API';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import useUser from '@/supabase/hook/useUser';
+import { toast } from 'sonner';
+import { TaskModal } from '@/components/tasks/task-modal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DeleteDialog } from '@/components/DeleteDialog';
+import { CircleFilled } from '@/components/Delete Animation/DeletionAnimations';
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
-const updatetaskList = (data) => {
+type UITask = any; // keep your own type here if you have one
+
+const updatetaskList = (data: any[]) => {
   return [
     {
-      name: "To Do",
-      items: data?.filter((item) => item.status == "todo"),
-      status: "To Do",
+      name: 'To Do',
+      items: data?.filter(item => item.status == 'todo') ?? [],
+      status: 'To Do',
       icon: Circle,
-      color: "text-gray-600",
+      color: 'text-gray-600',
     },
     {
-      name: "In Progress",
-      items: data?.filter((item) => item.status == "in-progress"),
-      status: "In Progress",
+      name: 'In Progress',
+      items: data?.filter(item => item.status == 'in-progress') ?? [],
+      status: 'In Progress',
       icon: CircleDot,
-      color: "text-blue-600",
+      color: 'text-blue-600',
     },
     {
-      name: "In Review",
-      items: data?.filter((item) => item.status == "in-review"),
-      status: "In Review",
-      color: "text-orange-600",
+      name: 'In Review',
+      items: data?.filter(item => item.status == 'in-review') ?? [],
+      status: 'In Review',
+      color: 'text-orange-600',
       icon: Eye,
     },
     {
-      name: "Done",
-      items: data?.filter((item) => item.status == "done"),
-      status: "Done",
+      name: 'Done',
+      items: data?.filter(item => item.status == 'done') ?? [],
+      status: 'Done',
       icon: CheckCircle2,
-      color: "text-green-600",
+      color: 'text-green-600',
     },
   ];
 };
 
 export default function MyTasksPage() {
   const admins = [
-    "david.zeeman@intelleqt.ai",
-    "roxi.zeeman@souqdesign.co.uk",
-    "risalat.shahriar@intelleqt.ai",
-    "dev@intelleqt.ai",
-    "saif@intelleqt.ai",
+    'david.zeeman@intelleqt.ai',
+    'roxi.zeeman@souqdesign.co.uk',
+    'risalat.shahriar@intelleqt.ai',
+    'dev@intelleqt.ai',
+    'saif@intelleqt.ai',
   ];
 
-  const [myTask, setMyTask] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [myTask, setMyTask] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(
-    undefined
-  );
+  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
 
   const { user } = useUser();
+
   function openNewTask(listId?: string) {
     setEditing(null);
     setDefaultListId(listId);
     setModalOpen(true);
   }
-  const [searchText, setSearchText] = useState("");
-  const [filter, setFilter] = useState(null);
 
-  function openEditTask(task) {
+  const [searchText, setSearchText] = useState('');
+  const [filter, setFilter] = useState<null | 'today' | 'overdue'>(null);
+
+  function openEditTask(task: any) {
     setEditing(task);
     setDefaultListId(task.listId);
     setModalOpen(true);
   }
 
-  const handleClose = (e) => {
+  const handleClose = (e: boolean) => {
     setModalOpen(e);
   };
 
-  function handleSave(payload: Omit<Task, "id"> & { id?: string }) {
-    // if (payload.id) {
-    //   setTasks(prev => prev.map(t => (t.id === payload.id ? { ...t, ...payload } : t)));
-    // } else {
-    //   const newTask: UITask = { ...payload, id: crypto.randomUUID() } as UITask;
-    //   setTasks(prev => [newTask, ...prev]);
-    // }
+  function handleSave(_payload: Omit<any, 'id'> & { id?: string }) {
+    // handled elsewhere (DB-driven)
   }
 
   const queryClient = useQueryClient();
@@ -127,91 +115,69 @@ export default function MyTasksPage() {
   const { mutate, error: deleteError } = useMutation({
     mutationFn: modifyTask,
     onSuccess: () => {
-      queryClient.invalidateQueries(["tasks"]);
+      queryClient.invalidateQueries(['tasks']);
     },
   });
 
   // Projects
-  const {
-    data: project,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ["projects"],
+  const { data: project } = useQuery({
+    queryKey: ['projects'],
     queryFn: fetchProjects,
   });
 
   useEffect(() => {
     if (taskLoading) return;
 
-    // 1. Start with all tasks
-    let myTask = myTaskList(taskData?.data);
-    setMyTask(taskData?.data);
+    // 1. Start with all tasks (scoped to user/admin)
+    let list = myTaskList(taskData?.data);
+    setMyTask(taskData?.data ?? []);
 
-    // 2. Apply search filter
+    // 2. Search
     if (searchText.trim()) {
-      myTask = myTask.filter((task) =>
-        task.name?.toLowerCase().includes(searchText.toLowerCase())
-      );
+      const s = searchText.toLowerCase();
+      list = list.filter(t => t.name?.toLowerCase().includes(s));
     }
 
-    // 3. Apply extra filter (today or overdue)
-    if (filter === "today") {
-      myTask = todayTasks(myTask);
-    } else if (filter === "overdue") {
-      myTask = myRecentTask(myTask);
-    }
+    // 3. Extra filters
+    if (filter === 'today') list = todayTasks(list);
+    else if (filter === 'overdue') list = myRecentTask(list);
 
-    // 4. Final set
-    setTasks(
-      taskData && taskData.data.length > 0 ? updatetaskList(myTask) : []
-    );
+    // 4. Group into columns
+    setTasks(taskData && taskData.data?.length > 0 ? updatetaskList(list) : []);
   }, [taskData, taskLoading, user?.email, searchText, filter]);
 
-  const myRecentTask = (tasks) => {
+  const myRecentTask = (arr: any[]) => {
     const now = new Date();
-    return tasks?.filter(
-      (task) => task.status !== "done" && new Date(task.dueDate) < now
+    return arr?.filter(task => task.status !== 'done' && new Date(task.dueDate) < now) ?? [];
+  };
+
+  const todayTasks = (arr: any[]) => {
+    const now = new Date();
+    return (
+      arr?.filter(task => {
+        const createdAt = new Date(task.created_at);
+        return (
+          createdAt.getDate() === now.getDate() && createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear()
+        );
+      }) ?? []
     );
   };
 
-  const todayTasks = (tasks) => {
-    const now = new Date();
-    return tasks?.filter((task) => {
-      const createdAt = new Date(task.created_at);
-      return (
-        createdAt.getDate() === now.getDate() &&
-        createdAt.getMonth() === now.getMonth() &&
-        createdAt.getFullYear() === now.getFullYear()
-      );
-    });
-  };
-
-  const myTaskList = (tasks) => {
-    if (!tasks) return [];
+  const myTaskList = (arr: any[]) => {
+    if (!arr) return [];
     if (!user) return [];
     if (admins.includes(user?.email)) {
-      return tasks;
+      return arr;
     }
-
-    return tasks.filter((task) => {
-      // If user is assigned
+    return arr.filter(task => {
       const isAssigned =
-        task.assigned &&
-        Array.isArray(task.assigned) &&
-        task.assigned.some((assignee) => assignee.email === user.email);
-
-      // If user is the creator
+        task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
       const isCreator = task.creator === user.email;
-
       return isAssigned || isCreator;
     });
   };
 
-  const assignedProjectCount = project?.filter((item) =>
-    item.assigned?.some((person) => person.email == user?.email)
-  ).length;
+  const assignedProjectCount = project?.filter((item: any) => item.assigned?.some((person: any) => person.email == user?.email)).length;
 
   const todayCreatedTask = todayTasks(myTask);
   const overDueTask = myRecentTask(myTask);
@@ -219,129 +185,80 @@ export default function MyTasksPage() {
   // CRM-style stat cards
   const dataCards: DataCardItem[] = [
     {
-      title: "Total Tasks",
+      title: 'Total Tasks',
       value: myTask?.length,
-      subtitle: "Across all assigned projects",
+      subtitle: 'Across all assigned projects',
       icon: Hash,
     },
     {
-      title: "Overdue Tasks",
+      title: 'Overdue Tasks',
       value: overDueTask?.length,
-      subtitle: "Past due dates",
+      subtitle: 'Past due dates',
       icon: AlertTriangle,
     },
     {
-      title: "Task Added Today",
+      title: 'Task Added Today',
       value: todayCreatedTask?.length,
-      subtitle: "Created today",
+      subtitle: 'Created today',
       icon: CalendarIcon,
     },
     {
-      title: "Active Projects",
-      value: admins.some((item) => item == user?.email)
-        ? project?.length
-        : assignedProjectCount,
-      subtitle: "Assigned to you",
+      title: 'Active Projects',
+      value: admins.some(item => item == user?.email) ? project?.length : assignedProjectCount,
+      subtitle: 'Assigned to you',
       icon: Hash,
     },
   ];
 
-  // Task Drag and drop section
-  const handleDragStart = (
-    e: React.DragEvent,
-    taskId: string,
-    sourceColumn: string
-  ) => {
-    e.dataTransfer.setData("taskId", taskId);
-    e.dataTransfer.setData("sourceColumn", sourceColumn);
+  const columnNameToStatus: Record<string, 'todo' | 'in-progress' | 'in-review' | 'done'> = {
+    'To Do': 'todo',
+    'In Progress': 'in-progress',
+    'In Review': 'in-review',
+    Done: 'done',
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  const onDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
 
-  const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData("taskId");
-    const sourceColumn = e.dataTransfer.getData("sourceColumn");
-    if (!taskId || !sourceColumn || sourceColumn === targetColumn) return;
+    // No-op if position unchanged
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
 
-    // Determine the new status
-    let status;
-    if (targetColumn === "To Do") {
-      status = "todo";
-    } else if (targetColumn === "In Progress") {
-      status = "in-progress";
-    } else if (targetColumn === "In Review") {
-      status = "in-review";
-    } else if (targetColumn === "Done") {
-      status = "done";
-    }
+    setTasks(prev => {
+      const sourceColIndex = prev.findIndex(col => col.name === source.droppableId);
+      const destColIndex = prev.findIndex(col => col.name === destination.droppableId);
+      if (sourceColIndex === -1 || destColIndex === -1) return prev;
 
-    setTasks((prevColumns) => {
-      // Find the source and target column indices
-      const sourceColumnIndex = prevColumns.findIndex(
-        (col) => col.name === sourceColumn
-      );
-      const targetColumnIndex = prevColumns.findIndex(
-        (col) => col.name === targetColumn
-      );
+      const sourceCol = prev[sourceColIndex];
+      const destCol = prev[destColIndex];
 
-      // Ensure columns exist
-      if (sourceColumnIndex === -1 || targetColumnIndex === -1)
-        return prevColumns;
+      const sourceItems = Array.from(sourceCol.items);
+      const [movedTask] = sourceItems.splice(source.index, 1);
 
-      // Find the task within the source column
-      const taskIndex = prevColumns[sourceColumnIndex].items.findIndex(
-        (task) => task.id === taskId
-      );
+      // If moving across columns, update status immediately for UI
+      const destItems = Array.from(destCol.items);
+      const nextStatus = columnNameToStatus[destination.droppableId];
+      const updatedTask = sourceColIndex === destColIndex ? movedTask : { ...movedTask, status: nextStatus };
 
-      // Ensure task exists
-      if (taskIndex === -1) return prevColumns;
+      destItems.splice(destination.index, 0, updatedTask);
 
-      // Get the task and remove it from the source column
-      const task = prevColumns[sourceColumnIndex].items[taskIndex];
+      const next = [...prev];
+      next[sourceColIndex] = { ...sourceCol, items: sourceItems };
+      next[destColIndex] = { ...destCol, items: destItems };
 
-      // Create a new task object with the updated status
-      const updatedTask = {
-        ...task,
-        status: status, // Update the status property here
-      };
+      // Persist status only when column changes
+      if (sourceColIndex !== destColIndex) {
+        const payload =
+          nextStatus === 'done'
+            ? { newTask: { status: nextStatus, phase: 'complete-project', id: draggableId } }
+            : { newTask: { status: nextStatus, id: draggableId } };
 
-      const newColumns = [...prevColumns];
-      newColumns[sourceColumnIndex] = {
-        ...newColumns[sourceColumnIndex],
-        items: newColumns[sourceColumnIndex].items.filter(
-          (_, idx) => idx !== taskIndex
-        ),
-      };
+        mutate(payload);
+        toast.success(`Task moved to ${destination.droppableId}`);
+      }
 
-      // Add the updated task to the target column
-      newColumns[targetColumnIndex] = {
-        ...newColumns[targetColumnIndex],
-        items: [...newColumns[targetColumnIndex].items, updatedTask],
-      };
-      toast.success(`Task moved to ${targetColumn}`);
-
-      return newColumns;
+      return next;
     });
-
-    // Send update to server
-    let modifyInfo;
-    if (status === "done") {
-      modifyInfo = {
-        status,
-        phase: "complete-project",
-        id: taskId,
-      };
-    } else {
-      modifyInfo = {
-        status,
-        id: taskId,
-      };
-    }
-    // Update to DB
-    mutate({ newTask: modifyInfo });
   };
 
   const {
@@ -351,8 +268,8 @@ export default function MyTasksPage() {
   } = useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
-      queryClient.invalidateQueries(["tasks"]);
-      toast("Task Updated", {
+      queryClient.invalidateQueries(['tasks']);
+      toast.success('Task Deleted', {
         duration: 1000,
         dismissible: true,
       });
@@ -360,13 +277,62 @@ export default function MyTasksPage() {
     },
   });
 
-  const openDeleteModal = (task) => {
+  const openDeleteModal = (task: any) => {
     setIsDeleteOpen(true);
     setSelectedTask(task);
   };
 
-  const handleDelete = (id) => {
-    removeTask(id);
+  const handleDeleteTimer = (id: string) => {
+    setTimeout(() => {
+      let secondsLeft = 5;
+      let timer: any, updateInterval: any;
+      const createToastContent = (seconds: number) => (
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2">
+            <CircleFilled />
+            <div>
+              <div className="font-sm">Deleting Task...</div>
+              <div className="text-xs opacity-70">{seconds}s remaining</div>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              clearTimeout(timer);
+              clearInterval(updateInterval);
+              toast.dismiss(t);
+              toast.success('Deletion cancelled');
+            }}
+            className="px-3 py-1 text-sm bg-black text-white rounded  transition-colors ml-4"
+          >
+            Cancel
+          </button>
+        </div>
+      );
+
+      const t = toast.warning(createToastContent(secondsLeft), {
+        duration: Infinity,
+      });
+
+      updateInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          toast.warning(createToastContent(secondsLeft), {
+            id: t,
+            duration: Infinity,
+          });
+        }
+      }, 1000);
+
+      timer = setTimeout(() => {
+        removeTask(id);
+        clearInterval(updateInterval);
+        toast.dismiss(t);
+      }, 5000);
+    }, 100);
+  };
+
+  const handleDelete = (id: string) => {
+    handleDeleteTimer(id);
   };
 
   return (
@@ -376,172 +342,151 @@ export default function MyTasksPage() {
 
         {/* CRM-style Data Cards */}
         <DataCardsGrid items={dataCards} />
+
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 h-9 bg-transparent">
+                <Button variant="outline" size="sm" className="gap-2 h-9 bg-transparent">
                   <Filter className="w-4 h-4" />
                   Filter
                 </Button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="center" className="w-40">
-                <DropdownMenuItem onClick={() => setFilter("overdue")}>
-                  Overdue
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setFilter("today")}>
-                  Added Today
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter('overdue')}>Overdue</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilter('today')}>Added Today</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
             {filter && (
-              <Button size={"sm"} variant={"secondary"} className=" capitalize">
+              <Button size={'sm'} variant={'secondary'} className=" capitalize">
                 {filter}
-                <span onClick={() => setFilter(null)}>
-                  <CircleX />
+                <span onClick={() => setFilter(null)} className="ml-2 inline-flex">
+                  <CircleX className="h-4 w-4" />
                 </span>
               </Button>
             )}
+
             <div className="relative w-full max-w-md">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="pl-10 h-9"
-                placeholder="Search tasks..."
-              />
+              <Input value={searchText} onChange={e => setSearchText(e.target.value)} className="pl-10 h-9" placeholder="Search tasks..." />
             </div>
           </div>
+
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => openNewTask()}
-              size="sm"
-              className="gap-2 bg-gray-900 hover:bg-gray-800">
+            <Button onClick={() => openNewTask()} size="sm" className="gap-2 bg-gray-900 hover:bg-gray-800">
               <Plus className="w-4 h-4" />
               Add Task
             </Button>
           </div>
         </div>
 
-        {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {tasks?.map((column) => (
-            <div
-              onDragOver={(e) => handleDragOver(e)}
-              onDrop={(e) => handleDrop(e, column.name)}
-              key={column.name}
-              className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-              {/* Column Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <column.icon className={`w-4 h-4 ${column.color}`} />
-
-                  <span className="font-medium text-gray-900">
-                    {column.name}
-                  </span>
-                  <TypeChip label={String(column?.items?.length)} />
-                </div>
-                <div className="flex items-center gap-1">
-                  {/* <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button> */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Task Cards */}
-              <div className="space-y-3 mb-4">
-                {column.items.map((task) => (
+        {/* Kanban Board (react-beautiful-dnd) */}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {tasks?.map((column: any) => (
+              <Droppable droppableId={column.name} key={column.name}>
+                {(provided, snapshot) => (
                   <div
-                    key={task.id}
-                    className="p-3 h-[105px] active:cursor-grabbing cursor-pointer flex flex-col justify-between rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
-                    draggable
-                    onDragStart={(e) =>
-                      handleDragStart(e, task.id, column.name)
-                    }
-                    onClick={() => openEditTask(task)}>
-                    <div>
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">
-                          {task.name}
-                        </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
-                          <Clock className="w-3 h-3" />
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
+                      snapshot.isDraggingOver ? '!border-greige-500  border-2 border-dashed' : ''
+                    }`}
+                  >
+                    {/* Column Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <column.icon className={`w-4 h-4 ${column.color}`} />
+                        <span className="font-medium text-gray-900">{column.name}</span>
+                        <TypeChip label={String(column?.items?.length ?? 0)} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600">
+                          <Plus className="w-4 h-4" />
                         </Button>
                       </div>
-
-                      <div className="text-xs truncate text-gray-600 mb-2">
-                        {(project &&
-                          project.find((p) => p.id === task?.projectID)
-                            ?.name) ||
-                          ""}
-                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-500">
-                        {
-                          task?.subtasks?.filter(
-                            (subtask) => subtask.selected === true
-                          ).length
-                        }
-                        /{task?.subtasks?.length}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <div className="flex items-center gap-1">
-                          {task?.priority && (
-                            <StatusBadge
-                              status={task?.priority}
-                              label={task?.priority}
-                            />
+
+                    {/* Task Cards */}
+                    <div className="space-y-3 mb-4">
+                      {column.items?.map((task: any, index: number) => (
+                        <Draggable key={task.id} draggableId={task.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              style={provided.draggableProps.style}
+                              className={`p-3 h-[105px] cursor-pointer flex flex-col justify-between rounded-lg border bg-gray-50 hover:bg-gray-100 transition-all ${
+                                snapshot.isDragging ? 'shadow-xl  bg-white' : 'border-gray-200'
+                              }`}
+                              onClick={() => openEditTask(task)}
+                            >
+                              <div>
+                                <div className="flex items-start justify-between mb-2">
+                                  <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">{task.name}</h4>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2"
+                                  >
+                                    <Clock className="w-3 h-3" />
+                                  </Button>
+                                </div>
+
+                                <div className="text-xs truncate text-gray-600 mb-2">
+                                  {(project && project.find((p: any) => p.id === task?.projectID)?.name) || ''}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-gray-500">
+                                  {task?.subtasks?.filter((subtask: any) => subtask.selected === true).length}/{task?.subtasks?.length}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-1">
+                                    {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={e => {
+                                        e.stopPropagation();
+                                        openDeleteModal(task);
+                                      }}
+                                      className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-gray-400 hover:text-red-600 transition"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // prevent opening the edit task modal
-                              openDeleteModal(task);
-                            }}
-                            className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-red-500 hover:text-red-600 transition">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
+                        </Draggable>
+                      ))}
+
+                      {provided.placeholder}
                     </div>
-                  </div>
-                ))}
 
-                {/* {column.items.length === 0 && column.name === 'Done' && (
-                  <div className="p-8 text-center">
-                    <div className="text-gray-400 mb-2">+ Add Task</div>
+                    {/* Add Task Button */}
+                    <Button
+                      onClick={() => openNewTask()}
+                      variant="ghost"
+                      className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
+                      size="sm"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Task
+                    </Button>
                   </div>
-                )} */}
-              </div>
-
-              {/* Add Task Button */}
-              <Button
-                onClick={() => openNewTask()}
-                variant="ghost"
-                className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
-                size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Task
-              </Button>
-            </div>
-          ))}
-        </div>
+                )}
+              </Droppable>
+            ))}
+          </div>
+        </DragDropContext>
       </div>
 
       <TaskModal
@@ -563,7 +508,7 @@ export default function MyTasksPage() {
         title="Delete Task"
         description="Are you sure you want to delete this task? This action cannot be undone."
         itemName={selectedTask?.name}
-        requireConfirmation={false} // 👈 disables the typing step
+        requireConfirmation={false}
       />
     </div>
   );

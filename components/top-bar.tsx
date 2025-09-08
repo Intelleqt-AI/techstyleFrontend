@@ -74,8 +74,8 @@ export function TopBar() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['fetch-projects'],
-    queryFn: fetchProjects,
+    queryKey: ['fetchOnlyProject'],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({

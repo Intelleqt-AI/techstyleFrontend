@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import useUsers from '@/hooks/useUsers';
 import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -322,6 +323,7 @@ export default function DashboardPage() {
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [tracking, setTracking] = useState([]);
   const [userTime, setUserTime] = useState(null);
+  const { currency, isLoading: currencyLoading } = useCurrency();
   const { users } = useUsers();
   const admins = [
     'david.zeeman@intelleqt.ai',
@@ -656,7 +658,12 @@ export default function DashboardPage() {
       return [
         { color: 'clay', text: `${overDueTask?.length} overdue tasks across 3 projects` },
         { color: 'sage', text: `Team utilisation at ${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%` },
-        { color: 'olive', text: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)} profit this month` },
+        {
+          color: 'olive',
+          text: `${!currencyLoading && (currency?.symbol || '£')}${(
+            totalInvoiceOrder - totalPurchaseOrder
+          ).toLocaleString()} profit this month`,
+        },
       ];
     }
     return [
@@ -714,15 +721,30 @@ export default function DashboardPage() {
 
   function FinancialKPIsCard({ scope, userRole }) {
     const myKPIs = [
-      { label: 'My Budget Util', value: `£${getFormattedTimeFromMondayToSaturday(tracking) * 20}`, trend: 'up', change: '+5%' },
+      {
+        label: 'My Budget Util',
+        value: `${!currencyLoading && (currency?.symbol || '£')}${getFormattedTimeFromMondayToSaturday(tracking) * 20}`,
+        trend: 'up',
+        change: '+5%',
+      },
       { label: 'Hours This Week', value: getFormattedTimeFromMondayToSaturday(tracking) || '0', trend: 'up', change: '+2h' },
       { label: 'Projects Active', value: project?.length, trend: 'neutral', change: '0' },
     ];
 
     const studioKPIs = [
-      { label: 'Studio Profit', value: `${gbp.format(totalInvoiceOrder - totalPurchaseOrder)}`, trend: 'up', change: '+12%' },
+      {
+        label: 'Studio Profit',
+        value: `${!currencyLoading && (currency?.symbol || '£')}${(totalInvoiceOrder - totalPurchaseOrder).toLocaleString()}`,
+        trend: 'up',
+        change: '+12%',
+      },
       { label: 'Utilisation', value: `${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%`, trend: 'up', change: '+3%' },
-      { label: 'Cash Flow', value: gbp.format(totalPurchaseOrder), trend: 'down', change: '-8%' },
+      {
+        label: 'Cash Flow',
+        value: `${!currencyLoading && (currency?.symbol || '£')}${totalPurchaseOrder.toLocaleString()}`,
+        trend: 'down',
+        change: '-8%',
+      },
     ];
 
     const kpis = scope === 'studio' ? studioKPIs : myKPIs;

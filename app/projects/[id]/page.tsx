@@ -406,13 +406,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                         </div>
                       </div>
 
-                      {index > 0 && (
-                        <div
-                          className={`absolute top-1.5 right-6 w-20 h-0.5 ${
-                            selectedProject.phases[index - 1].completed ? 'bg-clay-500' : 'bg-greige-500'
-                          }`}
-                        />
-                      )}
+                      {<div className={`absolute top-1.5  w-20 h-0.5 ${isCurrent ? 'bg-clay-500' : 'bg-greige-500'}`} />}
                     </div>
                   );
                 })}
