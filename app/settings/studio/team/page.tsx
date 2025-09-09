@@ -343,7 +343,7 @@ export default function TeamPage() {
           </div>
         }>
         <div className="overflow-hidden rounded-lg border border-gray-200">
-          <div className="grid grid-cols-[1fr,160px,120px,220px] items-center px-4 py-2 text-xs text-muted-foreground bg-neutral-50">
+          <div className="grid grid-cols-[1fr,160px,120px,220px] gap-3 items-center px-4 py-2 text-xs text-muted-foreground bg-neutral-50">
             <div>Member</div>
             <div>Role</div>
             <div>Status</div>
@@ -353,7 +353,7 @@ export default function TeamPage() {
             {user?.teamMember?.map((m: Member) => (
               <li
                 key={m.id}
-                className="grid grid-cols-[1fr,160px,120px,220px] items-center px-4 py-3 bg-white">
+                className="grid grid-cols-[1fr,160px,120px,220px] gap-3 items-center px-4 py-3 bg-white">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs">
