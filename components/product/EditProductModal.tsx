@@ -208,36 +208,41 @@ const EditProductModal = ({ productInfo, editModal, closeEditModal }) => {
         </div>
       </div>
       {/*Upload Content */}
-      <div {...getRootProps()} className="border mb-7 flex flex-col gap-5 items-center justify-center py-10 rounded-2xl cursor-pointer">
+      <div
+        {...getRootProps()}
+        className=" border-dashed border-2 mb-7 flex flex-col gap-5 items-center justify-center py-10 rounded-2xl cursor-pointer"
+      >
         <input {...getInputProps()} />
-        <div className="bg-[#ECEFEC] w-36 h-36 flex items-center justify-center rounded-full">
-          <Upload size={45} />
+        <div className="bg-[#ECEFEC]  w-16 h-16 flex items-center justify-center rounded-full">
+          <Upload size={18} />
         </div>
         <div className="text-center">
-          <p className="text-[27px] mb-1 font-medium">Drag and drop or click here</p>
-          <p>to upload your image (max: 5MB, max: 5 images)</p>
+          <p className="text-[16px] mb-1 font-medium">Drag and drop or click here</p>
+          <p className="text-xs">to upload your image (max: 5MB, max: 5 images)</p>
         </div>
 
         {/* Error Message */}
         {error && <p className="text-red-500 text-xs font-semibold">{error}</p>}
 
         {/* Preview Uploaded Images */}
-        <div className="flex gap-4 mt-4">
-          {files.map(file => (
-            <div key={file.name} className="relative group">
-              <img src={file.preview} alt="Preview" className="w-20 h-20 rounded-lg object-cover" />
-              <button
-                onClick={e => {
-                  e.stopPropagation();
-                  removeImage(file.name);
-                }}
-                className="absolute top-[-8px] right-[-8px] bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ))}
-        </div>
+        {files.length > 0 && (
+          <div className="flex gap-4 mt-4">
+            {files.map(file => (
+              <div key={file.name} className="relative group">
+                <img src={file.preview} alt="Preview" className="w-20 h-20 rounded-lg object-cover" />
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    removeImage(file.name);
+                  }}
+                  className="absolute top-[-8px] right-[-8px] bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {/* Form */}
       <form onSubmit={handleSubmit}>

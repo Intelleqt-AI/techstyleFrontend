@@ -22,7 +22,7 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user }) => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['fetchOnlyProject'],
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 

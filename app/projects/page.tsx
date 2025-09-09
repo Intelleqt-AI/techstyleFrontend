@@ -92,8 +92,6 @@ export default function ProjectsPage() {
     setProject(data);
   }, [data, isLoading]);
 
-  // const filteredProjects = projects;
-
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
@@ -195,18 +193,18 @@ export default function ProjectsPage() {
                                 </div>
                               </Badge>
                             </div>
-                            {(project?.code || project?.client) && (
-                              <span className="text-sm text-ink-muted">
-                                {project?.code}
-                                {project?.client && (
-                                  <>
-                                    {' '}
-                                    {project?.code && project?.client && '•'}{' '}
-                                    {clientData?.data?.find(client => client?.id == project?.client)?.name}
-                                  </>
-                                )}
-                              </span>
-                            )}
+                            <span className="text-sm text-ink-muted">
+                              {project?.code ? (
+                                <>
+                                  {project?.code} •{' '}
+                                  {project?.client ? clientData?.data?.find(client => client?.id == project?.client)?.name : 'No client'}
+                                </>
+                              ) : project?.client ? (
+                                clientData?.data?.find(client => client?.id == project?.client)?.name || 'No client'
+                              ) : (
+                                'No client'
+                              )}
+                            </span>
                           </div>
 
                           {/* Progress */}
@@ -342,7 +340,7 @@ export default function ProjectsPage() {
                           </Link>
                         </td>
                         <td className="py-4 px-4 text-sm text-ink">
-                          {clientData && clientData?.data?.find(client => client?.id == project?.client)?.name}
+                          {(clientData && clientData?.data?.find(client => client?.id == project?.client)?.name) || '-'}
                         </td>
                         <td className="py-4 px-4 capitalize">
                           <Badge variant="outline" className={`text-xs ${getTypeColor(project?.projectType)}`}>
@@ -368,7 +366,7 @@ export default function ProjectsPage() {
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-16 bg-greige-200 rounded-full h-1">
+                            <div className="w-16 bg-gray-200 rounded-full h-1">
                               <div
                                 className="bg-sage-500 h-1 rounded-full transition-all duration-300"
                                 style={{

@@ -48,7 +48,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import useProjects from '@/supabase/hook/useProject';
 import useUser from '@/supabase/hook/useUser';
-import { addNewTask, createNotification, fetchProjects, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
+import {
+  addNewTask,
+  createNotification,
+  fetchOnlyProject,
+  fetchProjects,
+  getAllFiles,
+  getUsers,
+  modifyTask,
+  uploadDoc,
+} from '@/supabase/API';
 import { toast } from 'sonner';
 import DraggableSubtasks2 from './DraggableSubtasks2';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -156,8 +165,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   const [selectedMembers, setSelectedMembers] = React.useState([]);
   const form2 = useForm({});
   const lastInputRef = React.useRef(null);
-  const { data, isLoading: projectLoading } = useProjects();
+  // const { data, isLoading: projectLoading } = useProjects();
   const { user, isLoading: userLoading } = useUser();
+  const { data = [], isLoading: projectLoading } = useQuery({
+    queryKey: ['fetchOnlyProject'],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
 
   // Mention dropdown
   const mentionRef = React.useRef(null);
@@ -504,14 +517,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
       };
       return newValues;
     });
-
-    // Check if the status is done , then also change the phase to complete
-    if (value == 'done') {
-      setTaskValues(prevTask => ({
-        ...prevTask,
-        phase: 'complete-project',
-      }));
-    }
   };
 
   // Submit Task after enter name
@@ -595,7 +600,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     return name.substring(0, 2).toUpperCase();
   }
 
-  function AssigneesMultiSelect() {
+  function AssigneesMultiSelect({ users }) {
     const [openPop, setOpenPop] = React.useState(false);
     const selected = taskValues?.assigned || [];
 
@@ -643,10 +648,10 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                   placeholder="Search teammates…"
                   className=" focus-visible:ring-gray-300 focus-visible:ring-offset-0 focus:outline-none"
                 />
-                <CommandEmpty>No people found.</CommandEmpty>
+                <CommandEmpty>No member on this project</CommandEmpty>
                 <CommandList className="max-h-64">
                   <CommandGroup>
-                    {users?.data?.map(m => {
+                    {users?.map(m => {
                       const checked = taskValues?.assigned?.some(a => a.id === m.id);
                       return (
                         <CommandItem key={m.id} value={m.name} className="flex items-center gap-2">
@@ -881,7 +886,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                     <Select
                       value={taskValues?.phase || ''}
                       onValueChange={value => {
-                        console.log(data?.find(item => item.id == taskValues?.projectID));
                         const e = {
                           target: {
                             name: 'phase',
@@ -900,6 +904,10 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                           ?.phases?.map(selectItem => (
                             <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
                           ))}
+
+                        {data?.find(item => item.id == taskValues?.projectID)?.phases?.length == undefined && (
+                          <SelectItem disabled>No phases</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </Labeled>
@@ -1101,7 +1109,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
             </Labeled> */}
 
             <Labeled icon={<Users className="h-4 w-4" />} label="Assignees">
-              <AssigneesMultiSelect />
+              <AssigneesMultiSelect users={data?.find(item => item.id == taskValues?.projectID)?.assigned} />
             </Labeled>
 
             <div className="grid grid-cols-[160px_1fr] gap-4 items-start">

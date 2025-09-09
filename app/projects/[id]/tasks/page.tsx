@@ -142,7 +142,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   const [activeTab, setActiveTab] = React.useState<'board' | 'list' | 'timeline'>('board');
 
   const { data: project, isLoading } = useQuery({
-    queryKey: [`projectOnly`, projectId],
+    queryKey: [`project`, projectId],
     queryFn: () => fetchOnlyProject({ projectID: projectId }),
     enabled: !!projectId,
   });

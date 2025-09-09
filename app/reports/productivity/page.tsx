@@ -265,7 +265,7 @@ export default function ProductivityReportsPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['projects'],
+    queryKey: ['fetchOnlyProject'],
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 

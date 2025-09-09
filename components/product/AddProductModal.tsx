@@ -310,7 +310,10 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
             </div>
           </div>
           {/*Upload Content */}
-          <div {...getRootProps()} className="border mb-5 flex flex-col gap-5 items-center justify-center py-5 rounded-2xl cursor-pointer">
+          <div
+            {...getRootProps()}
+            className="border-dashed border-2 mb-5 flex flex-col gap-5 items-center justify-center py-5 rounded-2xl cursor-pointer"
+          >
             <input {...getInputProps()} />
             <div className="bg-[#ECEFEC] w-12 h-12 flex items-center justify-center rounded-full">
               <Upload size={18} />
