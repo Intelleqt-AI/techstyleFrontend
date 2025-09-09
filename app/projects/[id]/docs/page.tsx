@@ -934,11 +934,11 @@ export default function ProjectDocsPage({
 
       {/* Upload Modal */}
       <Modal
-        className="!h-[400px] !max-w-[600px] !py-7"
+        className="!h-[600px] !max-w-[700px] !py-7"
         isOpen={uploadModal}
         onRequestClose={() => setUploadModal(false)}
-        contentLabel="Upload Modal">
-        <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
+        contentLabel="Upload Documents Modal">
+        <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
               <p>Upload Documents</p>
@@ -960,68 +960,150 @@ export default function ProjectDocsPage({
             </button>
           </div>
         </div>
-        <div className="space-y-4">
-          <input
-            type="file"
-            multiple
-            className="block w-full rounded-md border border-neutral-300 p-2"
-            onChange={(e) => setFileQueue(Array.from(e.target.files || []))}
-          />
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setUploadModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!fileQueue.length) return toast.error("Select files first");
-                if (fileQueue.length === 1) {
-                  uploadMutation.mutate({
-                    file: fileQueue[0],
-                    id: params.id,
-                    path: currentPath,
-                    projectID: params.id,
-                    task: undefined,
-                  });
-                } else {
-                  toast.loading(`Uploading ${fileQueue.length} files...`, {
-                    id: "upload-toast",
-                  });
-                  let completed = 0;
-                  let failed = 0;
-                  fileQueue.forEach((f) => {
-                    uploadDoc({
-                      file: f,
-                      id: params.id,
-                      path: currentPath,
-                      projectID: undefined,
-                      task: undefined,
-                    })
-                      .then(() => {
-                        completed++;
-                        if (completed + failed === fileQueue.length) {
-                          toast.dismiss("upload-toast");
-                          toast.success(
-                            `Uploaded ${completed}/${fileQueue.length} files`
-                          );
-                          setFileQueue([]);
-                          setUploadModal(false);
-                          refetch();
-                        }
-                      })
-                      .catch(() => {
-                        failed++;
-                        if (completed + failed === fileQueue.length) {
-                          toast.dismiss("upload-toast");
-                          toast.error("Some uploads failed");
-                          refetch();
-                        }
-                      });
-                  });
-                }
-              }}>
-              Upload
-            </Button>
+
+        <div className="w-full max-w-lg mx-auto">
+          {/* File Drop Area */}
+          <div
+            onClick={() => document.getElementById("fileInput")?.click()}
+            className="border-dashed cursor-pointer mt-10 w-full border-2 flex flex-col gap-5 items-center justify-center py-6 rounded-2xl border-gray-300 hover:border-gray-400 transition-colors">
+            <div className="flex flex-col items-center gap-3">
+              <input
+                id="fileInput"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => setFileQueue(Array.from(e.target.files || []))}
+              />
+              <div className="bg-gray-100 w-24 h-24 flex items-center justify-center rounded-full">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12"
+                  />
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-lg mb-1 font-medium">Drag & Drop or Click</p>
+                <p className="text-sm text-gray-600">
+                  to upload multiple documents (max: 50MB each)
+                </p>
+              </div>
+            </div>
           </div>
+
+          {/* File List */}
+          {fileQueue.length > 0 && (
+            <div className="mt-6 border rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium">
+                  Selected Files ({fileQueue.length})
+                </h3>
+                <button
+                  onClick={() => setFileQueue([])}
+                  className="text-sm hover:text-red-700">
+                  Remove All
+                </button>
+              </div>
+
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {fileQueue.map((f, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <div className="p-2 rounded flex-shrink-0">
+                        <svg
+                          className="w-6 h-6 text-black"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                      </div>
+                      <span className="truncate flex-1">{f.name}</span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setFileQueue(fileQueue.filter((_, i) => i !== index))
+                      }
+                      className="text-black hover:text-red-700">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-6">
+                <Button variant="outline" onClick={() => setUploadModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!fileQueue.length)
+                      return toast.error("Select files first");
+                    if (fileQueue.length === 1) {
+                      uploadMutation.mutate({
+                        file: fileQueue[0],
+                        id: params.id,
+                        path: currentPath,
+                        projectID: params.id,
+                        task: undefined,
+                      });
+                    } else {
+                      toast.loading(`Uploading ${fileQueue.length} files...`, {
+                        id: "upload-toast",
+                      });
+                      let completed = 0;
+                      let failed = 0;
+                      fileQueue.forEach((f) => {
+                        uploadDoc({
+                          file: f,
+                          id: params.id,
+                          path: currentPath,
+                          projectID: undefined,
+                          task: undefined,
+                        })
+                          .then(() => {
+                            completed++;
+                            if (completed + failed === fileQueue.length) {
+                              toast.dismiss("upload-toast");
+                              toast.success(
+                                `Uploaded ${completed}/${fileQueue.length} files`
+                              );
+                              setFileQueue([]);
+                              setUploadModal(false);
+                              refetch();
+                            }
+                          })
+                          .catch(() => {
+                            failed++;
+                            if (completed + failed === fileQueue.length) {
+                              toast.dismiss("upload-toast");
+                              toast.error("Some uploads failed");
+                              refetch();
+                            }
+                          });
+                      });
+                    }
+                  }}>
+                  Upload {fileQueue.length}{" "}
+                  {fileQueue.length === 1 ? "File" : "Files"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Modal>
 
