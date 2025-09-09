@@ -336,11 +336,13 @@ export const uploadCover = async ({ file, id, path = "" }) => {
   if (!file) {
     throw new Error("No file provided.");
   }
-  const filePath = path ? `${id}/${path}/${file.name}` : `${id}/${file.name}`;
+  const filePath = path
+    ? `${id}/${path}/${file[0].name}`
+    : `${id}/${file[0].name}`;
 
   const { data, error } = await supabase.storage
-    .from("Cover")
-    .upload(filePath, file);
+    .from("cover")
+    .upload(filePath, file[0]);
 
   if (error) {
     console.log(error);
@@ -356,7 +358,7 @@ export const deleteCover = async ({ id, file, path = "" }) => {
   }
 
   const filePath = path ? `${id}/${path}/${file}` : `${id}/${file}`;
-  const { error } = await supabase.storage.from("Cover").remove([filePath]);
+  const { error } = await supabase.storage.from("cover").remove([filePath]);
   if (error) {
     throw new Error(error.message);
   }
