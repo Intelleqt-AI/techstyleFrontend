@@ -271,7 +271,7 @@ export default function MyTasksPage() {
 
   const myRecentTask = (arr: any[]) => {
     const now = new Date();
-    return arr?.filter(task => task.status !== 'done' && new Date(task.dueDate) < now) ?? [];
+    return arr?.filter(task => task.status !== 'done' && task.dueDate && new Date(task.dueDate) < now) ?? [];
   };
 
   const todayTasks = (arr: any[]) => {
@@ -334,6 +334,8 @@ export default function MyTasksPage() {
       icon: Hash,
     },
   ];
+
+  console.log('overDueTask', overDueTask);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);

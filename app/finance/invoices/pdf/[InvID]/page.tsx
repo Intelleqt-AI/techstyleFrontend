@@ -9,8 +9,7 @@ import Image from 'next/image';
 
 // Main Purchase Order Component
 const Invoice = ({ params }) => {
-  const id = params.id; // dynamic route params
-
+  const id = params?.InvID; // dynamic route params
   const [purchaseOrder, setPurchaseOrder] = useState<any[]>([]);
 
   // React Query
@@ -23,15 +22,15 @@ const Invoice = ({ params }) => {
     if (!InvoiceLoading && InvoiceData?.data) {
       const filteredData = InvoiceData.data.filter((item: any) => item.id == id);
       setPurchaseOrder(filteredData);
+
+      if (filteredData[0]?.inNumber) {
+        document.title = `${filteredData[0]?.inNumber}`;
+      }
+      setTimeout(() => {
+        window.print();
+      }, 900);
     }
   }, [InvoiceData, InvoiceLoading, id]);
-
-  useEffect(() => {
-    if (InvoiceLoading) return;
-    setTimeout(() => {
-      window.print();
-    }, 1600);
-  }, [InvoiceLoading]);
 
   // Calculate totals
   const calculateTotals = () => {
@@ -90,8 +89,8 @@ const Invoice = ({ params }) => {
         {/* Header Section */}
         <div className="flex justify-between mb-16">
           <div className="flex-1">
-            <h1 className="text-2xl font-normal mb-5 text-black">Invoice</h1>
-            {/* <h2 className="text-xl font-normal mb-5 text-black">#{purchaseOrder[0]?.inNumber}</h2> */}
+            <h1 className="text-2xl font-normal mb-1 text-black">Invoice</h1>
+            <h2 className="text-xl font-normal mb-5 text-black">#{purchaseOrder[0]?.inNumber}</h2>
             <div className="text-xs leading-relaxed">
               <p>Issue Date: {new Date().toLocaleDateString('en-GB')}</p>
               {/* <p>Due Date: {purchaseOrder?.dueDate ? new Date(purchaseOrder?.dueDate).toLocaleDateString('en-GB') : '-'}</p> */}
@@ -131,11 +130,11 @@ const Invoice = ({ params }) => {
           <div className="border-b border-gray-200 mb-2">
             <div className="flex py-3 text-xs text-gray-400">
               <div className="w-1/12">IMAGE</div>
-              <div className="w-3/12">DESCRIPTION</div>
-              <div className="w-3/12">DIMENSIONS</div>
+              <div className="w-4/12">DESCRIPTION</div>
+              {/* <div className="w-3/12">DIMENSIONS</div> */}
               <div className="w-1/12 text-center">QTY</div>
-              <div className="w-2/12 text-right">PRICE</div>
-              <div className="w-2/12 text-right">AMOUNT</div>
+              <div className="w-3/12 text-right">PRICE</div>
+              <div className="w-3/12 text-right">AMOUNT</div>
             </div>
           </div>
 
@@ -143,22 +142,24 @@ const Invoice = ({ params }) => {
             <div key={index} className="flex py-3 border-b border-gray-100 text-sm items-center">
               <div className="w-1/12">
                 <Image
-                  src={item.imageURL || '/public/images/product-placeholder-wp.jpg'}
+                  src={item.imageURL || '/public/product-placeholder-wp.jpg'}
                   alt={item.itemName}
-                  className="w-8 h-8 object-cover rounded"
+                  className="w-10 h-10 object-cover rounded"
+                  width={400}
+                  height={400}
                 />
               </div>
-              <div className="w-3/12">{item.itemName}</div>
-              <div className="w-3/12">{item?.dimensions}</div>
+              <div className="w-4/12">{item.itemName}</div>
+              {/* <div className="w-3/12">{item?.dimensions}</div> */}
               <div className="w-1/12 text-center">{item.QTY}</div>
-              <div className="w-2/12 text-right">
+              <div className="w-3/12 text-right">
                 {purchaseOrder[0]?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
                 {parseFloat(item.amount.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </div>
-              <div className="w-2/12 text-right">
+              <div className="w-3/12 text-right">
                 {purchaseOrder[0]?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
                 {(item.QTY * parseFloat(item.amount.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
                   minimumFractionDigits: 2,

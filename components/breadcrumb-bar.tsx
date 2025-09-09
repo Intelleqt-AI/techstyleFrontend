@@ -16,7 +16,7 @@ export function BreadcrumbBar() {
 
   // Fetch project data if projectID exists
   const { data: projectData } = useQuery({
-    queryKey: ['projectsOnlyProject', projectID],
+    queryKey: ['project', projectID],
     queryFn: () => fetchOnlyProject({ projectID }),
     enabled: !!projectID,
   });

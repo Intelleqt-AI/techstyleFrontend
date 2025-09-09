@@ -52,7 +52,7 @@ export default function FinancePage() {
   const { currency, isLoading: currencyLoading } = useCurrency();
 
   const { data: project } = useQuery({
-    queryKey: [`projectOnly`],
+    queryKey: [`fetchOnlyProject`],
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 

@@ -612,9 +612,9 @@ export default function DashboardPage() {
 
   const quickActions = ['Schedule client call', 'Send invoice reminder', 'Update project status', 'Review proposals'];
 
-  const myRecentTask = tasks => {
+  const myRecentTask = (arr: any[]) => {
     const now = new Date();
-    return tasks?.filter(task => task.status !== 'done' && new Date(task.dueDate) < now);
+    return arr?.filter(task => task.status !== 'done' && task.dueDate && new Date(task.dueDate) < now) ?? [];
   };
 
   const myTaskList = tasks => {
@@ -656,8 +656,8 @@ export default function DashboardPage() {
   const getSummary = () => {
     if (scope === 'studio') {
       return [
-        { color: 'clay', text: `${overDueTask?.length} overdue tasks across 3 projects` },
-        { color: 'sage', text: `Team utilisation at ${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%` },
+        { color: 'clay', text: `${overDueTask?.length} overdue tasks across ${project?.length} projects` },
+        { color: 'sage', text: `Team utilisation at ${Math.round((totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder)}%` },
         {
           color: 'olive',
           text: `${!currencyLoading && (currency?.symbol || '£')}${(
@@ -738,7 +738,12 @@ export default function DashboardPage() {
         trend: 'up',
         change: '+12%',
       },
-      { label: 'Utilisation', value: `${(totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder}%`, trend: 'up', change: '+3%' },
+      {
+        label: 'Utilisation',
+        value: `${Math.round((totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder)}%`,
+        trend: 'up',
+        change: '+3%',
+      },
       {
         label: 'Cash Flow',
         value: `${!currencyLoading && (currency?.symbol || '£')}${totalPurchaseOrder.toLocaleString()}`,

@@ -24,15 +24,15 @@ const PurchaseOrder = ({ params }) => {
 
   useEffect(() => {
     if (loadingPO) return;
-    setPurchaseOrder(data?.data.find(item => item.id == id));
-  }, [loadingPO, data?.data, id]);
-
-  useEffect(() => {
-    if (loadingPO) return;
+    const po = data?.data.find(item => item.id == id);
+    setPurchaseOrder(po);
+    if (po?.poNumber) {
+      document.title = `${po.poNumber}`;
+    }
     setTimeout(() => {
       window.print();
-    }, 500);
-  }, [loadingPO]);
+    }, 1000);
+  }, [loadingPO, data?.data, id]);
 
   // Calculate totals
   const calculateTotals = () => {
@@ -81,7 +81,7 @@ const PurchaseOrder = ({ params }) => {
   return (
     <div className="w-full max-w-4xl mx-auto bg-white">
       {/* Purchase Order Summary Page */}
-      <div className="p-8 text-gray-800">
+      <div className="p-8 h-screen text-gray-800">
         {/* Header Section */}
         <div className="flex justify-between mb-16">
           <div className="flex-1">
@@ -228,82 +228,84 @@ const ProductDetailPage = ({ product, index, projectName, data }) => {
       </div>
 
       {/* Product Image */}
-      <div className="mb-8">
-        <div className="flex justify-between">
-          <div className="w-1/3">
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        <div className="">
+          <div>
             <img src={product.imageURL || placeHolder} alt={product.itemName} className="w-[250px] h-[250px] object-contain" />
+          </div>
+        </div>
+
+        <div>
+          {/* Product Specs Section */}
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Product Specs</h3>
+
+            <div className="flex flex-wrap">
+              {/* Left Column */}
+              <div className="w-1/2">
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Product Name</p>
+                  <p className="text-xs font-medium">{product.itemName}</p>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Product Dimensions</p>
+                  <p className="text-xs font-medium">{product?.dimensions}</p>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Quantity</p>
+                  <p className="text-xs font-medium">{product?.QTY}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Information Section */}
+          <div className="mb-5">
+            <h3 className="text-sm font-bold text-gray-700 mb-2">Contact Information</h3>
+
+            <div className="flex flex-wrap">
+              {/* Left Column */}
+              <div className="w-1/2">
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Supplier Name</p>
+                  <p className="text-xs font-medium">{data?.supplier?.company}</p>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Supplier Contact</p>
+                  <p className="text-xs font-medium">{data?.supplier?.company}</p>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Phone</p>
+                  <p className="text-xs font-medium">{data?.supplier?.phone}</p>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="w-1/2">
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Email Address</p>
+                  <p className="text-xs font-medium">{data?.supplier?.email}</p>
+                </div>
+
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Supplier Address</p>
+                  <p className="text-xs font-medium">{data?.supplier?.address}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Product Notes Section */}
-      <div className="mb-8">
+      {/* <div className="mb-8">
         <h3 className="text-sm font-bold text-gray-700 mb-2">Product Notes</h3>
-        {/* Notes content would go here */}
-      </div>
-
-      {/* Product Specs Section */}
-      <div className="mb-8">
-        <h3 className="text-sm font-bold text-gray-700 mb-2">Product Specs</h3>
-
-        <div className="flex flex-wrap">
-          {/* Left Column */}
-          <div className="w-1/2">
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Product Name</p>
-              <p className="text-xs font-medium">{product.itemName}</p>
-            </div>
-
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Product Dimensions</p>
-              <p className="text-xs font-medium">{product?.dimensions}</p>
-            </div>
-
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Quantity</p>
-              <p className="text-xs font-medium">{product?.QTY}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contact Information Section */}
-      <div className="mb-5">
-        <h3 className="text-sm font-bold text-gray-700 mb-2">Contact Information</h3>
-
-        <div className="flex flex-wrap">
-          {/* Left Column */}
-          <div className="w-1/2">
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Supplier Name</p>
-              <p className="text-xs font-medium">{data?.supplier?.company}</p>
-            </div>
-
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Supplier Contact</p>
-              <p className="text-xs font-medium">{data?.supplier?.company}</p>
-            </div>
-
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Phone</p>
-              <p className="text-xs font-medium">{data?.supplier?.phone}</p>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="w-1/2">
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Email Address</p>
-              <p className="text-xs font-medium">{data?.supplier?.email}</p>
-            </div>
-
-            <div className="mb-3">
-              <p className="text-xs text-gray-500 mb-1">Supplier Address</p>
-              <p className="text-xs font-medium">{data?.supplier?.address}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        Notes content would go here
+      </div> */}
 
       {/* <div className="text-center text-xs text-gray-500 mt-16">
         PAGE {index + 2} OF {data?.products?.length + 1}
