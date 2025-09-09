@@ -21,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 
 export default function NewPurchaseOrderForm({ params }) {
-  const [defaultValue, setDefaultValue] = useState([]);
+  const [defaultValue, setDefaultValue] = useState<any>(null);
   const id = params?.id;
   const form2 = useForm({});
   const form = useForm({});
@@ -52,7 +52,7 @@ export default function NewPurchaseOrderForm({ params }) {
   useEffect(() => {
     if (isLoading) return;
     setDefaultValue(data?.data.find(item => item.id === id));
-  }, [id, isLoading, data]);
+  }, [id, isLoading, data?.data]);
 
   const updateClientInfo = e => {
     const { name, value } = e.target;
@@ -152,6 +152,17 @@ export default function NewPurchaseOrderForm({ params }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+
+  // Set order info
+  useEffect(() => {
+    if (isLoading) return;
+    setDefaultValue(data?.data.find(item => String(item.id) == String(id)));
+  }, [id, data?.data, isLoading]);
+
+  useEffect(() => {
+    console.log('API raw data:', data?.data);
+    console.log('Matched order:', defaultValue);
+  }, [id, data?.data, isLoading]);
 
   return (
     <form onSubmit={handleSubmit} className="relative max-w-4xl mx-auto py-10">
@@ -257,7 +268,7 @@ export default function NewPurchaseOrderForm({ params }) {
         {/* Due Date */}
         <div className="space-y-2  col-span-2">
           <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-            Valid Until
+            Due Date
           </Label>
           <Form {...form2}>
             <form className="flex items-end gap-4 justify-center">
@@ -518,7 +529,7 @@ export default function NewPurchaseOrderForm({ params }) {
                 Status :
               </Label>
               <Select
-                value={defaultValue?.status || ''}
+                value={defaultValue?.status}
                 onValueChange={value => {
                   const e = {
                     target: {

@@ -466,6 +466,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                 projectID: projectID,
                 projectName: project?.name,
                 issueDate: new Date().toISOString(),
+                dueDate: new Date().toISOString(),
                 status: 'Pending',
                 clientName: client ? client.name + ' ' + client.surname : null,
                 clientEmail: client ? client.email : null,
@@ -508,7 +509,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             clientPhone: client ? client.phone : null,
             clientAddress: client ? client.address : null,
             issueDate: new Date().toISOString(),
-            // poNumber: `PO-${poNumber}`,
+            dueDate: new Date().toISOString(),
             products: [],
           };
           const products = approvedItems.map(item => {
