@@ -88,7 +88,7 @@ export function ContactFormModal({
           ? "Contact updated successfully!"
           : "Contact created successfully!"
       );
-      onOpenChange(false);
+      handleClose(false);
     },
     onError: () => {
       toast("Error! Try again");
@@ -129,8 +129,13 @@ export function ContactFormModal({
     mutation.mutate(formValues);
   };
 
+  const handleClose = (e) => {
+    onOpenChange(e);
+    setFormValues(contact ? contact : initialValue);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
