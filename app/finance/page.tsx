@@ -6,7 +6,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/chip';
 import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
 import {
   createXeroInvoice,
@@ -27,8 +33,6 @@ import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteDialog } from '@/components/DeleteDialog';
 import { useCurrency } from '@/hooks/useCurrency';
-import { DropdownMenuSeparator } from '@radix-ui/react-dropdown-menu';
-import { Separator } from '@/components/ui/separator';
 
 export default function FinancePage() {
   const [purchaseOrder, setPurchaseOrder] = useState([]);
@@ -40,6 +44,7 @@ export default function FinancePage() {
   const [selectedPo, setSelectedPo] = useState(null);
   const [isPo, setIsPo] = useState(null);
   const { currency, isLoading: currencyLoading } = useCurrency();
+  const router = useRouter();
 
   const { data: project } = useQuery({
     queryKey: [`fetchOnlyProject`],
@@ -229,6 +234,11 @@ export default function FinancePage() {
 
   // Handle Create Invoice
   const handleInvoice = () => {
+    if (checkedItems?.length == 0) {
+      router.push('/finance/invoices/new');
+      return;
+    }
+
     setButtonLoadingPO(true);
     createInvoiceOrder.mutate({
       invoice: {
@@ -427,11 +437,7 @@ export default function FinancePage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              className="bg-gray-900 text-white hover:bg-gray-800"
-              onClick={handleInvoice}
-              disabled={checkedItems.length === 0 || buttonLoadingPO}
-            >
+            <Button className="bg-gray-900 text-white hover:bg-gray-800" onClick={handleInvoice} disabled={buttonLoadingPO}>
               <Plus className="w-4 h-4 mr-2" />
               {buttonLoadingPO ? 'Creating...' : 'Create Invoice'}
             </Button>
@@ -462,7 +468,7 @@ export default function FinancePage() {
                     <span className="sr-only">{'Select row'}</span>
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Number</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-52">Supplier</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-52">Supplier / Client</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-40">Type</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-56">Project</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600 whitespace-nowrap w-32">Date Issued</th>
@@ -523,9 +529,9 @@ export default function FinancePage() {
                             {po.poNumber}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
+                        <td className="px-4 truncate py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Purchase Order</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                        <td className="px-4 py-3 text-gray-600 truncate whitespace-nowrap">
                           {' '}
                           {project?.find(item => item.id == po?.projectID)?.name || '—'}
                         </td>
@@ -579,7 +585,10 @@ export default function FinancePage() {
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openDeleteModal(po, 'po')}>Delete</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(po, 'po')}>
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -597,7 +606,7 @@ export default function FinancePage() {
                             {inv.inNumber}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">-</td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{inv?.clientName}</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
                         <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
                           {project?.find(item => item.id == inv?.projectID)?.name || '—'}
@@ -656,7 +665,10 @@ export default function FinancePage() {
                                   Edit
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openDeleteModal(inv, 'inv')}>Delete</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(inv, 'inv')}>
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -752,8 +764,8 @@ export default function FinancePage() {
         onConfirm={() => handleDelete(selectedPo?.id)}
         title="Delete PO/IN?"
         description="Are you sure you want to delete this? This action cannot be undone."
-        itemName={selectedPo?.poNumber}
-        requireConfirmation={false} // 👈 disables the typing step
+        itemName={isPo ? selectedPo?.poNumber : selectedPo?.inNumber}
+        requireConfirmation={false}
       />
     </div>
   );

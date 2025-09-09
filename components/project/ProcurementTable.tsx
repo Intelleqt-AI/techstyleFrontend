@@ -408,8 +408,8 @@ const ProcurementTable = ({
                         <td className="px-4 py-3 text-neutral-700 w-32 whitespace-nowrap truncate" title={item?.matchedProduct?.dimensions}>
                           {item?.matchedProduct?.dimensions}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          {item?.PO?.map(po => {
+                        <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
+                          {item?.PO?.slice(0, 2).map(po => {
                             return (
                               <Link className="hover:underline" href={'#'}>
                                 {po?.poNumber} <br />{' '}
