@@ -79,6 +79,7 @@ export default function StudioTemplatesPage() {
     const defaultPhases: Phase[] = [
       {
         id: 'phase-discovery',
+        progress: 0,
         name: 'Discovery',
         task: [
           'Client kickoff meeting',
@@ -92,6 +93,7 @@ export default function StudioTemplatesPage() {
       },
       {
         id: 'phase-concept',
+        progress: 0,
         name: 'Concept Design',
         task: [
           'Mood boards and style direction',
@@ -105,6 +107,7 @@ export default function StudioTemplatesPage() {
       },
       {
         id: 'phase-dd',
+        progress: 0,
         name: 'Design Development',
         task: [
           'Detailed floor plans and layouts',
@@ -118,6 +121,7 @@ export default function StudioTemplatesPage() {
       },
       {
         id: 'phase-technical',
+        progress: 0,
         name: 'Technical Drawings',
         task: [
           'Technical drawings and construction details',
@@ -131,6 +135,7 @@ export default function StudioTemplatesPage() {
       },
       {
         id: 'phase-procurement',
+        progress: 0,
         name: 'Procurement',
         task: [
           'Issue RFQs to suppliers and contractors',
@@ -144,6 +149,7 @@ export default function StudioTemplatesPage() {
       },
       {
         id: 'phase-implementation',
+        progress: 0,
         name: 'Site / Implementation',
         task: [
           'Site coordination and project management',
@@ -198,7 +204,7 @@ export default function StudioTemplatesPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const next: Phase = { id: crypto.randomUUID(), name: 'New phase', color: '#9CA3AF', task: [] };
+                const next: Phase = { id: crypto.randomUUID(), progress: 0, name: 'New phase', color: '#9CA3AF', task: [] };
                 setCurrentUser(prev => ({
                   ...prev,
                   defaultPhases: [...prev.defaultPhases, next],
@@ -250,9 +256,11 @@ export default function StudioTemplatesPage() {
                       onBlur={persist}
                     />
 
-                    <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
-                      {p.name}
-                    </Badge>
+                    {p?.name.length > 0 && (
+                      <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
+                        {p.name}
+                      </Badge>
+                    )}
 
                     <div className="ml-auto">
                       <Button

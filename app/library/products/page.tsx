@@ -4,7 +4,13 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Plus, Search, Filter, Heart, MoreHorizontal, Package, ChevronDown } from 'lucide-react';
 import { LibraryNav } from '@/components/library-nav';
 import { StatusBadge, TypeChip } from '@/components/chip';
@@ -340,7 +346,10 @@ export default function ProductsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openDetails(product)}>View Details</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSelectProduct(product)}>Edit Product</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleOpenModal(product)}>Delete Product</DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleOpenModal(product)}>
+                            Delete Product
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                       {/* <Button

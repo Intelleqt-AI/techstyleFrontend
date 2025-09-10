@@ -28,12 +28,13 @@ import {
 import { Check } from "lucide-react";
 import { DeleteDialog } from "@/components/DeleteDialog";
 
+
 type Member = {
   id: string;
   name: string;
   email: string;
-  role: "Admin" | "Manager" | "Member";
-  status: "active" | "invited" | "suspended";
+  role: 'Admin' | 'Manager' | 'Member';
+  status: 'active' | 'invited' | 'suspended';
 };
 
 export default function TeamPage() {
@@ -41,11 +42,12 @@ export default function TeamPage() {
   // const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showAddMemberPopover, setShowAddMemberPopover] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeammates, setSelectedTeammates] = useState<Member[]>([]);
   const [emailInput, setEmailInput] = useState("");
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedTeamMember, setSelectedTeamMember] = useState(null);
+
 
   // Fetch users
   const {
@@ -54,7 +56,7 @@ export default function TeamPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["team-members"],
+    queryKey: ['team-members'],
     queryFn: getUsers,
     enabled: !!user,
   });
@@ -66,23 +68,22 @@ export default function TeamPage() {
       toast.success("Profile Updated");
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       console.log(error);
-      toast("Error! Try again");
+      toast('Error! Try again');
     },
   });
 
   // Update role mutation
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
-      updateUserRole(userId, role),
+    mutationFn: ({ userId, role }: { userId: string; role: string }) => updateUserRole(userId, role),
     onSuccess: () => {
-      queryClient.invalidateQueries(["team-members"]);
-      toast.success("Role updated successfully");
+      queryClient.invalidateQueries(['team-members']);
+      toast.success('Role updated successfully');
     },
-    onError: (error) => {
+    onError: error => {
       console.error(error);
-      toast.error("Failed to update role");
+      toast.error('Failed to update role');
     },
   });
 
@@ -90,14 +91,14 @@ export default function TeamPage() {
   const inviteMutation = useMutation({
     mutationFn: (email: string) => inviteUser(email),
     onSuccess: () => {
-      queryClient.invalidateQueries(["team-members"]);
-      toast.success("Invitation sent successfully");
+      queryClient.invalidateQueries(['team-members']);
+      toast.success('Invitation sent successfully');
       setShowAddMemberPopover(false);
-      setEmailInput("");
+      setEmailInput('');
     },
-    onError: (error) => {
+    onError: error => {
       console.error(error);
-      toast.error("Failed to send invitation");
+      toast.error('Failed to send invitation');
     },
   });
 
@@ -105,12 +106,12 @@ export default function TeamPage() {
   const suspendMutation = useMutation({
     mutationFn: (userId: string) => suspendUser(userId),
     onSuccess: () => {
-      queryClient.invalidateQueries(["team-members"]);
-      toast.success("User suspended successfully");
+      queryClient.invalidateQueries(['team-members']);
+      toast.success('User suspended successfully');
     },
-    onError: (error) => {
+    onError: error => {
       console.error(error);
-      toast.error("Failed to suspend user");
+      toast.error('Failed to suspend user');
     },
   });
 
@@ -118,11 +119,11 @@ export default function TeamPage() {
   const resendInviteMutation = useMutation({
     mutationFn: (userId: string) => resendInvite(userId),
     onSuccess: () => {
-      toast.success("Invitation resent successfully");
+      toast.success('Invitation resent successfully');
     },
-    onError: (error) => {
+    onError: error => {
       console.error(error);
-      toast.error("Failed to resend invitation");
+      toast.error('Failed to resend invitation');
     },
   });
 
@@ -131,21 +132,20 @@ export default function TeamPage() {
   };
 
   const handleInvite = () => {
-    if (emailInput && emailInput.includes("@")) {
+    if (emailInput && emailInput.includes('@')) {
       inviteMutation.mutate(emailInput);
     } else {
-      toast.error("Please enter a valid email address");
+      toast.error('Please enter a valid email address');
     }
   };
 
-  const handleAddUser = (user) => {
-    console.log(user);
 
-    setSelectedTeammates((prev) => {
+  const handleAddUser = user => {
+    setSelectedTeammates(prev => {
       // check if user already exists
-      if (prev.some((t) => t.id === user.id)) {
+      if (prev.some(t => t.id === user.id)) {
         // remove if exists
-        return prev.filter((t) => t.id !== user.id);
+        return prev.filter(t => t.id !== user.id);
       } else {
         // add if not exists
         return [...prev, user];
@@ -168,7 +168,7 @@ export default function TeamPage() {
 
   // Filter teammates based on search query
   const filteredTeammates = members?.data?.filter(
-    (member) =>
+    member =>
       member?.name?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
       member?.email?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
       member?.title?.toLowerCase().includes(searchQuery?.toLowerCase())
@@ -177,9 +177,9 @@ export default function TeamPage() {
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
     return name
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
+      .split(' ')
+      .map(word => word[0])
+      .join('')
       .toUpperCase();
   };
 
@@ -212,12 +212,12 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (user?.teamMember) {
-      setSelectedTeammates((prev) => {
+      setSelectedTeammates(prev => {
         // merge existing + user.teamMember without duplicates
         const merged = [...prev];
 
-        user.teamMember.forEach((member) => {
-          if (!merged.some((t) => t.id === member.id)) {
+        user.teamMember.forEach(member => {
+          if (!merged.some(t => t.id === member.id)) {
             merged.push(member);
           }
         });
@@ -241,10 +241,7 @@ export default function TeamPage() {
 
   return (
     <>
-      <SettingsPageHeader
-        title="Team"
-        description="Manage members, invites, and statuses."
-      />
+      <SettingsPageHeader title="Team" description="Manage members, invites, and statuses." />
 
       <SettingsSection
         title="Members"
@@ -255,8 +252,9 @@ export default function TeamPage() {
               size="sm"
               className="bg-clay-600 text-white hover:bg-clay-700"
               onClick={() => setShowAddMemberPopover(!showAddMemberPopover)}
-              disabled={inviteMutation.isLoading}>
-              {inviteMutation.isLoading ? "Sending..." : "Add member"}
+              disabled={inviteMutation.isLoading}
+            >
+              {inviteMutation.isLoading ? 'Sending...' : 'Add member'}
             </Button>
 
             {/* TeamAssignment Popover */}
@@ -292,11 +290,7 @@ export default function TeamPage() {
 
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="h-4 w-4 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -310,30 +304,25 @@ export default function TeamPage() {
                       placeholder="Search existing members…"
                       className="w-full pl-10 pr-4 py-2 text-sm rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-transparent"
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={e => setSearchQuery(e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="max-h-64 overflow-y-auto relative">
                   {filteredTeammates.length === 0 ? (
-                    <div className="p-4 text-center text-gray-600 text-sm">
-                      No members found.
-                    </div>
+                    <div className="p-4 text-center text-gray-600 text-sm">No members found.</div>
                   ) : (
                     <div className="divide-y divide-gray-100">
-                      {filteredTeammates.map((user) => {
-                        const isSelected = selectedTeammates.some(
-                          (t) => t.id === user.id
-                        );
+                      {filteredTeammates.map(user => {
+                        const isSelected = selectedTeammates.some(t => t.id === user.id);
 
                         return (
                           <div
                             key={user.id}
-                            className={`flex items-center gap-3 p-3 cursor-pointer ${
-                              isSelected ? "bg-gray-50" : "hover:bg-gray-50"
-                            }`}
-                            onClick={() => handleAddUser(user)}>
+                            className={`flex items-center gap-3 p-3 cursor-pointer ${isSelected ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                            onClick={() => handleAddUser(user)}
+                          >
                             {/* Check Icon if selected */}
                             {isSelected && <Check className="h-4 w-4" />}
 
@@ -342,9 +331,7 @@ export default function TeamPage() {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
-                                {user.name}
-                              </p>
+                              <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
                               <p className="text-xs text-gray-600 truncate">
                                 {user.role} • {user.email}
                               </p>
@@ -356,10 +343,7 @@ export default function TeamPage() {
                   )}
 
                   <div className="p-2 sticky bottom-0 bg-white">
-                    <Button
-                      size="sm"
-                      className="bg-clay-600 text-white hover:bg-clay-700 w-full"
-                      onClick={handleSubmit}>
+                    <Button size="sm" className="bg-clay-600 text-white hover:bg-clay-700 w-full" onClick={handleSubmit}>
                       Submit
                     </Button>
                   </div>
@@ -367,30 +351,25 @@ export default function TeamPage() {
               </div>
             )}
           </div>
-        }>
+        }
+      >
         <div className="overflow-hidden rounded-lg border border-gray-200">
-          <div className="grid grid-cols-[1fr,160px,120px,220px] gap-3 items-center px-4 py-2 text-xs text-muted-foreground bg-neutral-50">
+          <div className="grid grid-cols-[1fr,160px,220px,70px] gap-3 items-center px-4 py-2 text-xs text-muted-foreground bg-neutral-50">
             <div>Member</div>
             <div>Role</div>
-            <div>Status</div>
+            <div className="text-center">Status</div>
             <div className="text-right pr-2">Actions</div>
           </div>
           <ul className="divide-y">
             {user?.teamMember?.map((m: Member) => (
-              <li
-                key={m.id}
-                className="grid grid-cols-[1fr,160px,120px,220px] gap-3 items-center px-4 py-3 bg-white">
+              <li key={m.id} className="grid grid-cols-[1fr,160px,220px,70px] gap-3 items-center px-4 py-3 bg-white">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs">
-                      {getInitials(m.name)}
-                    </AvatarFallback>
+                    <AvatarFallback className="text-xs">{getInitials(m.name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{m.name}</div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {m.email}
-                    </div>
+                    <div className="truncate text-xs text-muted-foreground">{m.email}</div>
                   </div>
                 </div>
 
@@ -399,7 +378,8 @@ export default function TeamPage() {
                   <Select
                     defaultValue={m.role}
                     // onValueChange={(value) => handleRoleChange(m.id, value)}
-                    disabled={updateRoleMutation.isLoading}>
+                    disabled={updateRoleMutation.isLoading}
+                  >
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Role" />
                     </SelectTrigger>
@@ -411,8 +391,8 @@ export default function TeamPage() {
                   </Select>
                 </div>
 
-                <div>
-                  <StatusBadge status={m.status || "Active"} />
+                <div className="text-center">
+                  <StatusBadge status={m.status || 'Active'} />
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
@@ -456,12 +436,7 @@ export default function TeamPage() {
       </SettingsSection>
 
       {/* Backdrop for closing popover when clicking outside */}
-      {showAddMemberPopover && (
-        <div
-          className="fixed inset-0 z-0"
-          onClick={() => setShowAddMemberPopover(false)}
-        />
-      )}
+      {showAddMemberPopover && <div className="fixed inset-0 z-0" onClick={() => setShowAddMemberPopover(false)} />}
     </>
   );
 }

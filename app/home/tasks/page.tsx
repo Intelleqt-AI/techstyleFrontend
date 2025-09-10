@@ -104,8 +104,8 @@ function SortableTaskCard({ task, project, openEditTask, openDeleteModal }: any)
       style={style}
       {...attributes}
       {...listeners}
-      className={`p-3 h-[105px] cursor-pointer flex flex-col justify-between rounded-lg border bg-gray-50 hover:bg-gray-100 transition-all ${
-        isDragging ? 'shadow-xl bg-white opacity-50' : 'border-gray-200'
+      className={`p-3 h-[105px] flex flex-col justify-between rounded-lg border bg-gray-50 hover:bg-gray-100 transition-all ${
+        isDragging ? 'shadow-xl bg-white opacity-50 cursor-grabbing' : 'border-gray-200'
       }`}
       onClick={() => openEditTask(task)}
     >
@@ -150,7 +150,7 @@ function DroppableColumn({ column, project, openEditTask, openDeleteModal, openN
   return (
     <div
       className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
-        isDraggingOver ? '!border-gray-500 !border-1 border-dashed !bg-[#f9f8f6]' : ''
+        isDraggingOver ? '!border-gray-500  !border-1 border-dashed !bg-[#f9f8f6]' : ''
       }`}
     >
       {/* Column Header */}
@@ -220,7 +220,7 @@ export default function MyTasksPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 130, // drag starts only after 150ms press
+        delay: 120, // drag starts only after 150ms press
         tolerance: 5, // or minimum 5px pointer movement
       },
     }),
@@ -578,7 +578,7 @@ export default function MyTasksPage() {
 
           <DragOverlay>
             {activeTask ? (
-              <div className="p-3 h-[105px] cursor-pointer flex flex-col justify-between rounded-lg border bg-white shadow-xl border-gray-200 rotate-3">
+              <div className="p-3 h-[105px] cursor-grabbing flex flex-col justify-between rounded-lg border bg-white shadow-xl border-gray-200 rotate-3">
                 <div>
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-medium text-sm truncate text-gray-900 leading-tight">{activeTask.name}</h4>
