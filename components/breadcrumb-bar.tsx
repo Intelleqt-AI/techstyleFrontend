@@ -95,7 +95,7 @@ export function BreadcrumbBar() {
 
       if (firstSegment === 'finance' && segments[1] === 'invoices' && i === 2) {
         const InNumber = InvoiceData?.data?.find(u => u.id === seg);
-        label = InNumber ? InNumber.inNumber : 'Loading..';
+        label = InNumber ? InNumber.inNumber : 'Create Invoice';
       }
 
       breadcrumbs.push({

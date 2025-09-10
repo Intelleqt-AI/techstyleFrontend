@@ -21,12 +21,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { getInvoices, updateInvoice } from '@/supabase/API';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const EditInvoice = ({ params }) => {
-  const [defaultValue, setDefaultValue] = useState([]);
+  const [defaultValue, setDefaultValue] = useState(null);
   const id = params.id;
   const form2 = useForm({});
   const form = useForm({});
+  const router = useRouter();
+  const { currency } = useCurrency();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['invoices'],
@@ -34,7 +38,7 @@ const EditInvoice = ({ params }) => {
   });
 
   const handleBack = () => {
-    // navigate(-1);
+    router.back();
   };
 
   // update PO
@@ -280,7 +284,7 @@ const EditInvoice = ({ params }) => {
             {/* Due Date */}
             <div className="space-y-2  col-span-2">
               <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-                Valid Until
+                Due Date
               </Label>
               <Form {...form2}>
                 <form className="flex items-end gap-4 justify-center">
@@ -449,9 +453,7 @@ const EditInvoice = ({ params }) => {
                             className="bg-white border rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2"
                             id="amount"
                             name="amount"
-                            value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${parseFloat(
-                              item?.amount?.replace(/[^0-9.-]+/g, '')
-                            ).toLocaleString()}`}
+                            value={`${currency?.symbol || '£'}${parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString()}`}
                             onChange={e => updateInfo(e, item.itemID)}
                           />
                         </td>
@@ -460,7 +462,7 @@ const EditInvoice = ({ params }) => {
                             className="bg-white rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2 border"
                             id="totalAmount"
                             name="totalAmount"
-                            value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${(
+                            value={`${currency?.symbol || '£'}${(
                               item?.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))
                             ).toLocaleString()}`}
                             onChange={e => updateInfo(e, item.itemID)}
@@ -507,12 +509,8 @@ const EditInvoice = ({ params }) => {
                   <Select
                     value={defaultValue?.status || ''}
                     onValueChange={value => {
-                      const e = {
-                        target: {
-                          name: 'status',
-                          value: value,
-                        },
-                      };
+                      if (!defaultValue) return;
+                      const e = { target: { name: 'status', value } };
                       updateClientInfo(e);
                     }}
                   >
@@ -534,16 +532,12 @@ const EditInvoice = ({ params }) => {
               <div className="min-w-[220px]  space-y-[14px] text-[#091E42] text-[15px] font-medium">
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Subtotal:</p>
-                  <p className="col-span-2 text-right">{` ${
-                    defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-                  }${subTotal}`}</p>
+                  <p className="col-span-2 text-right">{` ${currency?.symbol || '£'}${subTotal}`}</p>
                 </div>
 
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Total:</p>
-                  <p className="col-span-2 text-right">{`${
-                    defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-                  }${subTotalWithDelivery}`}</p>
+                  <p className="col-span-2 text-right">{`${currency?.symbol || '£'}${subTotalWithDelivery}`}</p>
                 </div>
               </div>
             </div>
@@ -564,9 +558,7 @@ const EditInvoice = ({ params }) => {
                 </div>
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Amount Due</p>
-                  <p className="col-span-2 text-right">
-                    {defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}0.00
-                  </p>
+                  <p className="col-span-2 text-right">{currency?.symbol || '£'}0.00</p>
                 </div>
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Due Date</p>

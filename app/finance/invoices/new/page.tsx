@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Form } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { FormField, FormItem, FormControl } from '@/components/ui/form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { createInvoice } from '@/supabase/API';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const EditInvoice = () => {
   const [defaultValue, setDefaultValue] = useState({
@@ -31,6 +32,7 @@ const EditInvoice = () => {
   const form = useForm({});
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { currency, isLoading } = useCurrency();
 
   const handleBack = () => {
     router.back();
@@ -150,7 +152,7 @@ const EditInvoice = () => {
       return total + amount * product?.QTY;
     }, 0) || 0;
 
-  const subTotalWithDeliveryNum = subTotalNum + Number(defaultValue?.delivery_charge);
+  const subTotalWithDeliveryNum = subTotalNum + Number(defaultValue?.delivery_charge || 0);
   const subTotalWithDelivery = subTotalWithDeliveryNum.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -256,57 +258,56 @@ const EditInvoice = () => {
                   </form>
                 </Form>
               </div>
-            </div>
-
-            {/* Due Date */}
-            <div className="space-y-2  col-span-2">
-              <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-                Due Date
-              </Label>
-              <Form {...form2}>
-                <form className="flex items-end gap-4 justify-center">
-                  <FormField
-                    control={form2.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem className="flex  w-full flex-col">
-                        <Popover>
-                          <FormControl>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'justify-between bg-white rounded-lg w-full text-left font-normal',
-                                  !field.value && 'text-[#595F69]'
-                                )}
-                              >
-                                {field.value ? format(field.value, 'MMM dd, yyyy') : <span>Pick a date</span>}
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                          </FormControl>
-                          <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={date => {
-                                if (date instanceof Date) {
-                                  field.onChange(date);
-                                  handleDueDateChange(date);
-                                } else {
-                                  field.onChange(undefined);
-                                  handleDueDateChange(undefined);
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
+              {/* Due Date */}
+              <div className="space-y-2  col-span-2">
+                <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
+                  Due Date
+                </Label>
+                <Form {...form2}>
+                  <form className="flex items-end gap-4 justify-center">
+                    <FormField
+                      control={form2.control}
+                      name="dueDate"
+                      render={({ field }) => (
+                        <FormItem className="flex  w-full flex-col">
+                          <Popover>
+                            <FormControl>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    'justify-between bg-white rounded-lg w-full text-left font-normal',
+                                    !field.value && 'text-[#595F69]'
+                                  )}
+                                >
+                                  {field.value ? format(field.value, 'MMM dd, yyyy') : <span>Pick a date</span>}
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                            </FormControl>
+                            <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
+                              <Calendar
+                                mode="single"
+                                selected={field.value || undefined}
+                                onSelect={date => {
+                                  if (date instanceof Date) {
+                                    field.onChange(date);
+                                    handleDueDateChange(date);
+                                  } else {
+                                    field.onChange(undefined);
+                                    handleDueDateChange(undefined);
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              </div>
             </div>
 
             <div className="pt-8 mt-8 border-t">
@@ -430,9 +431,7 @@ const EditInvoice = () => {
                             className="bg-white border rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2"
                             id="amount"
                             name="amount"
-                            value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${parseFloat(
-                              item?.amount?.replace(/[^0-9.-]+/g, '')
-                            ).toLocaleString()}`}
+                            value={`${currency?.symbol || '£'}${parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString()}`}
                             onChange={e => updateInfo(e, item.itemID)}
                           />
                         </td>
@@ -441,7 +440,7 @@ const EditInvoice = () => {
                             className="bg-white rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2 border"
                             id="totalAmount"
                             name="totalAmount"
-                            value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${(
+                            value={`${currency?.symbol || '£'}${(
                               item?.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))
                             ).toLocaleString()}`}
                             onChange={e => updateInfo(e, item.itemID)}
@@ -515,16 +514,12 @@ const EditInvoice = () => {
               <div className="min-w-[220px]  space-y-[14px] text-[#091E42] text-[15px] font-medium">
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Subtotal:</p>
-                  <p className="col-span-2 text-right">{` ${
-                    defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-                  }${subTotal}`}</p>
+                  <p className="col-span-2 text-right">{` ${currency?.symbol || '£'}${subTotal}`}</p>
                 </div>
 
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Total:</p>
-                  <p className="col-span-2 text-right">{`${
-                    defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-                  }${subTotalWithDelivery}`}</p>
+                  <p className="col-span-2 text-right">{`${currency?.symbol || '£'}${subTotalWithDelivery}`}</p>
                 </div>
               </div>
             </div>
@@ -545,9 +540,7 @@ const EditInvoice = () => {
                 </div>
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Amount Due</p>
-                  <p className="col-span-2 text-right">
-                    {defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}0.00
-                  </p>
+                  <p className="col-span-2 text-right">{currency?.symbol || '£'}0.00</p>
                 </div>
                 <div className="grid grid-cols-4">
                   <p className="col-span-2">Due Date</p>
