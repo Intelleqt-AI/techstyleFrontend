@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ProjectNav } from '@/components/project-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteCover, getTask, uploadCover } from '@/supabase/API';
+import { deleteCover, getTask, modifyProject, uploadCover } from '@/supabase/API';
 import Image from 'next/image';
 import projectCover from '/public/project_cover.jpg';
 import useClient from '@/hooks/useClient';
@@ -32,20 +32,10 @@ import Modal from 'react-modal';
 import { toast } from 'sonner';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { DeleteDialog } from '@/components/DeleteDialog';
-
-const timelinePhases = [
-  { name: 'Discovery', date: 'Jan 15', completed: true },
-  { name: 'Concept Design', date: 'Feb 1', completed: true },
-  {
-    name: 'Design Development',
-    date: 'Feb 15',
-    completed: false,
-    current: true,
-  },
-  { name: 'Technical Drawings', date: 'Mar 1', completed: false },
-  { name: 'Procurement', date: 'Mar 15', completed: false },
-  { name: 'Site / Implementation', date: 'Apr 1', completed: false },
-];
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { cn } from '@/lib/utils';
+import debounce from 'lodash/debounce';
 
 const blockers = [
   {
@@ -148,21 +138,28 @@ const getRemainingTasks = (tasks, projectId) => {
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export default function ProjectOverviewPage({ params }: { params: { id: string } }) {
-  // const { id } = router.query; // Get ID from URL params
-  const [title, setTitle] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [uploadModal, setUploadModal] = useState(false);
   const [file, setFile] = useState<File[]>([]);
   const [error, setError] = useState('');
   const [renamingIndex, setRenamingIndex] = useState(-1);
-
   const router = useRouter();
   const queryClient = useQueryClient();
-
   const { data: project, isLoading: projectLoading, refetch } = useProjects();
   // Get clients
   const { data: clientData, isLoading: loadingClient, refetch: refetchClient } = useClient();
+
+  const mutation = useMutation({
+    mutationFn: modifyProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projects']);
+      toast.success('Phase Updated');
+    },
+    onError: error => {
+      console.log(error);
+      toast.error('Error! Try again');
+    },
+  });
 
   const {
     data: taskData,
@@ -281,8 +278,31 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
 
     const foundProject = project?.find(data => data.id == params?.id);
     setSelectedProject(foundProject);
-    // console.log(foundProject);
   }, [project, projectLoading]);
+
+  // Create debounced mutation once
+  const debouncedMutateRef = useRef(
+    debounce((project: any) => {
+      mutation.mutate(project);
+    }, 500)
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedMutateRef.current.cancel();
+    };
+  }, []);
+
+  const updatePhase = (index: number, updates: any) => {
+    setSelectedProject(prev => {
+      const updatedPhases = [...(prev?.phases || [])];
+      updatedPhases[index] = { ...updatedPhases[index], ...updates };
+
+      const newProject = prev ? { ...prev, phases: updatedPhases } : { phases: updatedPhases };
+      debouncedMutateRef.current(newProject);
+      return newProject;
+    });
+  };
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">
@@ -300,7 +320,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
             <Image
               width={400}
               height={400}
-              className="w-full h-full object-cover"
+              className="w-full brightness-75 h-full object-cover"
               src={
                 selectedProject?.images[0]
                   ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${selectedProject?.id}/${selectedProject?.images[0]?.name}`
@@ -499,7 +519,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
               </div>
             </div>
             <div className="relative">
-              <div className="flex items-center justify-between">
+              <div className={`grid items-center justify-center gap-5 grid-cols-${selectedProject?.phases?.length}`}>
                 {selectedProject?.phases?.map((phase, index) => {
                   const now = new Date();
                   // Convert start and end dates to Date objects
@@ -510,8 +530,17 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                   const isCurrent = start && end && now >= start && now <= end;
 
                   return (
-                    <div key={phase.name} className="flex flex-col items-center relative">
-                      <div
+                    <div key={phase.name} className="flex w-full flex-col  justify-center items-center relative">
+                      <div>
+                        <Slider
+                          value={[phase.progress ?? 0]}
+                          max={100}
+                          step={1}
+                          className={cn('w-[100%] my-3')}
+                          onValueChange={([val]) => updatePhase(index, { progress: val })}
+                        ></Slider>
+
+                        {/* <div
                         className={`w-3 h-3 rounded-full border-2 ${
                           isCurrent
                             ? 'bg-clay-500 border-clay-500'
@@ -519,20 +548,22 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                             ? 'bg-sage-500 border-sage-500'
                             : 'bg-greige-500 border-greige-500'
                         }`}
-                      />
-                      <div className="mt-2 text-center">
-                        <div className={`text-xs font-medium ${isCurrent ? 'text-clay-600' : 'text-neutral-700'}`}>{phase.name}</div>
-                        <div className="text-xs text-neutral-500">
-                          {start
-                            ? start.toLocaleDateString('en-GB', {
-                                month: 'short',
-                                day: 'numeric',
-                              })
-                            : ''}
-                        </div>
-                      </div>
+                      /> */}
+                        <div className="mt-2 text-center">
+                          <div className={`text-xs font-medium ${isCurrent ? 'text-clay-600' : 'text-neutral-700'}`}>{phase.name}</div>
 
-                      {<div className={`absolute top-1.5  w-20 h-0.5 ${isCurrent ? 'bg-clay-500' : 'bg-greige-500'}`} />}
+                          <div className={`text-xs ${isCurrent ? 'text-clay-800' : 'text-neutral-500'}`}>
+                            {start
+                              ? start.toLocaleDateString('en-GB', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })
+                              : ''}
+                          </div>
+                        </div>
+
+                        {/* {<div className={`absolute top-1.5  w-20 h-0.5 ${isCurrent ? 'bg-clay-500' : 'bg-greige-500'}`} />} */}
+                      </div>
                     </div>
                   );
                 })}
