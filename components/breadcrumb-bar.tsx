@@ -2,7 +2,7 @@
 import { usePathname } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { fetchOnlyProject } from '@/supabase/API';
+import { fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
 import useUsers from '@/hooks/useUsers';
 
@@ -19,6 +19,18 @@ export function BreadcrumbBar() {
     queryKey: ['project', projectID],
     queryFn: () => fetchOnlyProject({ projectID }),
     enabled: !!projectID,
+  });
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
+  const {
+    data: InvoiceData,
+    isLoading: InvoiceLoading,
+    refetch: InvoiceRefetch,
+  } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: getInvoices,
   });
 
   const getBreadcrumbs = () => {
@@ -74,6 +86,16 @@ export function BreadcrumbBar() {
       if (firstSegment === 'reports' && segments[1] === 'productivity' && i === 2) {
         const user = users?.data?.find(u => u.id === seg);
         label = user ? user.name : 'Loading..';
+      }
+
+      if (firstSegment === 'finance' && segments[1] === 'purchase-order' && i === 2) {
+        const PoNumber = data?.data?.find(u => u.id === seg);
+        label = PoNumber ? PoNumber.poNumber : 'Loading..';
+      }
+
+      if (firstSegment === 'finance' && segments[1] === 'invoices' && i === 2) {
+        const InNumber = InvoiceData?.data?.find(u => u.id === seg);
+        label = InNumber ? InNumber.inNumber : 'Loading..';
       }
 
       breadcrumbs.push({
