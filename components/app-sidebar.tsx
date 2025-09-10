@@ -32,7 +32,7 @@ type Item = {
 // Settings will live only in the footer utility area.
 const baseSidebarItems: Item[] = [
   { label: 'Home', icon: Home, href: '/home/dashboard', basePath: '/home' },
-  { label: 'CRM', icon: Users, href: '/crm', basePath: '/crm' },
+  { label: 'CRM', icon: Users, href: '/crm/contacts', basePath: '/crm' },
   { label: 'Projects', icon: FolderOpen, href: '/projects', basePath: '/projects' },
   { label: 'Library', icon: BookOpen, href: '/library', basePath: '/library' },
   { label: 'Calendar', icon: Calendar, href: '/calendar/studio', basePath: '/calendar' },
@@ -163,7 +163,7 @@ export function AppSidebar() {
             </Link>
             {/* Settings only here, not in the main list */}
             <Link
-              href="/settings"
+              href="/settings/user/profile"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             >
               <Settings className="w-5 h-5" />

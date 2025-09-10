@@ -45,6 +45,36 @@ export default function FinancePage() {
   const [isPo, setIsPo] = useState(null);
   const { currency, isLoading: currencyLoading } = useCurrency();
   const router = useRouter();
+  const [xeroConnected, setXeroConnected] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem('xero_access_token');
+    async function checkXeroConnection(accessToken) {
+      if (!accessToken) return;
+
+      try {
+        const res = await fetch('https://xero-backend-pi.vercel.app/api/check-xero-connection', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('xero_access_token')}`,
+          },
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          console.error('Xero API error:', res.status);
+          return false;
+        }
+
+        if (result?.connected) {
+          setXeroConnected(true);
+        }
+      } catch (err) {
+        console.error('Fetch/network error:', err.message);
+        return false;
+      }
+    }
+
+    checkXeroConnection(token);
+  }, []);
 
   const { data: project } = useQuery({
     queryKey: [`fetchOnlyProject`],
@@ -77,6 +107,7 @@ export default function FinancePage() {
   } = useQuery({
     queryKey: ['xeroInvoices'],
     queryFn: fetchInvoices,
+    enabled: !!xeroConnected,
   });
 
   const xeroStatusMap = {
@@ -110,18 +141,16 @@ export default function FinancePage() {
   };
 
   const handleSync = () => {
+    if (!xeroConnected) {
+      toast.warning('Please connect Xero');
+      return;
+    }
     setCustomLoading(true);
     setTimeout(() => {
       handleRefetch();
       setCustomLoading(false);
     }, 2000);
   };
-
-  useEffect(() => {
-    if (!xeroInvoices && !XeroLoading) {
-      toast.warning('Login to Xero');
-    }
-  }, [XeroLoading]);
 
   const createInvoiceOrder = useMutation({
     mutationFn: createInvoice,
@@ -257,6 +286,10 @@ export default function FinancePage() {
 
   // Create Xero Invoice
   const handleCreate = inv => {
+    if (!xeroConnected) {
+      toast.warning('Please connect Xero');
+      return;
+    }
     // Map your products to Xero LineItems
     const lineItems = inv.products.map(p => ({
       Description: p.itemName,
