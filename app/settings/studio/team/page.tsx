@@ -1,18 +1,33 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SettingsPageHeader } from '@/components/settings/page-header';
-import { SettingsSection } from '@/components/settings/section';
-import { StatusBadge } from '@/components/chip';
-import { useToast } from '@/hooks/use-toast';
-import useUser from '@/hooks/useUser';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { getUsers, updateUserRole, inviteUser, suspendUser, resendInvite, updateUser } from '@/supabase/API';
-import { Check } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SettingsPageHeader } from "@/components/settings/page-header";
+import { SettingsSection } from "@/components/settings/section";
+import { StatusBadge } from "@/components/chip";
+import { useToast } from "@/hooks/use-toast";
+import useUser from "@/hooks/useUser";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import {
+  getUsers,
+  updateUserRole,
+  inviteUser,
+  suspendUser,
+  resendInvite,
+  updateUser,
+} from "@/supabase/API";
+import { Check } from "lucide-react";
+import { DeleteDialog } from "@/components/DeleteDialog";
+
 
 type Member = {
   id: string;
@@ -29,13 +44,17 @@ export default function TeamPage() {
   const [showAddMemberPopover, setShowAddMemberPopover] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeammates, setSelectedTeammates] = useState<Member[]>([]);
-  const [emailInput, setEmailInput] = useState('');
+  const [emailInput, setEmailInput] = useState("");
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedTeamMember, setSelectedTeamMember] = useState(null);
+
 
   // Fetch users
   const {
     data: members = [],
     isLoading,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['team-members'],
     queryFn: getUsers,
@@ -45,8 +64,9 @@ export default function TeamPage() {
   const mutation = useMutation({
     mutationFn: updateUser,
     onSuccess: () => {
-      queryClient.invalidateQueries(['users', user?.email]);
-      toast.success('Profile Updated');
+      queryClient.invalidateQueries(["users", user?.email]);
+      toast.success("Profile Updated");
+      refetch();
     },
     onError: error => {
       console.log(error);
@@ -119,11 +139,6 @@ export default function TeamPage() {
     }
   };
 
-  const handleSuspend = (userId: string) => {
-    // if (confirm("Are you sure you want to suspend this user?")) {
-    //   suspendMutation.mutate(userId);
-    // }
-  };
 
   const handleAddUser = user => {
     setSelectedTeammates(prev => {
@@ -166,6 +181,33 @@ export default function TeamPage() {
       .map(word => word[0])
       .join('')
       .toUpperCase();
+  };
+
+  const openDeleteModal = (member) => {
+    setIsDeleteOpen(true);
+    setSelectedTeamMember(member);
+
+    // setSelectedTeammates(updatedTeammates);
+  };
+
+  const handleDelete = (id) => {
+    if (!id) return;
+
+    // remove from current teammates
+    const updatedTeammates = selectedTeammates.filter(
+      (member) => member.id !== id
+    );
+
+    // update state
+    setSelectedTeammates(updatedTeammates);
+
+    // prepare final data
+    const finalData = {
+      ...user,
+      teamMember: updatedTeammates,
+    };
+    // update backend
+    mutation.mutate(finalData);
   };
 
   useEffect(() => {
@@ -373,15 +415,23 @@ export default function TeamPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleSuspend(m.id)}
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                  >
+                    onClick={() => openDeleteModal(m)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50">
                     Remove
                   </Button>
                 </div>
               </li>
             ))}
           </ul>
+          <DeleteDialog
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            onConfirm={() => handleDelete(selectedTeamMember?.id)}
+            title="Delete Task"
+            description="Are you sure you want to delete this task? This action cannot be undone."
+            itemName={selectedTeamMember?.name}
+            requireConfirmation={false} // 👈 disables the typing step
+          />
         </div>
       </SettingsSection>
 
