@@ -16,14 +16,11 @@ import {
   Filter,
   Search,
   MessageSquare,
-  ExternalLink,
-  MoreHorizontal,
   Check,
   Loader2,
   MessageSquareMore,
   MessageSquareText,
 } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ProductDetailSheet, type ProductDetails } from '@/components/product-detail-sheet';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -51,15 +48,6 @@ import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTrigger } from
 import { Switch } from '@/components/ui/switch';
 import ProcurementTable from '@/components/project/ProcurementTable';
 
-// Top summary
-const procurementStats = [
-  { title: 'Total Items', value: '8', subtitle: 'Products specified', icon: Package },
-  { title: 'Total Quantity', value: '17', subtitle: 'Units ordered', icon: Hash },
-  { title: 'Pending Approval', value: '2', subtitle: 'Waiting for sign-off', icon: Clock },
-  { title: 'Total Cost', value: '£11,610.00', subtitle: 'Estimated cost', icon: DollarSign },
-  { title: 'Delivery Progress', value: '38%', subtitle: '3 of 8 delivered', icon: Truck },
-];
-
 // Table rows (future-dated)
 type ApprovalStatus = 'approved' | 'pending' | 'rejected';
 type ProcurementItem = {
@@ -78,130 +66,6 @@ type ProcurementItem = {
   clientApproval: ApprovalStatus;
 };
 
-// Use real assets added to /public/images/products
-const procurementItems: ProcurementItem[] = [
-  {
-    id: 1,
-    name: 'Italian Leather Sofa',
-    image: '/images/products/leather-ottoman.png',
-    dimensions: '220 x 95 x 85cm',
-    date: '2025-08-20',
-    leadTime: '8-10 weeks',
-    quantity: 1,
-    price: '£3,200.00',
-    status: 'ordered',
-    supplier: 'West Elm',
-    poNumber: 'PO-24051',
-    sample: 'Requested',
-    clientApproval: 'approved',
-  },
-  {
-    id: 2,
-    name: 'Marble Coffee Table',
-    image: '/images/products/arched-mirror.png',
-    dimensions: '120 x 60 x 45cm',
-    date: '2025-08-22',
-    leadTime: '6-8 weeks',
-    quantity: 1,
-    price: '£1,850.00',
-    status: 'pending',
-    supplier: 'John Lewis',
-    poNumber: 'PO-24052',
-    sample: 'Yes',
-    clientApproval: 'pending',
-  },
-  {
-    id: 3,
-    name: 'Designer Floor Lamp',
-    image: '/images/products/pleated-table-lamp.png',
-    dimensions: '30 x 30 x 165cm',
-    date: '2025-08-24',
-    leadTime: '4-6 weeks',
-    quantity: 2,
-    price: '£450.00',
-    status: 'delivered',
-    supplier: 'Habitat',
-    poNumber: 'PO-24053',
-    sample: 'Yes',
-    clientApproval: 'approved',
-  },
-  {
-    id: 4,
-    name: 'Velvet Dining Chairs',
-    image: '/images/products/striped-armchair.png',
-    dimensions: '55 x 60 x 85cm',
-    date: '2025-08-26',
-    leadTime: '3-4 weeks',
-    quantity: 6,
-    price: '£280.00',
-    status: 'ordered',
-    supplier: 'Made.com',
-    poNumber: 'PO-24054',
-    sample: 'No',
-    clientApproval: 'pending',
-  },
-  {
-    id: 5,
-    name: 'Persian Area Rug',
-    image: '/images/products/woven-dining-chair.png',
-    dimensions: '300 x 200cm',
-    date: '2025-08-28',
-    leadTime: '2-3 weeks',
-    quantity: 1,
-    price: '£1,200.00',
-    status: 'pending',
-    supplier: 'The Rug Company',
-    poNumber: 'PO-24055',
-    sample: 'Requested',
-    clientApproval: 'rejected',
-  },
-  {
-    id: 6,
-    name: 'Crystal Chandelier',
-    image: '/images/products/travertine-table-lamp.png',
-    dimensions: '80 x 80 x 100cm',
-    date: '2025-09-02',
-    leadTime: '12-14 weeks',
-    quantity: 1,
-    price: '£2,800.00',
-    status: 'ordered',
-    supplier: 'Harrods',
-    poNumber: 'PO-24056',
-    sample: 'Yes',
-    clientApproval: 'approved',
-  },
-  {
-    id: 7,
-    name: 'Oak Dining Table',
-    image: '/images/products/studded-dresser.png',
-    dimensions: '200 x 100 x 75cm',
-    date: '2025-09-05',
-    leadTime: '10-12 weeks',
-    quantity: 1,
-    price: '£1,650.00',
-    status: 'delivered',
-    supplier: "Heal's",
-    poNumber: 'PO-24057',
-    sample: 'Yes',
-    clientApproval: 'approved',
-  },
-  {
-    id: 8,
-    name: 'Brass Wall Sconces',
-    image: '/images/products/fringed-parasol.png',
-    dimensions: '15 x 25 x 30cm',
-    date: '2025-09-08',
-    leadTime: '6-8 weeks',
-    quantity: 4,
-    price: '£180.00',
-    status: 'pending',
-    supplier: 'Lights.co.uk',
-    poNumber: 'PO-24058',
-    sample: 'No',
-    clientApproval: 'pending',
-  },
-];
-
 const formatDate = isoString => {
   const date = new Date(isoString);
 
@@ -217,37 +81,6 @@ const formatDate = isoString => {
 function ApprovalBadge({ status }: { status: ApprovalStatus }) {
   const label = status === 'approved' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected';
   return <StatusBadge status={status} label={label} />;
-}
-
-function useProductMap(items: ProcurementItem[]) {
-  return useMemo<Record<number, ProductDetails>>(
-    () =>
-      Object.fromEntries(
-        items.map(it => [
-          it.id,
-          {
-            id: String(it.id),
-            name: it.name,
-            supplier: it.supplier,
-            url: 'https://example.com/products/' + encodeURIComponent(it.name.toLowerCase().replace(/\s+/g, '-')),
-            images: [
-              { src: it.image, alt: it.name },
-              // provide a couple of sensible fallbacks to let users flip thumbnails
-              { src: '/images/products/pleated-table-lamp.png', alt: 'Alt view' },
-              { src: '/images/products/arched-mirror.png', alt: 'Alt view 2' },
-            ],
-            prices: { retail: it.price },
-            size: it.dimensions,
-            stockStatus: it.status === 'delivered' ? 'Delivered' : it.status === 'ordered' ? 'Ordered' : 'Confirm Stock',
-            sampleAvailable: it.sample === 'Requested' ? 'Requested' : it.sample,
-            measurements: it.dimensions,
-            description: 'High-quality piece specified for the project. Materials and finish align with the studio palette.',
-            tags: ['Procurement', 'Specified'],
-          } as ProductDetails,
-        ])
-      ),
-    [items]
-  );
 }
 
 export default function ProjectProcurementPage({ params }: { params: { id: string } }) {
@@ -861,13 +694,6 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   //
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ProductDetails | undefined>(undefined);
-  const productMap = useProductMap(procurementItems);
-
-  function openProduct(id: number) {
-    const p = productMap[id];
-    setSelected(p ?? undefined);
-    setOpen(true);
-  }
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">

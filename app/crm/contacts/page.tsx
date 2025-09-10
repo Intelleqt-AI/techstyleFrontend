@@ -239,8 +239,8 @@ export default function ContactsPage() {
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={() => handleDelete(selected?.id)}
-        title="Delete Task"
-        description="Are you sure you want to delete this task? This action cannot be undone."
+        title="Delete Contact"
+        description="Are you sure you want to delete this contact? This action cannot be undone."
         itemName={selected?.name}
         requireConfirmation={false} // 👈 disables the typing step
       />
