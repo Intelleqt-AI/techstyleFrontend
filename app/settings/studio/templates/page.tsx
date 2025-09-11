@@ -89,6 +89,7 @@ export default function StudioTemplatesPage() {
           'Programme outline and timeline',
           'Stakeholder identification',
         ],
+        createTask: true,
         color: '#6B7280',
       },
       {
@@ -103,6 +104,7 @@ export default function StudioTemplatesPage() {
           'Client concept review meeting',
           'Concept refinements',
         ],
+        createTask: true,
         color: '#C7654F',
       },
       {
@@ -117,6 +119,7 @@ export default function StudioTemplatesPage() {
           'Lighting and electrical plans',
           'Design development sign-off',
         ],
+        createTask: true,
         color: '#9CA3AF',
       },
       {
@@ -131,6 +134,7 @@ export default function StudioTemplatesPage() {
           'Issue drawings for pricing',
           'Technical specifications finalization',
         ],
+        createTask: true,
         color: '#3B82F6',
       },
       {
@@ -145,6 +149,7 @@ export default function StudioTemplatesPage() {
           'Track lead times and delivery schedules',
           'Confirm all POs placed',
         ],
+        createTask: true,
         color: '#8B5CF6',
       },
       {
@@ -159,6 +164,7 @@ export default function StudioTemplatesPage() {
           'Practical completion inspection',
           'Client handover and final walkthrough',
         ],
+        createTask: true,
         color: '#10B981',
       },
     ];
@@ -204,7 +210,14 @@ export default function StudioTemplatesPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const next: Phase = { id: crypto.randomUUID(), progress: 0, name: 'New phase', color: '#9CA3AF', task: [] };
+                const next: Phase = {
+                  id: crypto.randomUUID(),
+                  progress: 0,
+                  createTask: true,
+                  name: 'New phase',
+                  color: '#9CA3AF',
+                  task: [],
+                };
                 setCurrentUser(prev => ({
                   ...prev,
                   defaultPhases: [...prev.defaultPhases, next],
