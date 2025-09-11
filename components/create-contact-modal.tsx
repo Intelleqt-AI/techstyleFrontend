@@ -52,6 +52,7 @@ export function ContactFormModal({
   open,
   onOpenChange,
   contact,
+  setSelected,
 }: ContactFormModalProps) {
   const [formValues, setFormValues] = React.useState(
     contact ? contact : initialValue
@@ -131,8 +132,12 @@ export function ContactFormModal({
 
   const handleClose = (e) => {
     onOpenChange(e);
+    // console.log(contact);
     setFormValues(contact ? contact : initialValue);
+    setSelected(null);
   };
+
+  // console.log(contact);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
