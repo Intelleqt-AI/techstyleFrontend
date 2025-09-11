@@ -412,7 +412,7 @@ export default function ProjectSettingsPage() {
         requireConfirmation={true}
         confirmationText={selectedProject?.name}
         title="Delete Project"
-        description={`This will permanently delete "${selectedProject?.name}" and all its data.`}
+        description={`This will permanently delete "${selectedProject?.name}" along with all its tasks and related data. This action cannot be undone.`}
       />
     </main>
   );
