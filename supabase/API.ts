@@ -156,6 +156,21 @@ export const deleteTask = async taskId => {
   return { data };
 };
 
+// Delte task by projct ID
+export const deleteTasksByProject = async ({ projectId }) => {
+  if (!projectId) {
+    throw new Error('Project ID is required');
+  }
+
+  const { data, error } = await supabase.from('Task').delete().eq('projectID', projectId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { data };
+};
+
 //Fetch OnlyProject data
 export const fetchOnlyProject = async ({ projectID }) => {
   if (projectID) {

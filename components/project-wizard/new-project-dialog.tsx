@@ -1,31 +1,16 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Building2,
   CalendarIcon,
@@ -40,38 +25,23 @@ import {
   Store,
   Users,
   X,
-} from "lucide-react";
+} from 'lucide-react';
 // import { toast } from "@/hooks/use-toast";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Calendar } from "../ui/calendar";
-import { format } from "date-fns";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  addNewProject,
-  addNewTask,
-  getUsers,
-  modifyProject,
-} from "@/supabase/API";
-import { CurrencySelector } from "../ui/CurrencySelector";
-import useClient from "@/hooks/useClient";
-import { toast } from "sonner";
-import useUser from "@/hooks/useUser";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "../ui/command";
-import { Checkbox } from "../ui/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import TeammateSearchPopover from "./teammateSearch";
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '../ui/calendar';
+import { format } from 'date-fns';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { addNewProject, addNewTask, getUsers, modifyProject } from '@/supabase/API';
+import { CurrencySelector } from '../ui/CurrencySelector';
+import useClient from '@/hooks/useClient';
+import { toast } from 'sonner';
+import useUser from '@/hooks/useUser';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Checkbox } from '../ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import TeammateSearchPopover from './teammateSearch';
+import { Switch } from '../ui/switch';
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -98,149 +68,50 @@ interface ProjectData {
 
 const projectTypes = [
   {
-    id: "residential",
-    name: "Residential",
+    id: 'residential',
+    name: 'Residential',
     icon: Home,
-    description: "Homes, apartments, and living spaces",
+    description: 'Homes, apartments, and living spaces',
   },
   {
-    id: "commercial",
-    name: "Commercial",
+    id: 'commercial',
+    name: 'Commercial',
     icon: Building2,
-    description: "Offices, retail, and business spaces",
+    description: 'Offices, retail, and business spaces',
   },
   {
-    id: "hospitality",
-    name: "Hospitality",
+    id: 'hospitality',
+    name: 'Hospitality',
     icon: Store,
-    description: "Hotels, restaurants, and entertainment",
+    description: 'Hotels, restaurants, and entertainment',
   },
 ];
 
-const defaultPhases = {
-  residential: [
-    {
-      name: "Discovery",
-      duration: "2 weeks",
-      description: "Initial consultation and space assessment",
-    },
-    {
-      name: "Concept Design",
-      duration: "4 weeks",
-      description: "Concept creation and design refinement",
-    },
-    {
-      name: "Design Development",
-      duration: "3 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Technical Drawings",
-      duration: "8 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Procurement",
-      duration: "10 weeks",
-      description: "Procurement and installation",
-    },
-    {
-      name: "Site / Implementation",
-      duration: "12 weeks",
-      description: "Procurement and installation",
-    },
-  ],
-  commercial: [
-    {
-      name: "Discovery",
-      duration: "2 weeks",
-      description: "Initial consultation and space assessment",
-    },
-    {
-      name: "Concept Design",
-      duration: "4 weeks",
-      description: "Concept creation and design refinement",
-    },
-    {
-      name: "Design Development",
-      duration: "3 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Technical Drawings",
-      duration: "8 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Procurement",
-      duration: "10 weeks",
-      description: "Procurement and installation",
-    },
-    {
-      name: "Site / Implementation",
-      duration: "12 weeks",
-      description: "Procurement and installation",
-    },
-  ],
-  hospitality: [
-    {
-      name: "Discovery",
-      duration: "2 weeks",
-      description: "Initial consultation and space assessment",
-    },
-    {
-      name: "Concept Design",
-      duration: "4 weeks",
-      description: "Concept creation and design refinement",
-    },
-    {
-      name: "Design Development",
-      duration: "3 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Technical Drawings",
-      duration: "8 weeks",
-      description: "Technical drawings and specifications",
-    },
-    {
-      name: "Procurement",
-      duration: "10 weeks",
-      description: "Procurement and installation",
-    },
-    {
-      name: "Site / Implementation",
-      duration: "12 weeks",
-      description: "Procurement and installation",
-    },
-  ],
-};
-
 const paymentSchedules = [
   {
-    id: "50-50",
-    name: "50/50 Split",
-    description: "50% upfront, 50% on completion",
+    id: '50-50',
+    name: '50/50 Split',
+    description: '50% upfront, 50% on completion',
   },
   {
-    id: "thirds",
-    name: "Three Payments",
-    description: "33% upfront, 33% midway, 34% completion",
+    id: 'thirds',
+    name: 'Three Payments',
+    description: '33% upfront, 33% midway, 34% completion',
   },
   {
-    id: "phases",
-    name: "Per Phase",
-    description: "Payment aligned with project phases",
+    id: 'phases',
+    name: 'Per Phase',
+    description: 'Payment aligned with project phases',
   },
   {
-    id: "monthly",
-    name: "Monthly",
-    description: "Equal monthly payments over project duration",
+    id: 'monthly',
+    name: 'Monthly',
+    description: 'Equal monthly payments over project duration',
   },
 ];
 
 function toDateFromYMD(ymd: string) {
-  const [y, m, d] = ymd?.split("-").map(Number);
+  const [y, m, d] = ymd?.split('-').map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
@@ -258,11 +129,7 @@ function Labeled({
 }) {
   return (
     <div className="flex flex-col space-y-2 text-sm font-medium text-ink">
-      <div
-        className={cn(
-          "flex items-center gap-2",
-          alignTop && "self-start pt-1"
-        )}>
+      <div className={cn('flex items-center gap-2', alignTop && 'self-start pt-1')}>
         <span className="">{icon}</span>
         <span className="truncate">{label}</span>
       </div>
@@ -272,24 +139,20 @@ function Labeled({
 }
 
 const initialProject: ProjectData = {
-  name: "",
-  projectType: "",
-  client: "",
-  location: "",
-  description: "",
-  startDate: "",
-  endDate: "",
-  budget: "",
+  name: '',
+  projectType: '',
+  client: '',
+  location: '',
+  description: '',
+  startDate: '',
+  endDate: '',
+  budget: '',
   currency: [],
-  paymentSchedule: "",
+  paymentSchedule: '',
   phases: [],
 };
 
-export function NewProjectDialog({
-  open,
-  onOpenChange,
-  task,
-}: NewProjectDialogProps) {
+export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogProps) {
   const [step, setStep] = useState(1);
   const { user, isLoading: userLoading } = useUser();
   const [data, setData] = useState(initialProject);
@@ -298,7 +161,6 @@ export function NewProjectDialog({
     budget: false,
   });
   const [teamMembers, setTeamMembers] = useState([]);
-  const [openPop, setOpenPop] = useState(false);
   const [selectedTeammates, setSelectedTeammates] = useState([]);
 
   const queryClient = useQueryClient();
@@ -315,18 +177,18 @@ export function NewProjectDialog({
 
   useEffect(() => {
     if (userLoading) return;
-    setData((prev) => ({
+    setData(prev => ({
       ...prev,
       phases: user?.defaultPhases,
     }));
   }, [user?.defaultPhases, userLoading, data?.projectType]);
 
   const updateData = (updates: Partial<ProjectData>) => {
-    setData((prev) => ({ ...prev, ...updates }));
+    setData(prev => ({ ...prev, ...updates }));
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
+    setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section],
     }));
@@ -357,7 +219,7 @@ export function NewProjectDialog({
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["users"],
+    queryKey: ['users'],
     queryFn: getUsers,
   });
 
@@ -368,17 +230,16 @@ export function NewProjectDialog({
   }, [isLoading, users]);
 
   // Get clients
-  const {
-    data: clientData,
-    isLoading: loadingClient,
-    refetch: refetchClient,
-  } = useClient();
+  const { data: clientData, isLoading: loadingClient, refetch: refetchClient } = useClient();
 
   // Define the mutation
   const taskAddMutation = useMutation({
     mutationFn: addNewTask,
-    onError: (e) => {
-      toast.error("Error! Try again");
+    onError: e => {
+      toast.error('Error! Try again');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task']);
     },
   });
 
@@ -396,23 +257,25 @@ export function NewProjectDialog({
 
   // Define the mutation
   const mutation = useMutation({
-    mutationFn: async (projectData) => addNewProject(projectData),
+    mutationFn: async projectData => addNewProject(projectData),
     onSuccess: async (data, variables) => {
-      queryClient.invalidateQueries(["projects"]);
+      queryClient.invalidateQueries(['projects']);
       handleClose();
       // Show loading toast
-      const loadingToastId = toast.loading("Creating project and tasks...");
+      const loadingToastId = toast.loading('Creating project and tasks...');
       if (variables?.phases?.length > 0) {
         // Flatten all tasks
-        const allTasks = variables.phases.flatMap((phase) =>
-          phase.task.map((taskName) => ({
-            name: taskName,
-            projectID: data?.data[0]?.id,
-            phase: phase.id,
-            status: "todo",
-            priority: "Low",
-          }))
-        );
+        const allTasks = variables.phases
+          .filter(phase => phase.createTask !== false)
+          .flatMap(phase =>
+            phase.task.map(taskName => ({
+              name: taskName,
+              projectID: data?.data[0]?.id,
+              phase: phase.id,
+              status: 'todo',
+              priority: 'Low',
+            }))
+          );
         // Send all tasks in a single API request
         await taskAddMutation.mutateAsync({ newTask: allTasks, user });
         toast.success(`${variables.name} and all tasks created successfully!`, {
@@ -424,7 +287,7 @@ export function NewProjectDialog({
         });
       }
     },
-    onError: () => toast.error("Error creating project"),
+    onError: () => toast.error('Error creating project'),
   });
 
   const handleCreate = async () => {
@@ -481,7 +344,7 @@ export function NewProjectDialog({
                   id="name"
                   placeholder="e.g., Chelsea Penthouse Renovation"
                   value={data.name}
-                  onChange={(e) => updateData({ name: e.target.value })}
+                  onChange={e => updateData({ name: e.target.value })}
                   className="bg-white border-borderSoft focus:ring-0 focus:border-clay-300"
                 />
               </div>
@@ -491,29 +354,24 @@ export function NewProjectDialog({
                   Project Type <span className="text-red-500">*</span>
                 </Label>
                 <div className="grid grid-cols-1 gap-3">
-                  {projectTypes.map((type) => {
+                  {projectTypes.map(type => {
                     const IconComponent = type.icon;
                     return (
                       <Card
                         key={type.id}
                         className={`cursor-pointer transition-colors ${
-                          data.projectType === type.id
-                            ? "border-clay-600 bg-clay-50"
-                            : "border-borderSoft bg-white hover:bg-greige-50"
+                          data.projectType === type.id ? 'border-clay-600 bg-clay-50' : 'border-borderSoft bg-white hover:bg-greige-50'
                         }`}
-                        onClick={() => updateData({ projectType: type.id })}>
+                        onClick={() => updateData({ projectType: type.id })}
+                      >
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-greige-100 rounded-lg flex items-center justify-center">
                               <IconComponent className="w-5 h-5 text-ink-muted" />
                             </div>
                             <div>
-                              <h4 className="font-medium text-ink">
-                                {type.name}
-                              </h4>
-                              <p className="text-sm text-ink-muted">
-                                {type.description}
-                              </p>
+                              <h4 className="font-medium text-ink">{type.name}</h4>
+                              <p className="text-sm text-ink-muted">{type.description}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -525,25 +383,18 @@ export function NewProjectDialog({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="client"
-                    className="text-sm font-medium text-ink">
+                  <Label htmlFor="client" className="text-sm font-medium text-ink">
                     Client <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={data.client}
-                    onValueChange={(value) => updateData({ client: value })}>
+                  <Select value={data.client} onValueChange={value => updateData({ client: value })}>
                     <SelectTrigger className="bg-white border-borderSoft focus:ring-0 focus:border-clay-300">
                       <SelectValue placeholder="Select client..." />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-borderSoft">
                       {clientData?.data &&
-                        clientData?.data.map((client) => {
+                        clientData?.data.map(client => {
                           return (
-                            <SelectItem
-                              value={client?.id}
-                              className="focus:bg-greige-50 focus:text-ink"
-                              key={client?.id}>
+                            <SelectItem value={client?.id} className="focus:bg-greige-50 focus:text-ink" key={client?.id}>
                               {client?.name}
                             </SelectItem>
                           );
@@ -553,32 +404,28 @@ export function NewProjectDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label
-                    htmlFor="location"
-                    className="text-sm font-medium text-ink">
+                  <Label htmlFor="location" className="text-sm font-medium text-ink">
                     Location
                   </Label>
                   <Input
                     id="location"
                     placeholder="e.g., London, UK"
                     value={data.location}
-                    onChange={(e) => updateData({ location: e.target.value })}
+                    onChange={e => updateData({ location: e.target.value })}
                     className="bg-white border-borderSoft focus:ring-0 focus:border-clay-300"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label
-                  htmlFor="description"
-                  className="text-sm font-medium text-ink">
+                <Label htmlFor="description" className="text-sm font-medium text-ink">
                   Project Description
                 </Label>
                 <Textarea
                   id="description"
                   placeholder="Brief description of the project scope and objectives..."
                   value={data.description}
-                  onChange={(e) => updateData({ description: e.target.value })}
+                  onChange={e => updateData({ description: e.target.value })}
                   className="bg-white border-borderSoft focus:ring-0 focus:border-clay-300 min-h-[100px]"
                 />
               </div>
@@ -599,30 +446,21 @@ export function NewProjectDialog({
                           type="button"
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                            !data?.startDate && "text-muted-foreground"
-                          )}>
+                            'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                            !data?.startDate && 'text-muted-foreground'
+                          )}
+                        >
                           <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                          {data?.startDate
-                            ? format(toDateFromYMD(data?.startDate), "PPP")
-                            : "Pick start date"}
+                          {data?.startDate ? format(toDateFromYMD(data?.startDate), 'PPP') : 'Pick start date'}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="p-0 rounded-xl border border-gray-200 shadow-md"
-                        align="start">
+                      <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                         <Calendar
                           mode="single"
-                          selected={
-                            data?.startDate
-                              ? toDateFromYMD(data?.startDate)
-                              : undefined
-                          }
-                          onSelect={(d) => {
+                          selected={data?.startDate ? toDateFromYMD(data?.startDate) : undefined}
+                          onSelect={d => {
                             updateData({
-                              startDate: d
-                                ? format(d, "yyyy-MM-dd")
-                                : undefined,
+                              startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                             });
                           }}
                           initialFocus
@@ -651,28 +489,21 @@ export function NewProjectDialog({
                           type="button"
                           variant="outline"
                           className={cn(
-                            "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                            !data?.endDate && "text-muted-foreground"
-                          )}>
+                            'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                            !data?.endDate && 'text-muted-foreground'
+                          )}
+                        >
                           <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                          {data?.endDate
-                            ? format(toDateFromYMD(data?.endDate), "PPP")
-                            : "Pick Target End date"}
+                          {data?.endDate ? format(toDateFromYMD(data?.endDate), 'PPP') : 'Pick Target End date'}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="p-0 rounded-xl border border-gray-200 shadow-md"
-                        align="start">
+                      <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                         <Calendar
                           mode="single"
-                          selected={
-                            data?.endDate
-                              ? toDateFromYMD(data?.endDate)
-                              : undefined
-                          }
-                          onSelect={(d) =>
+                          selected={data?.endDate ? toDateFromYMD(data?.endDate) : undefined}
+                          onSelect={d =>
                             updateData({
-                              endDate: d ? format(d, "yyyy-MM-dd") : undefined,
+                              endDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                             })
                           }
                           initialFocus
@@ -694,9 +525,7 @@ export function NewProjectDialog({
             </div>
 
             {/* Phase Preview */}
-            <Collapsible
-              open={expandedSections.phases}
-              onOpenChange={() => toggleSection("phases")}>
+            <Collapsible open={expandedSections.phases} onOpenChange={() => toggleSection('phases')}>
               <CollapsibleTrigger asChild>
                 <Card className="cursor-pointer border-borderSoft bg-white hover:bg-greige-50 transition-colors">
                   <CardContent className="p-4">
@@ -706,12 +535,8 @@ export function NewProjectDialog({
                           <Clock className="w-5 h-5 text-ink-muted" />
                         </div>
                         <div>
-                          <h4 className="font-medium text-ink">
-                            Project Phases
-                          </h4>
-                          <p className="text-sm text-ink-muted">
-                            {data.phases.length} phases • Click to customize
-                          </p>
+                          <h4 className="font-medium text-ink">Project Phases</h4>
+                          <p className="text-sm text-ink-muted">{data.phases.length} phases • Click to customize </p>
                         </div>
                       </div>
                       {expandedSections.phases ? (
@@ -729,19 +554,29 @@ export function NewProjectDialog({
                     <CardContent className="p-4">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <Badge
-                            variant="outline"
-                            className="bg-greige-50 text-ink-muted border-borderSoft">
+                          <Badge variant="outline" className="bg-greige-50 text-ink-muted border-borderSoft">
                             Phase {index + 1}
                           </Badge>
-                          <span className="text-sm text-ink-muted">
-                            {phase.duration}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-ink-muted">Create Preloaded Task</span>
+                            <Switch
+                              name={phase?.name}
+                              defaultChecked={phase?.createTask}
+                              onCheckedChange={(checked: boolean) => {
+                                const updatedPhases = [...data.phases];
+                                updatedPhases[index] = {
+                                  ...phase,
+                                  createTask: checked,
+                                };
+                                updateData({ phases: updatedPhases });
+                              }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <Input
                             value={phase.name}
-                            onChange={(e) => {
+                            onChange={e => {
                               const updatedPhases = [...data.phases];
                               updatedPhases[index] = {
                                 ...phase,
@@ -754,7 +589,7 @@ export function NewProjectDialog({
                         </div>
                         <Textarea
                           value={phase.description}
-                          onChange={(e) => {
+                          onChange={e => {
                             const updatedPhases = [...data.phases];
                             updatedPhases[index] = {
                               ...phase,
@@ -774,36 +609,23 @@ export function NewProjectDialog({
                                     type="button"
                                     variant="outline"
                                     className={cn(
-                                      "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                                      !phase?.startDate &&
-                                        "text-muted-foreground"
-                                    )}>
+                                      'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                      !phase?.startDate && 'text-muted-foreground'
+                                    )}
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                                    {phase?.startDate
-                                      ? format(
-                                          toDateFromYMD(phase?.startDate),
-                                          "PPP"
-                                        )
-                                      : "Pick start date"}
+                                    {phase?.startDate ? format(toDateFromYMD(phase?.startDate), 'PPP') : 'Pick start date'}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent
-                                  className="p-0 rounded-xl border border-gray-200 shadow-md"
-                                  align="start">
+                                <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                                   <Calendar
                                     mode="single"
-                                    selected={
-                                      phase?.startDate
-                                        ? toDateFromYMD(phase?.startDate)
-                                        : undefined
-                                    }
-                                    onSelect={(d) => {
+                                    selected={phase?.startDate ? toDateFromYMD(phase?.startDate) : undefined}
+                                    onSelect={d => {
                                       const updatedPhases = [...data.phases];
                                       updatedPhases[index] = {
                                         ...phase,
-                                        startDate: d
-                                          ? format(d, "yyyy-MM-dd")
-                                          : undefined,
+                                        startDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                                       };
                                       updateData({ phases: updatedPhases });
                                     }}
@@ -821,7 +643,7 @@ export function NewProjectDialog({
                       </Button>
                     )} */}
                             </div>
-                          </Labeled>{" "}
+                          </Labeled>{' '}
                           <Labeled label={`Phase ${index + 1} End Date`}>
                             <div className="flex items-center gap-2">
                               <Popover>
@@ -830,35 +652,23 @@ export function NewProjectDialog({
                                     type="button"
                                     variant="outline"
                                     className={cn(
-                                      "w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl",
-                                      !phase?.endDate && "text-muted-foreground"
-                                    )}>
+                                      'w-full justify-start text-left font-normal bg-white h-9 text-sm rounded-xl',
+                                      !phase?.endDate && 'text-muted-foreground'
+                                    )}
+                                  >
                                     <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                                    {phase?.endDate
-                                      ? format(
-                                          toDateFromYMD(phase?.endDate),
-                                          "PPP"
-                                        )
-                                      : "Pick start date"}
+                                    {phase?.endDate ? format(toDateFromYMD(phase?.endDate), 'PPP') : 'Pick start date'}
                                   </Button>
                                 </PopoverTrigger>
-                                <PopoverContent
-                                  className="p-0 rounded-xl border border-gray-200 shadow-md"
-                                  align="start">
+                                <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
                                   <Calendar
                                     mode="single"
-                                    selected={
-                                      phase?.endDate
-                                        ? toDateFromYMD(phase?.endDate)
-                                        : undefined
-                                    }
-                                    onSelect={(d) => {
+                                    selected={phase?.endDate ? toDateFromYMD(phase?.endDate) : undefined}
+                                    onSelect={d => {
                                       const updatedPhases = [...data.phases];
                                       updatedPhases[index] = {
                                         ...phase,
-                                        endDate: d
-                                          ? format(d, "yyyy-MM-dd")
-                                          : undefined,
+                                        endDate: d ? format(d, 'yyyy-MM-dd') : undefined,
                                       };
                                       updateData({ phases: updatedPhases });
                                     }}
@@ -884,6 +694,7 @@ export function NewProjectDialog({
                 ))}
               </CollapsibleContent>
             </Collapsible>
+            <span className="text-xs ml-2 inline-block">Tips : You can customize it later from project settings</span>
           </div>
         );
 
@@ -891,9 +702,7 @@ export function NewProjectDialog({
         return (
           <div className="space-y-6">
             {/* Budget Configuration */}
-            <Collapsible
-              open={expandedSections.budget}
-              onOpenChange={() => toggleSection("budget")}>
+            <Collapsible open={expandedSections.budget} onOpenChange={() => toggleSection('budget')}>
               <CollapsibleTrigger asChild>
                 <Card className="cursor-pointer border-borderSoft bg-white hover:bg-greige-50 transition-colors">
                   <CardContent className="p-4">
@@ -903,15 +712,9 @@ export function NewProjectDialog({
                           <DollarSign className="w-5 h-5 text-ink-muted" />
                         </div>
                         <div>
-                          <h4 className="font-medium text-ink">
-                            Budget & Payment
-                          </h4>
+                          <h4 className="font-medium text-ink">Budget & Payment</h4>
                           <p className="text-sm text-ink-muted">
-                            {data.budget
-                              ? `${data?.currency?.symbol || "£"}${Number(
-                                  data.budget
-                                ).toLocaleString()}`
-                              : "Click to configure"}
+                            {data.budget ? `${data?.currency?.symbol || '£'}${Number(data.budget).toLocaleString()}` : 'Click to configure'}
                           </p>
                         </div>
                       </div>
@@ -927,9 +730,7 @@ export function NewProjectDialog({
               <CollapsibleContent className="space-y-4 mt-3">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="budget"
-                      className="text-sm font-medium text-ink">
+                    <Label htmlFor="budget" className="text-sm font-medium text-ink">
                       Total Budget
                     </Label>
                     <Input
@@ -937,15 +738,13 @@ export function NewProjectDialog({
                       type="number"
                       placeholder="0"
                       value={data.budget}
-                      onChange={(e) => updateData({ budget: e.target.value })}
+                      onChange={e => updateData({ budget: e.target.value })}
                       className="bg-white border-borderSoft focus:ring-0 focus:border-clay-300"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label
-                      htmlFor="currency"
-                      className="text-sm font-medium text-ink">
+                    <Label htmlFor="currency" className="text-sm font-medium text-ink">
                       Currency
                     </Label>
                     <CurrencySelector data={data} onChange={updateData} />
@@ -979,30 +778,23 @@ export function NewProjectDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-ink">
-                    Payment Schedule
-                  </Label>
+                  <Label className="text-sm font-medium text-ink">Payment Schedule</Label>
                   <div className="grid grid-cols-1 gap-2">
-                    {paymentSchedules.map((schedule) => (
+                    {paymentSchedules.map(schedule => (
                       <Card
                         key={schedule.id}
                         className={`cursor-pointer transition-colors ${
                           data.paymentSchedule === schedule.id
-                            ? "border-clay-600 bg-clay-50"
-                            : "border-borderSoft bg-white hover:bg-greige-50"
+                            ? 'border-clay-600 bg-clay-50'
+                            : 'border-borderSoft bg-white hover:bg-greige-50'
                         }`}
-                        onClick={() =>
-                          updateData({ paymentSchedule: schedule.id })
-                        }>
+                        onClick={() => updateData({ paymentSchedule: schedule.id })}
+                      >
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <div>
-                              <h5 className="font-medium text-ink text-sm">
-                                {schedule.name}
-                              </h5>
-                              <p className="text-xs text-ink-muted">
-                                {schedule.description}
-                              </p>
+                              <h5 className="font-medium text-ink text-sm">{schedule.name}</h5>
+                              <p className="text-xs text-ink-muted">{schedule.description}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -1022,9 +814,7 @@ export function NewProjectDialog({
                   </div>
                   <div>
                     <h4 className="font-medium text-ink">Team Assignment</h4>
-                    <p className="text-sm text-ink-muted">
-                      Assign team members to this project
-                    </p>
+                    <p className="text-sm text-ink-muted">Assign team members to this project</p>
                   </div>
                 </div>
 
@@ -1076,33 +866,26 @@ export function NewProjectDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-borderSoft">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold text-ink">
-              Create New Project
-            </DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-ink">Create New Project</DialogTitle>
           </div>
         </DialogHeader>
 
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-6">
-          {[1, 2, 3].map((stepNumber) => (
+          {[1, 2, 3].map(stepNumber => (
             <div key={stepNumber} className="flex items-center">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   stepNumber === step
-                    ? "bg-clay-600 text-white"
+                    ? 'bg-clay-600 text-white'
                     : stepNumber < step
-                    ? "bg-sage-500 text-white"
-                    : "bg-greige-200 text-ink-muted"
-                }`}>
+                    ? 'bg-sage-500 text-white'
+                    : 'bg-greige-200 text-ink-muted'
+                }`}
+              >
                 {stepNumber}
               </div>
-              {stepNumber < 3 && (
-                <div
-                  className={`w-16 h-0.5 mx-2 ${
-                    stepNumber < step ? "bg-sage-500" : "bg-greige-200"
-                  }`}
-                />
-              )}
+              {stepNumber < 3 && <div className={`w-16 h-0.5 mx-2 ${stepNumber < step ? 'bg-sage-500' : 'bg-greige-200'}`} />}
             </div>
           ))}
         </div>
@@ -1115,17 +898,11 @@ export function NewProjectDialog({
         {/* Footer */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleClose}
-              className="border-borderSoft bg-white hover:bg-greige-50">
+            <Button variant="outline" onClick={handleClose} className="border-borderSoft bg-white hover:bg-greige-50">
               Cancel
             </Button>
             {step > 1 && (
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                className="border-borderSoft bg-white hover:bg-greige-50">
+              <Button variant="outline" onClick={handleBack} className="border-borderSoft bg-white hover:bg-greige-50">
                 Back
               </Button>
             )}
@@ -1133,16 +910,11 @@ export function NewProjectDialog({
 
           <div className="flex items-center gap-2">
             {step < 3 ? (
-              <Button
-                onClick={handleNext}
-                disabled={!canProceed()}
-                className="bg-clay-600 hover:bg-clay-700 text-white">
+              <Button onClick={handleNext} disabled={!canProceed()} className="bg-clay-600 hover:bg-clay-700 text-white">
                 Continue
               </Button>
             ) : (
-              <Button
-                onClick={handleCreate}
-                className="bg-clay-600 hover:bg-clay-700 text-white">
+              <Button onClick={handleCreate} className="bg-clay-600 hover:bg-clay-700 text-white">
                 Create Project
               </Button>
             )}

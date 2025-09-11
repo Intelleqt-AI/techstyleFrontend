@@ -42,7 +42,7 @@ import {
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteProject, getUsers, modifyProject } from '@/supabase/API';
+import { deleteProject, deleteTasksByProject, getUsers, modifyProject } from '@/supabase/API';
 import { toast } from 'sonner';
 import { CurrencySelector } from '@/components/ui/CurrencySelector';
 import { TypeChip } from '@/components/chip';
@@ -147,16 +147,19 @@ export default function ProjectSettingsPage() {
   const { data: project, isLoading: projectLoading, refetch: projectRefetch } = useProjects();
   const queryClient = useQueryClient();
 
+  // Delete task from project
+  const { mutate: deleleProjectTask, error: deleteError } = useMutation({
+    mutationFn: deleteTasksByProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['task']);
+    },
+  });
+
   // Delete Projects
-  const {
-    mutate: removeProject,
-    isLoading: isDeleting,
-    error: deleteError,
-  } = useMutation({
+  const { mutate: removeProject } = useMutation({
     mutationFn: deleteProject,
     onSuccess: () => {
       projectRefetch();
-      // toast('Project Deleted!');
     },
   });
 
@@ -241,6 +244,7 @@ export default function ProjectSettingsPage() {
 
       timer = setTimeout(() => {
         removeProject(id);
+        deleleProjectTask({ projectId: id });
         clearInterval(updateInterval);
         toast.dismiss(t);
         toast.success('Project deleted');

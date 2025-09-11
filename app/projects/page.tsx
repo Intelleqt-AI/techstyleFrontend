@@ -65,7 +65,6 @@ export default function ProjectsPage() {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [project, setProject] = useState([]);
-  const [filteredProjects, setfilteredProjects] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
 
   // Projects
