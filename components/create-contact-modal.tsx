@@ -132,12 +132,9 @@ export function ContactFormModal({
 
   const handleClose = (e) => {
     onOpenChange(e);
-    // console.log(contact);
     setFormValues(contact ? contact : initialValue);
     setSelected(null);
   };
-
-  // console.log(contact);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
