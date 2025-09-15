@@ -208,8 +208,29 @@ export default function FinancePage() {
   };
 
   const handleSync = () => {
+    const createToastContent = () => (
+      <div className="flex items-center justify-between w-full">
+        <div className="flex items-center gap-2">
+          <div>
+            <div className="font-sm">Please connect Xero</div>
+          </div>
+        </div>
+        {/* Undo button inside content */}
+        <button
+          onClick={() => {
+            router.push('/settings/studio/integrations');
+          }}
+          className="px-3 py-1 text-sm bg-black text-white rounded  transition-colors ml-4"
+        >
+          Connect Now
+        </button>
+      </div>
+    );
+
     if (!xeroConnected) {
-      toast.warning('Please connect Xero');
+      toast.warning(createToastContent(), {
+        duration: 3000,
+      });
       return;
     }
     setCustomLoading(true);
@@ -336,6 +357,7 @@ export default function FinancePage() {
     }
 
     setButtonLoadingPO(true);
+    console.log(checkedItems);
     createInvoiceOrder.mutate({
       invoice: {
         // projectID: id,
@@ -351,6 +373,52 @@ export default function FinancePage() {
       },
     });
   };
+
+  // const handleInvoice = () => {
+  //   if (!checkedItems || checkedItems.length === 0) {
+  //     router.push('/finance/invoices/new');
+  //     return;
+  //   }
+  //   setButtonLoadingPO(true);
+
+  //   const groupedBySupplier = checkedItems.reduce((acc, item) => {
+  //     const supplierId = item.supplier?.id;
+  //     if (!supplierId) return acc;
+  //     if (!acc[supplierId]) {
+  //       acc[supplierId] = [];
+  //     }
+  //     acc[supplierId].push(item);
+  //     return acc;
+  //   }, {});
+
+  //   Object.values(groupedBySupplier).forEach(itemsForSupplier => {
+  //     const firstItem = itemsForSupplier[0];
+  //     createInvoiceOrder.mutate({
+  //       invoice: {
+  //         // --- Supplier Details (replaces client details) ---
+  //         supplierID: firstItem.supplier?.id,
+  //         supplierName: firstItem.supplier?.name,
+  //         supplierEmail: firstItem.supplier?.email,
+  //         supplierPhone: firstItem.supplier?.phone,
+  //         supplierAddress: firstItem.supplier?.address,
+
+  //         // --- Aggregated Data for this specific supplier's items ---
+  //         delivery_charge: itemsForSupplier.reduce((total, item) => total + (item?.delivery_charge || 0), 0),
+  //         poNumber: itemsForSupplier.map(item => item.poNumber),
+  //         products: itemsForSupplier.flatMap(item => item.products),
+
+  //         // --- Other invoice details ---
+  //         status: 'Pending',
+  //         synced: false,
+  //         // You might want to get the projectID from the first item as well
+  //         // projectID: firstItem?.projectID,
+  //       },
+  //     });
+  //   });
+
+  //   // Note: You might want to handle the button loading state (setButtonLoadingPO(false))
+  //   // in the `onSuccess` or `onSettled` callback of your `createInvoiceOrder.mutate` hook.
+  // };
 
   // Create Xero Invoice
   const handleCreate = inv => {
