@@ -147,8 +147,13 @@ function SortableTaskCard({ task, project, openEditTask, openDeleteModal }: any)
 
 // Droppable Column Component
 function DroppableColumn({ column, project, openEditTask, openDeleteModal, openNewTask, isDraggingOver }: any) {
+  const { setNodeRef } = useDroppable({
+    id: column.id,
+  });
+
   return (
     <div
+      ref={setNodeRef}
       className={`bg-white border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
         isDraggingOver ? '!border-gray-500  !border-1 border-dashed !bg-[#f9f8f6]' : ''
       }`}
