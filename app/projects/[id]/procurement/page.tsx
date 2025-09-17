@@ -640,12 +640,20 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   // Top summary
   const procurementStats = [
     { title: 'Total Items', value: totalItemsCount, subtitle: 'Products specified', icon: Package },
-    { title: 'Total Quantity', value: totalQuantity, subtitle: 'Units ordered', icon: Hash },
+    { title: 'Total Quantity', value: totalQuantity.toFixed(2), subtitle: 'Units ordered', icon: Hash },
     { title: 'Pending Approval', value: totalPendingCount, subtitle: 'Waiting for sign-off', icon: Clock },
-    { title: 'Total Cost', value: `${project?.currency?.symbol}${totalCostCount}`, subtitle: 'Estimated cost', icon: DollarSign },
+    {
+      title: 'Total Cost',
+      value: `${project?.currency?.symbol}${totalCostCount.toLocaleString('en-GB', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+      subtitle: 'Estimated cost',
+      icon: DollarSign,
+    },
     {
       title: 'Delivery Progress',
-      value: `${totalDeliveryCount / totalItemsCount / 100}%`,
+      value: `${Math.ceil(totalDeliveryCount / totalItemsCount / 100)}%`,
       subtitle: `${totalItemsCount} of ${totalDeliveryCount} delivered`,
       icon: Truck,
     },

@@ -227,8 +227,9 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   };
 
   const getPhaseName = phaseId => {
+    console.log(phaseId);
     const phase = project?.phases?.find(p => p.id == phaseId);
-    return phase ? phase.name : null;
+    return phase ? phase.name : phaseId;
   };
 
   const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
