@@ -29,6 +29,16 @@ import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle }
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCurrency } from '@/hooks/useCurrency';
 import { DeleteDialog } from '@/components/DeleteDialog';
+import ProductImage from '@/components/project/ProductImage';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 // Mock user permissions
 const mockUser = { permissions: ['product.write'] };
@@ -49,8 +59,6 @@ export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [types, setTypes] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
-  const [confirmText, setConfirmText] = useState('Are you sure you want to delete ?');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState([]);
@@ -80,6 +88,13 @@ export default function ProductsPage() {
     setEditModal(false);
   }
 
+  const handlePageChange = page => {
+    if (data && page >= 1 && page <= data.totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
   const typeMutation = useMutation({
     mutationFn: modifyProjectForTypeProduct,
     onSuccess: () => {
@@ -91,6 +106,47 @@ export default function ProductsPage() {
       toast(error.message);
     },
   });
+
+  // Generate page numbers to display
+  const getPageNumbers = () => {
+    if (!data) return [];
+
+    const totalPages = data.totalPages;
+    const pageNumbers = [];
+    const maxPageButtons = 5;
+
+    if (totalPages <= maxPageButtons) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      const leftSide = Math.floor(maxPageButtons / 2);
+      const rightSide = maxPageButtons - leftSide - 1;
+
+      if (currentPage > leftSide) {
+        pageNumbers.push(1);
+        if (currentPage > leftSide + 1) {
+          pageNumbers.push('ellipsis');
+        }
+      }
+
+      const startPage = Math.max(1, currentPage - leftSide);
+      const endPage = Math.min(totalPages, currentPage + rightSide);
+
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          pageNumbers.push('ellipsis');
+        }
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
 
   // Function to handle adding a new product
   const handleAddProduct = newProduct => {
@@ -310,19 +366,23 @@ export default function ProductsPage() {
                       <div className="aspect-square overflow-hidden bg-gray-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {product?.images?.length > 0 ? (
-                          <img
-                            src={!isLoading && product?.images?.[product.images.length - 1]}
-                            alt={product?.name}
+                          <ProductImage
                             className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            alt={product?.name}
+                            src={!isLoading && product?.images?.[product.images.length - 1]}
+                          />
+                        ) : product?.imageURL?.length > 0 ? (
+                          <ProductImage
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            alt={product?.name}
+                            src={product?.imageURL[0]}
                           />
                         ) : (
-                          product?.imageURL?.length > 0 && (
-                            <img
-                              src={product?.imageURL[0]}
-                              alt={product.name}
-                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                            />
-                          )
+                          <ProductImage
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            alt={product?.name}
+                            src={null}
+                          />
                         )}
                       </div>
                     </button>
@@ -376,11 +436,13 @@ export default function ProductsPage() {
                           <button
                             type="button"
                             onClick={() => openDetails(product)}
-                            className="text-left"
+                            className="text-left max-w-full truncate"
                             aria-label={`Open ${product.name} details`}
                           >
-                            <h3 className="truncate text-sm !capitalize font-semibold tracking-tight text-gray-900">{product.name}</h3>
-                            <p className="text-xs capitalize tracking-wide text-gray-500">{product.supplier}</p>
+                            <h3 className="truncate text-sm !capitalize font-semibold tracking-tight text-gray-900">
+                              {product?.name || 'Unknown'}
+                            </h3>
+                            <p className="text-xs capitalize tracking-wide text-gray-500">{product?.supplier || 'No supplier provided'}</p>
                           </button>
                         </div>
                       </div>
@@ -389,7 +451,7 @@ export default function ProductsPage() {
                         <div className="flex  items-center justify-between">
                           <span className="tabular-nums text-sm font-semibold text-gray-900">
                             {!currencyLoading && (currency?.symbol || '£')}
-                            {Number(product?.priceRegular).toLocaleString()}
+                            {String(product?.priceRegular).replace(/\D/g, '') || String(product?.priceMember).replace(/\D/g, '') || 0}
                           </span>
                           {product?.type && <TypeChip label={product.type} />}
                         </div>
@@ -430,6 +492,44 @@ export default function ProductsPage() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Pagination */}
+
+          {data && data?.totalPages > 1 && (
+            <Pagination className="mt-8">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+
+                {getPageNumbers().map((pageNum, index) => (
+                  <PaginationItem key={index}>
+                    {pageNum === 'ellipsis' ? (
+                      <PaginationEllipsis />
+                    ) : (
+                      <PaginationLink
+                        onClick={() => handlePageChange(pageNum)}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    )}
+                  </PaginationItem>
+                ))}
+
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className={currentPage === data.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           )}
 
           {/* Add to project Drawer */}
