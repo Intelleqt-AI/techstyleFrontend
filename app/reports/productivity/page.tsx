@@ -493,8 +493,9 @@ export default function ProductivityReportsPage() {
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Legend />
-                <Bar dataKey="billable" stackId="a" fill="var(--color-billable)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="nonbillable" stackId="a" fill="var(--color-nonbillable)" radius={[4, 4, 0, 0]} />
+
+                <Bar dataKey="billable" stackId="a" fill="#837e72" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="nonbillable" stackId="a" fill="#efeae2" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
@@ -610,7 +611,7 @@ export default function ProductivityReportsPage() {
                     return rows.map(({ member, hours, pct }, index: number) => {
                       const badgeClass =
                         pct >= 100
-                          ? 'bg-green-100 border border-green-200 text-green-800'
+                          ? 'bg-[#efeae2] border border-[#837e72] text-[#837e72]'
                           : pct >= 95
                           ? 'border bg-[#FFE699] text-gray-800 border-[#FFCA28]'
                           : 'bg-gray-100 border border-gray-200 text-gray-600';
