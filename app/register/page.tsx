@@ -122,7 +122,7 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `http://app2.techstyles.ai/?onboarding=true`,
+          emailRedirectTo: `http://app.techstyles.ai/?onboarding=true`,
         },
       });
 
