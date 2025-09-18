@@ -104,7 +104,15 @@ export default function ProjectsPage() {
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}
       <div className="max-w-7xl mx-auto space-y-6">
-        <ProjectNavMain onChange={setActiveTab} activeTab={activeTab} counts={{ active: data?.filter(item => !item.isArchive)?.length }} />
+        <ProjectNavMain
+          onChange={setActiveTab}
+          activeTab={activeTab}
+          counts={{
+            active: data?.filter(item => !item.isArchive)?.length,
+            archived: data?.filter(item => item.isArchive)?.length,
+            all: data?.length,
+          }}
+        />
 
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4">
