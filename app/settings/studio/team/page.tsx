@@ -11,7 +11,7 @@ import useUser from '@/hooks/useUser';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { getUsers, updateUserRole, inviteUser, suspendUser, resendInvite, updateUser } from '@/supabase/API';
+import { getUsers, updateUser } from '@/supabase/API';
 import { Check } from 'lucide-react';
 import { DeleteDialog } from '@/components/DeleteDialog';
 
@@ -60,69 +60,69 @@ export default function TeamPage() {
   });
 
   // Update role mutation
-  const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: string }) => updateUserRole(userId, role),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['team-members']);
-      toast.success('Role updated successfully');
-    },
-    onError: error => {
-      console.error(error);
-      toast.error('Failed to update role');
-    },
-  });
+  // const updateRoleMutation = useMutation({
+  //   mutationFn: ({ userId, role }: { userId: string; role: string }) => updateUserRole(userId, role),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries(['team-members']);
+  //     toast.success('Role updated successfully');
+  //   },
+  //   onError: error => {
+  //     console.error(error);
+  //     toast.error('Failed to update role');
+  //   },
+  // });
 
   // Invite user mutation
-  const inviteMutation = useMutation({
-    mutationFn: (email: string) => inviteUser(email),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['team-members']);
-      toast.success('Invitation sent successfully');
-      setShowAddMemberPopover(false);
-      setEmailInput('');
-    },
-    onError: error => {
-      console.error(error);
-      toast.error('Failed to send invitation');
-    },
-  });
+  // const inviteMutation = useMutation({
+  //   mutationFn: (email: string) => inviteUser(email),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries(['team-members']);
+  //     toast.success('Invitation sent successfully');
+  //     setShowAddMemberPopover(false);
+  //     setEmailInput('');
+  //   },
+  //   onError: error => {
+  //     console.error(error);
+  //     toast.error('Failed to send invitation');
+  //   },
+  // });
 
   // Suspend user mutation
-  const suspendMutation = useMutation({
-    mutationFn: (userId: string) => suspendUser(userId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['team-members']);
-      toast.success('User suspended successfully');
-    },
-    onError: error => {
-      console.error(error);
-      toast.error('Failed to suspend user');
-    },
-  });
+  // const suspendMutation = useMutation({
+  //   mutationFn: (userId: string) => suspendUser(userId),
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries(['team-members']);
+  //     toast.success('User suspended successfully');
+  //   },
+  //   onError: error => {
+  //     console.error(error);
+  //     toast.error('Failed to suspend user');
+  //   },
+  // });
 
   // Resend invite mutation
-  const resendInviteMutation = useMutation({
-    mutationFn: (userId: string) => resendInvite(userId),
-    onSuccess: () => {
-      toast.success('Invitation resent successfully');
-    },
-    onError: error => {
-      console.error(error);
-      toast.error('Failed to resend invitation');
-    },
-  });
+  // const resendInviteMutation = useMutation({
+  //   mutationFn: (userId: string) => resendInvite(userId),
+  //   onSuccess: () => {
+  //     toast.success('Invitation resent successfully');
+  //   },
+  //   onError: error => {
+  //     console.error(error);
+  //     toast.error('Failed to resend invitation');
+  //   },
+  // });
 
   const handleRoleChange = (userId: string, newRole: string) => {
-    updateRoleMutation.mutate({ userId, role: newRole });
+    // updateRoleMutation.mutate({ userId, role: newRole });
   };
 
-  const handleInvite = () => {
-    if (emailInput && emailInput.includes('@')) {
-      inviteMutation.mutate(emailInput);
-    } else {
-      toast.error('Please enter a valid email address');
-    }
-  };
+  // const handleInvite = () => {
+  //   if (emailInput && emailInput.includes('@')) {
+  //     inviteMutation.mutate(emailInput);
+  //   } else {
+  //     toast.error('Please enter a valid email address');
+  //   }
+  // };
 
   const handleAddUser = user => {
     setSelectedTeammates(prev => {
@@ -146,9 +146,9 @@ export default function TeamPage() {
     mutation.mutate(finalData);
   };
 
-  const handleResendInvite = (userId: string) => {
-    resendInviteMutation.mutate(userId);
-  };
+  // const handleResendInvite = (userId: string) => {
+  //   resendInviteMutation.mutate(userId);
+  // };
 
   // Filter teammates based on search query
   const filteredTeammates = members?.data?.filter(
@@ -234,11 +234,10 @@ export default function TeamPage() {
               size="sm"
               className="bg-clay-600 text-white hover:bg-clay-700"
               onClick={() => setShowAddMemberPopover(!showAddMemberPopover)}
-              disabled={inviteMutation.isLoading}
+              // disabled={inviteMutation.isLoading}
             >
-              {inviteMutation.isLoading ? 'Sending...' : 'Add member'}
+              {'Add member'}
             </Button>
-
             {/* TeamAssignment Popover */}
             {showAddMemberPopover && (
               <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-gray-300 rounded-xl shadow-lg z-10 overflow-hidden">
@@ -360,7 +359,7 @@ export default function TeamPage() {
                   <Select
                     defaultValue={m.role}
                     // onValueChange={(value) => handleRoleChange(m.id, value)}
-                    disabled={updateRoleMutation.isLoading}
+                    // disabled={updateRoleMutation.isLoading}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue placeholder="Role" />
