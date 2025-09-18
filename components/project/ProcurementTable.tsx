@@ -451,9 +451,12 @@ const ProcurementTable = ({
                               {project?.currency?.symbol ? project?.currency?.symbol : '£'}
 
                               {(item?.matchedProduct?.priceMember
-                                ? parseFloat(item?.matchedProduct?.priceMember.replace(/[^\d.]/g, ''))
-                                : parseFloat(item?.matchedProduct?.priceRegular.replace(/[^\d.]/g, ''))
-                              ).toLocaleString()}
+                                ? parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, ''))
+                                : parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, ''))
+                              ).toLocaleString('en-GB', {
+                                maximumFractionDigits: 2,
+                                minimumFractionDigits: 2,
+                              })}
                             </span>
                           </p>
                         </td>

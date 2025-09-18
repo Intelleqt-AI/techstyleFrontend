@@ -324,7 +324,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
               className="w-full brightness-75 h-full object-cover"
               src={
                 selectedProject?.images[0]
-                  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${selectedProject?.id}/${selectedProject?.images[0]?.name}`
+                  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${selectedProject?.id}/${selectedProject?.images[0]?.name}`
                   : projectCover
               }
               alt=""
@@ -406,8 +406,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                   <p className="text-lg font-semibold text-neutral-900">
                     {selectedProject?.currency?.symbol || '£'}
                     {Number(selectedProject?.budget).toLocaleString('en-GB', {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 1,
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
                     })}
                   </p>
                   <p className="text-xs text-neutral-600">
@@ -434,8 +434,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                       return `${utilizedPercentage}% of ${selectedProject?.currency?.symbol || '£'}${Number(
                         selectedProject?.budget
                       ).toLocaleString('en-GB', {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
                       })} utilized`;
                     })()}
                   </p>
@@ -797,7 +797,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
               className="w-full h-full object-cover"
               src={
                 selectedProject?.images[0]
-                  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${selectedProject?.id}/${selectedProject?.images[0]?.name}`
+                  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${selectedProject?.id}/${selectedProject?.images[0]?.name}`
                   : projectCover
               }
               alt=""

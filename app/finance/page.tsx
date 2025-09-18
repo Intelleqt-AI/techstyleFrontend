@@ -495,7 +495,9 @@ export default function FinancePage() {
   const financeStats = [
     {
       title: 'Total Invoices',
-      value: `${!currencyLoading ? currency?.symbol || '£' : ''}${(totalInvoiceOrder || 0) + (xeroTotal || 0)}`,
+      value: `${!currencyLoading ? currency?.symbol || '£' : ''}${((totalInvoiceOrder || 0) + (xeroTotal || 0)).toLocaleString('en-GB', {
+        maximumFractionDigits: 2,
+      })}`,
 
       subtitle: `${(invoices?.length || 0) + (xeroInvoices?.length || 0)} ${
         (invoices?.length || 0) + (xeroInvoices?.length || 0) === 1 ? 'Invoice' : 'Invoices'
@@ -505,7 +507,9 @@ export default function FinancePage() {
 
     {
       title: 'Total Purchase Orders',
-      value: `${!currencyLoading ? currency?.symbol || '£' : ''}${totalPurchaseOrder || 0}`,
+      value: `${!currencyLoading ? currency?.symbol || '£' : ''}${(totalPurchaseOrder || 0).toLocaleString('en-GB', {
+        maximumFractionDigits: 2,
+      })}`,
       subtitle: `${purchaseOrder?.length} ${purchaseOrder?.length === 1 ? 'Purchase Order' : 'Purchase Orders'}`,
       icon: ShoppingCart,
     },

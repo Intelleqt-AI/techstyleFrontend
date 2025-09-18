@@ -18,6 +18,9 @@ import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Input } from './ui/input';
 import useProjects from '@/supabase/hook/useProject';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
+import { useCurrency } from '@/hooks/useCurrency';
+import ProductImage from './project/ProductImage';
+import errorImage from '/public/product-placeholder-wp.jpg';
 
 type ProductImage = {
   src: string;
@@ -79,7 +82,14 @@ function StatCard({ label, value, className }: { label: string; value?: React.Re
 }
 
 export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetailSheetProps) {
-  const data = product;
+  const data = {
+    ...product,
+    images: {
+      ...product?.images,
+      ...product?.imageURL,
+    },
+  };
+
   const [activeIdx, setActiveIdx] = React.useState(0);
   const [types, setTypes] = React.useState([]);
   const queryClient = useQueryClient();
@@ -88,6 +98,9 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
   const [qty, setQty] = React.useState(1);
   const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
   const [selectedProductId, setSelectedProductId] = React.useState(null);
+  const { currency, isLoading: currencyLoading } = useCurrency();
+
+  console.log(product);
 
   const typeMutation = useMutation({
     mutationFn: modifyProjectForTypeProduct,
@@ -102,9 +115,7 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
   });
 
   // Create a fallback image array if none provided
-  const activeImage = data?.images[activeIdx] ?? {
-    src: '/placeholder.svg?height=600&width=600',
-  };
+  const activeImage = data?.images[activeIdx] ?? errorImage;
 
   function copyUrl() {
     if (!data?.product_url) return;
@@ -119,7 +130,10 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
   // Format prices with currency symbol
   const formatPrice = (price: string) => {
     if (!price) return 'Not Available';
-    return `$${Number(price).toLocaleString()}`;
+    return `${!currencyLoading && (currency?.symbol || '£')} ${Number(price).toLocaleString('en-GB', {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    })}`;
   };
 
   // Format boolean values
@@ -184,9 +198,11 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
               <section aria-label="Product images">
                 <div className="overflow-hidden rounded-xl border border-greige-500/30 bg-white">
                   <div className="relative aspect-square">
-                    {data?.images?.length > 0 && (
-                      <Image src={activeImage} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
-                    )}
+                    {/* {data?.images?.length > 0 && (
+                      // <Image src={activeImage} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                      <ProductImage sizes="(max-width: 768px) 100vw, 50vw" src={activeImage} />
+                    )} */}
+                    <ProductImage sizes="(max-width: 768px) 100vw, 50vw" src={activeImage} className="object-cover h-full" />
                   </div>
                 </div>
 
@@ -203,7 +219,7 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                         )}
                         aria-label={`Show image ${idx + 1}`}
                       >
-                        <img src={img} className="h-full w-full object-cover" />
+                        <Image src={img} className="h-full w-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -229,8 +245,8 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <StatCard label="Retail Price" value={formatPrice(data?.priceRegular)} />
-                  <StatCard label="Trade Price" value={formatPrice(data?.priceMember)} />
+                  <StatCard label="Retail Price" value={formatPrice(String(data?.priceRegular).replace(/\D/g, ''))} />
+                  <StatCard label="Trade Price" value={formatPrice(String(data?.priceMember).replace(/\D/g, ''))} />
                   <StatCard label="Supplier" value={data?.supplier} />
                   <StatCard label="Product Type" value={data?.type} />
                   <StatCard label="Materials" value={data?.materials} />
@@ -240,21 +256,18 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                   <StatCard label="Sample" value={data.sample} />
                   <StatCard label="Quantity" value={data.qty} />
                 </div>
-
                 {data.measurements && (
                   <div className="mt-2">
                     <h3 className="text-base font-semibold text-neutral-900">Measurements</h3>
                     <p className="mt-1 text-sm text-neutral-600">{data.measurements}</p>
                   </div>
                 )}
-
                 {data.description ? (
                   <div className="mt-2">
                     <h3 className="text-base font-semibold text-neutral-900">Description</h3>
                     <p className="mt-1 text-sm leading-6 text-neutral-700">{data.description}</p>
                   </div>
                 ) : null}
-
                 {/* Additional product details */}
                 <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <StatCard label="Assembly Required" value={formatBoolean(data.assemblyRequired)} />
@@ -269,7 +282,6 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                   <StatCard label="Composition" value={data.composition} />
                   <StatCard label="Construction" value={data.construction} />
                 </div>
-
                 {/* Packaging information */}
                 <div className="mt-2">
                   <h3 className="text-base font-semibold text-neutral-900">Packaging Details</h3>
@@ -278,14 +290,12 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                     <StatCard label="Boxed Weight" value={data.boxedWeight} />
                   </div>
                 </div>
-
                 {data.instructions && (
                   <div className="mt-2">
                     <h3 className="text-base font-semibold text-neutral-900">Instructions</h3>
                     <p className="mt-1 text-sm leading-6 text-neutral-700">{data.instructions}</p>
                   </div>
                 )}
-
                 {/* Tags section */}
                 <div className="mt-2">
                   <h3 className="text-base font-semibold text-neutral-900">Product Details</h3>

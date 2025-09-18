@@ -734,7 +734,9 @@ export default function DashboardPage() {
     const studioKPIs = [
       {
         label: 'Studio Profit',
-        value: `${!currencyLoading && (currency?.symbol || '£')}${(totalInvoiceOrder - totalPurchaseOrder).toLocaleString()}`,
+        value: `${!currencyLoading && (currency?.symbol || '£')}${(totalInvoiceOrder - totalPurchaseOrder).toLocaleString('en-GB', {
+          maximumFractionDigits: 2,
+        })}`,
         trend: 'up',
         change: '+12%',
       },
@@ -746,7 +748,9 @@ export default function DashboardPage() {
       },
       {
         label: 'Cash Flow',
-        value: `${!currencyLoading && (currency?.symbol || '£')}${totalPurchaseOrder.toLocaleString()}`,
+        value: `${!currencyLoading && (currency?.symbol || '£')}${totalPurchaseOrder.toLocaleString('en-GB', {
+          maximumFractionDigits: 2,
+        })}`,
         trend: 'down',
         change: '-8%',
       },

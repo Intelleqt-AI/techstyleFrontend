@@ -148,6 +148,7 @@ export default function ProjectsPage() {
             {project &&
               project?.length > 0 &&
               project.map(project => {
+                console.log(project);
                 const nextPhase = project.phases
                   ?.filter(phase => dayjs(phase.endDate).isAfter(dayjs()))
                   .sort((a, b) => dayjs(a.endDate) - dayjs(b.endDate))[0];
@@ -164,7 +165,7 @@ export default function ProjectsPage() {
                             className="w-full h-full object-cover"
                             src={
                               project?.images[0]
-                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${project?.id}/${project?.images[0]?.name}`
                                 : projectCover
                             }
                             alt=""
@@ -188,7 +189,7 @@ export default function ProjectsPage() {
                               <Badge variant="outline" className={`text-xs ${getTypeColor(project?.type)}`}>
                                 <div className="flex capitalize items-center">
                                   {getTypeIcon(project?.projectType)}
-                                  {project?.projectType}
+                                  {project?.projectType || 'Not Set'}
                                 </div>
                               </Badge>
                             </div>
@@ -239,8 +240,8 @@ export default function ProjectsPage() {
                               <div className="font-medium text-ink">
                                 {project?.currency?.symbol || '£'}
                                 {Number(project?.budget).toLocaleString('en-GB', {
-                                  minimumFractionDigits: 1,
-                                  maximumFractionDigits: 1,
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
                                 })}
                               </div>
                               <div className="text-xs text-ink-muted"> {project?.currency?.symbol || '£'}0 spent</div>
@@ -325,7 +326,7 @@ export default function ProjectsPage() {
                                 className="w-full h-full object-cover"
                                 src={
                                   project?.images[0]
-                                    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${project?.id}/${project?.images[0]?.name}`
                                     : projectCover
                                 }
                                 alt=""
@@ -345,7 +346,7 @@ export default function ProjectsPage() {
                           <Badge variant="outline" className={`text-xs ${getTypeColor(project?.projectType)}`}>
                             <div className="flex capitalize items-center">
                               {getTypeIcon(project?.projectType)}
-                              {project?.projectType}
+                              {project?.projectType || 'Not set'}
                             </div>
                           </Badge>
                         </td>
@@ -360,7 +361,7 @@ export default function ProjectsPage() {
                                 : 'bg-greige-50 text-greige-700 border-greige-200'
                             }`}
                           >
-                            {project?.status}
+                            {project?.status || 'In progress'}
                           </Badge>
                         </td>
                         <td className="py-4 px-4">
@@ -382,7 +383,10 @@ export default function ProjectsPage() {
                           <div className="text-sm">
                             <div className="font-medium text-ink">
                               {project?.currency?.symbol || '£'}
-                              {Number(project?.budget).toLocaleString()}
+                              {Number(project?.budget).toLocaleString('en-GB', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </div>
                             <div className="text-ink-muted">{project?.currency?.symbol || '£'}0 spent</div>
                           </div>
