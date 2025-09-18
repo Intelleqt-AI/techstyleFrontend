@@ -96,11 +96,11 @@ export function ReportBar({ tracking, onBarClick, title = 'Daily Hours Overview'
           <Bar
             dataKey="Fulfilled"
             stackId="a"
-            fill="#000" // Matching yellow from image
+            fill="#837e72" // Matching yellow from image
             radius={[0, 0, 4, 4]}
             cursor="pointer"
           />
-          <Bar className="" dataKey="Goal" stackId="a" fill="#f1f1f1" radius={[4, 4, 0, 0]} cursor="pointer" />
+          <Bar className="" dataKey="Goal" stackId="a" fill="#efeae2" radius={[4, 4, 0, 0]} cursor="pointer" />
 
           <ChartTooltip
             content={

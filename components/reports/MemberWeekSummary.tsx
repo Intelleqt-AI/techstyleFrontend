@@ -83,16 +83,16 @@ const MemberWeekSummary = () => {
           <Line
             type="monotone"
             dataKey="Billable"
-            stroke="#000"
+            stroke="#efeae2"
             strokeWidth={3}
-            dot={{ r: 5, stroke: '#000', strokeWidth: 1, fill: '#000' }}
+            dot={{ r: 5, stroke: '#837e72', strokeWidth: 1, fill: '#837e72' }}
           />
           <Line
             type="monotone"
             dataKey="Nonbillable"
-            stroke="#8888"
+            stroke="#837e72"
             strokeWidth={3}
-            dot={{ r: 5, stroke: '#8888', strokeWidth: 1, fill: '#8888' }}
+            dot={{ r: 5, stroke: '#837e72', strokeWidth: 1, fill: '#837e72' }}
           />
         </LineChart>
       </ChartContainer>

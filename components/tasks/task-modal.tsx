@@ -39,6 +39,8 @@ import {
   Circle,
   Hammer,
   CheckCircle2,
+  ArchiveRestore,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -48,16 +50,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import useProjects from '@/supabase/hook/useProject';
 import useUser from '@/supabase/hook/useUser';
-import {
-  addNewTask,
-  createNotification,
-  fetchOnlyProject,
-  fetchProjects,
-  getAllFiles,
-  getUsers,
-  modifyTask,
-  uploadDoc,
-} from '@/supabase/API';
+import { addNewTask, createNotification, fetchOnlyProject, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
 import { toast } from 'sonner';
 import DraggableSubtasks2 from './DraggableSubtasks2';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -86,51 +79,6 @@ const initialTask: Task = {
   totalWorkTime: 0,
   note: '',
 };
-
-const lists: (ListColumn & { icon: any; colorClass: string; id: string })[] = [
-  {
-    id: 'concept',
-    title: 'Design Concepts',
-    icon: Palette,
-    colorClass: 'text-purple-600',
-  },
-  {
-    id: 'design-dev',
-    title: 'Design Development',
-    icon: CircleDot,
-    colorClass: 'text-amber-600',
-  },
-  {
-    id: 'technical',
-    title: 'Technical Drawings',
-    icon: FileText,
-    colorClass: 'text-orange-600',
-  },
-  {
-    id: 'review',
-    title: 'Client Review',
-    icon: Eye,
-    colorClass: 'text-rose-600',
-  },
-  {
-    id: 'procurement',
-    title: 'Procurement',
-    icon: Circle,
-    colorClass: 'text-emerald-600',
-  },
-  {
-    id: 'site',
-    title: 'Site / Implementation',
-    icon: Hammer,
-    colorClass: 'text-slate-600',
-  },
-  {
-    id: 'complete',
-    title: 'Complete',
-    icon: CheckCircle2,
-    colorClass: 'text-gray-600',
-  },
-];
 
 type Props = {
   open: boolean;
@@ -218,7 +166,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
   );
 
-  const handleCloseModal = e => {
+  const handleCloseModal = () => {
     onOpenChange(false);
     setTaskValues(initialTask);
     onOpenChange(false);
@@ -246,7 +194,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     },
     onSuccess: e => {
       toast.success('Task Updated');
-      console.log(e);
       setSubTaskText('');
       setTaskValues(prev => ({
         ...prev,
@@ -258,6 +205,25 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
       toast.error('Error! Try again');
     },
   });
+
+  // Handle archive
+  const handleArchive = () => {
+    mutation.mutate({ newTask: { ...taskValues, isArchived: true }, user: user });
+    setTaskValues(prev => ({
+      ...prev,
+      isArchived: true,
+    }));
+    toast.success('Task Moved To Archive');
+  };
+
+  const handleUnArchive = () => {
+    mutation.mutate({ newTask: { ...taskValues, isArchived: false }, user: user });
+    setTaskValues(prev => ({
+      ...prev,
+      isArchived: false,
+    }));
+    toast.success('Task Restored');
+  };
 
   // Create nofitioan
   const notificationMutation = useMutation({
@@ -795,6 +761,24 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
         side="right"
         className="v0-task-sheet w-full sm:max-w-[700px] md:max-w-[720px] h-full px-8 md:px-9 pt-10 md:pt-10 pb-0 bg-gray-50 rounded-2xl shadow-xl flex flex-col overflow-hidden"
       >
+        {taskValues?.isArchived ? (
+          <Button
+            onClick={() => handleUnArchive()}
+            className="text-sm font-semibold text-gray-700 bg-transparent flex items-center gap-2 transition-all hover:bg-gray-200 cursor-pointer"
+          >
+            <ArchiveRestore size={17} />
+            Unarchive
+          </Button>
+        ) : (
+          <Button
+            onClick={() => handleArchive()}
+            className="text-sm font-semibold text-gray-700 bg-transparent flex items-center gap-2 transition-all hover:bg-gray-200 cursor-pointer"
+          >
+            <Archive size={17} />
+            Archive
+          </Button>
+        )}
+
         <form
           ref={formRef}
           onSubmit={e => handleSave(e)}
