@@ -451,7 +451,7 @@ export default function MyTasksPage() {
     if (taskLoading) return;
 
     let list = myTaskList(taskData?.data);
-    setMyTask(taskData?.data ?? []);
+    setMyTask(list);
 
     if (searchText.trim()) {
       const s = searchText.toLowerCase();
