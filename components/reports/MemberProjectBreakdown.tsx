@@ -9,7 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { downloadExcel } from 'react-export-table-to-excel';
 import { ChartCard } from './chart-card';
 
-const MemberProjectBreakdown = ({ trackingData, trackingLoading, user }) => {
+const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }) => {
   const [trackedProject, setTrackedProject] = useState([]);
   const [customLoading, setCustomLoading] = useState(true);
   const [totalItem, setTotalItem] = useState([]);
@@ -63,12 +63,26 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user }) => {
 
   function logAugustSessions() {
     const tasks = getTrackingByUser(user?.email);
-    const year = new Date().getFullYear();
-    const augustStart = new Date(year, 7, 1); // Aug 1
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
+    const monthParam = month; // e.g. "2025-08" or "undefined"
+    const now = new Date();
 
-    // Collect all valid sessions in August
+    let year = now.getFullYear();
+    let monthIndex = now.getMonth();
+
+    // Use month from query if valid
+    if (typeof monthParam === 'string' && /^\d{4}-\d{2}$/.test(monthParam) && monthParam !== 'undefined') {
+      const [y, m] = monthParam.split('-').map(Number);
+      if (!isNaN(y) && !isNaN(m)) {
+        year = y;
+        monthIndex = m - 1; // month is 0-based
+      }
+    }
+
+    const monthStart = new Date(year, monthIndex, 1);
+    const monthEnd = new Date(year, monthIndex + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
+    // Collect all valid sessions in chosen month
     const allSessions = tasks
       .flatMap(task =>
         (task.session || []).map(session => ({
@@ -79,7 +93,7 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user }) => {
           rate: task?.rate || null,
         }))
       )
-      .filter(s => s.date >= augustStart && s.date <= today);
+      .filter(s => s.date >= monthStart && s.date <= monthEnd);
 
     // Sort by date
     allSessions.sort((a, b) => a.date - b.date);
@@ -87,13 +101,12 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user }) => {
     // Format for console
     const formatted = allSessions.map(s => {
       const taskName = data?.data?.find(t => t.id === s.task_id)?.name || s.task_id;
-
       const projectName = project?.find(p => p.id === s.project_id)?.name || s.project_id;
 
       return {
         date: s.date.toLocaleDateString('en-GB'), // dd/mm/yyyy
-        task_id: taskName, // or rename: task_name: taskName
-        project_id: projectName, // or rename: project_name: projectName
+        task_id: taskName,
+        project_id: projectName,
         rate: s.rate ? `£${s.rate} p/h` : '-',
         hours: typeof s.totalTime === 'number' ? (s.totalTime / (1000 * 60 * 60)).toFixed(2) : '-',
       };
