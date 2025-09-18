@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, Filter, Download } from 'lucide-react';
+import { Search, Filter, Download, ChevronDown } from 'lucide-react';
 import { SortIndicator } from '@/components/sort-indicator';
 import { exportToCSV } from '@/lib/export-csv';
 import { ChartCard } from '@/components/reports/chart-card';
@@ -18,6 +18,25 @@ import useTask from '@/supabase/hook/useTask';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import useUser from '@/hooks/useUser';
+
+// Generate months for the dropdown
+const generateMonthOptions = () => {
+  const months = [];
+  const currentDate = new Date();
+
+  // Generate last 12 months starting from current month going backward
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    months.push({
+      value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), // "Aug 2025"
+      year: date.getFullYear(),
+      month: date.getMonth(),
+    });
+  }
+
+  return months;
+};
 
 type Member = {
   name: string;
@@ -252,6 +271,19 @@ export default function ProductivityReportsPage() {
   const [teamSortDir, setTeamSortDir] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
   const { user } = useUser();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    // const now = new Date();
+    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    undefined;
+  });
+  const monthOptions = generateMonthOptions();
+  const selectedMonthLabel = monthOptions.find(option => option.value === selectedMonth)?.label || 'Select Month';
+
+  const handleMonthChange = monthValue => {
+    setSelectedMonth(monthValue);
+    setIsDropdownOpen(false);
+  };
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
     queryKey: ['Time Tracking'],
@@ -280,9 +312,9 @@ export default function ProductivityReportsPage() {
   const handleProfileVisit = (email, id) => {
     if (!id) return;
     if (admins.includes(user?.email)) {
-      router.push(`/reports/productivity/${id}`);
+      router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
     } else if (user?.email == email) {
-      router.push(`/reports/productivity/${id}`);
+      router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
     } else {
       return;
     }
@@ -330,12 +362,66 @@ export default function ProductivityReportsPage() {
     setCustomLoading(false);
   }, [users, project, period, trackingLoading]);
 
+  function getFormattedTimeForMonth(tasks, selectedYear, selectedMonth) {
+    if (!Array.isArray(tasks) || !tasks.length) return '0.00';
+
+    // Ensure month is 0-based: Jan=0, Dec=11
+    const firstDay = new Date(selectedYear, selectedMonth, 1, 0, 0, 0, 0);
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999);
+
+    const totalMs = tasks.reduce((total, task) => {
+      if (!Array.isArray(task.session)) return total;
+
+      const sessionTime = task.session.reduce((sum, session) => {
+        const sessionDate = new Date(session.date);
+
+        // Only count sessions within the month with valid totalTime
+        if (!isNaN(sessionDate) && sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
+          return sum + session.totalTime;
+        }
+        return sum;
+      }, 0);
+
+      return total + sessionTime;
+    }, 0);
+
+    const totalHours = totalMs / (1000 * 60 * 60); // convert ms -> hours
+    return totalHours.toFixed(2); // same as original function
+  }
+
+  function enrichUsersWithProjectCountForMonth(users, projects, selectedYear, selectedMonth) {
+    if (!users || !projects) return [];
+    return users.map(user => {
+      const userTracking = getTrackingByUser(user.email);
+      const totalTime = getFormattedTimeForMonth(userTracking, selectedYear, selectedMonth);
+      const userEmail = user.email;
+      let totalProjects = 0;
+      projects.forEach(project => {
+        if (project.assigned?.some(assignee => assignee.email == userEmail)) {
+          totalProjects++;
+        }
+      });
+      return {
+        ...user,
+        totalProjects,
+        totalTime,
+      };
+    });
+  }
+
   // Reactive computation for Team Performance rows so it updates on period change immediately
   const teamUsers = useMemo(() => {
     const usersData = (users as any)?.data ?? [];
     if (!usersData || !project) return [] as any[];
+    if (selectedMonth) {
+      const [year, month] = selectedMonth.split('-');
+      const selectedYear = parseInt(year);
+      const selectedMonthIndex = parseInt(month) - 1;
+      return enrichUsersWithProjectCountForMonth(usersData, project, selectedYear, selectedMonthIndex);
+    }
+
     return enrichUsersWithProjectCount(usersData, project, period);
-  }, [users, project, period, trackingData, taskData, trackingLoading, taskLoading]);
+  }, [users, project, period, trackingData, taskData, selectedMonth, trackingLoading, taskLoading]);
 
   const rawMembers = dataByPeriod[period].members;
   const weekly = dataByPeriod[period].weekly;
@@ -401,6 +487,11 @@ export default function ProductivityReportsPage() {
     );
   }
 
+  const onPeriodChange = e => {
+    setPeriod(e);
+    setSelectedMonth(undefined);
+  };
+
   return (
     <main className="flex-1 space-y-6 p-6">
       {/* 1) KPI strip */}
@@ -416,7 +507,7 @@ export default function ProductivityReportsPage() {
 
       {/* 2) Filter row (standardized) */}
       <div className="flex items-center justify-between gap-3">
-        <PeriodFilter period={period} onChange={setPeriod} />
+        <PeriodFilter period={period} onChange={onPeriodChange} />
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -506,6 +597,28 @@ export default function ProductivityReportsPage() {
       <ChartCard title="Team Performance" description="Individual productivity metrics">
         <div className="mb-4" />
 
+        <div className="flex justify-end items-center mb-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="min-w-[180px] bg-white flex justify-between items-center">
+                {selectedMonthLabel}
+                <ChevronDown className="w-4 h-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-[180px] bg-white max-h-60 overflow-y-auto">
+              {monthOptions.map(option => (
+                <DropdownMenuItem
+                  key={option.value}
+                  onClick={() => handleMonthChange(option.value)}
+                  className={selectedMonth === option.value ? 'bg-gray-100 ' : ''}
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
