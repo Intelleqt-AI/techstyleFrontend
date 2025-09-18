@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '../chip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import dayjs from 'dayjs';
+import { DeleteDialog } from '../DeleteDialog';
 
 function ApprovalBadge({ status }) {
   const label = status === 'approved' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected';
@@ -65,6 +72,8 @@ const ProcurementTable = ({
   const [roomID, setRoomID] = useState(null);
   //   const navigate = useNavigate();
   const [clientApprove, setClientApprove] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<null | { id: string; roomId: string; name: string }>(null);
 
   function editProduct(item, roomID) {
     setEditItem(item);
@@ -408,8 +417,8 @@ const ProcurementTable = ({
                         <td className="px-4 py-3 text-neutral-700 w-32 whitespace-nowrap truncate" title={item?.matchedProduct?.dimensions}>
                           {item?.matchedProduct?.dimensions}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          {item?.PO?.map(po => {
+                        <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
+                          {item?.PO?.slice(0, 2).map(po => {
                             return (
                               <Link className="hover:underline" href={'#'}>
                                 {po?.poNumber} <br />{' '}
@@ -442,9 +451,12 @@ const ProcurementTable = ({
                               {project?.currency?.symbol ? project?.currency?.symbol : '£'}
 
                               {(item?.matchedProduct?.priceMember
-                                ? parseFloat(item?.matchedProduct?.priceMember.replace(/[^\d.]/g, ''))
-                                : parseFloat(item?.matchedProduct?.priceRegular.replace(/[^\d.]/g, ''))
-                              ).toLocaleString()}
+                                ? parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, ''))
+                                : parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, ''))
+                              ).toLocaleString('en-GB', {
+                                maximumFractionDigits: 2,
+                                minimumFractionDigits: 2,
+                              })}
                             </span>
                           </p>
                         </td>
@@ -475,6 +487,20 @@ const ProcurementTable = ({
                               <DropdownMenuItem onClick={() => editProduct(item, items.id)}>Update status</DropdownMenuItem>
                               <DropdownMenuItem>Download PO</DropdownMenuItem>
                               <DropdownMenuItem>Contact supplier</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setDeleteTarget({
+                                    id: item.id,
+                                    roomId: items.id,
+                                    name: item?.matchedProduct?.name,
+                                  });
+                                  setIsDeleteOpen(true);
+                                }}
+                                className="text-red-600"
+                              >
+                                Remove
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -487,6 +513,7 @@ const ProcurementTable = ({
           </table>
         </div>
       </CardContent>
+
       {/* Product detail sheet */}
       <ProductDetailSheet open={open} onOpenChange={setOpen} product={selected} />
 
@@ -715,6 +742,23 @@ const ProcurementTable = ({
           </div>
         </SheetContent>
       </Sheet>
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false), setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDelete(deleteTarget.id, deleteTarget.roomId);
+          }
+          setDeleteTarget(null);
+        }}
+        title="Remove Product"
+        description="Are you sure you want to remove this product ? This action cannot be undone."
+        itemName={deleteTarget?.name}
+        requireConfirmation={false}
+      />
     </Card>
   );
 };

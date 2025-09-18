@@ -8,8 +8,8 @@ export default function ProductImage({ src, alt, className = '', ...props }) {
     <Image
       src={imgSrc || '/product-placeholder-wp.jpg'}
       alt={alt || 'Product image'}
-      width={40}
-      height={40}
+      width={400}
+      height={400}
       className={className}
       onError={() => setImgSrc('/product-placeholder-wp.jpg')}
       {...props}

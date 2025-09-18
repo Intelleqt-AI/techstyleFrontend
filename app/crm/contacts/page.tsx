@@ -6,13 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CrmNav } from '@/components/crm-nav';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TypeChip } from '@/components/chip';
-import { useQuery } from '@tanstack/react-query';
-import { getContact } from '@/supabase/API';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteContact, getContact } from '@/supabase/API';
 import { ContactDetailSheet } from '@/components/contact-details';
 import { ContactFormModal } from '@/components/create-contact-modal';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DeleteDialog } from '@/components/DeleteDialog';
+import { toast } from 'sonner';
 
 export default function ContactsPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,6 +32,9 @@ export default function ContactsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selected, setSelected] = useState(null);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const {
     data: contactData,
@@ -37,9 +48,9 @@ export default function ContactsPage() {
 
   const filtered = contacts.filter(
     c =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase())
+      c?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c?.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenSheet = contact => {
@@ -51,15 +62,36 @@ export default function ContactsPage() {
     setSelected(contact);
   };
 
+  // Delete Contact
+  const { mutate, isLoading, error } = useMutation({
+    mutationFn: deleteContact,
+    onSuccess: () => {
+      toast('Contact Deleted!');
+      queryClient.invalidateQueries(['getContacts']);
+    },
+    onError: () => {
+      toast('Error! Could not delete contact.');
+    },
+  });
+
+  const openDeleteModal = contact => {
+    setIsDeleteOpen(true);
+    setSelected(contact);
+  };
+
+  const handleDelete = id => {
+    mutate(id);
+  };
+
   useEffect(() => {
     if (!taskLoading && contactData) {
       setContacts(contactData.data);
     }
   }, [taskLoading, contactData]);
 
-  useEffect(() => {
-    console.log(contactData);
-  }, [contactData]);
+  // useEffect(() => {
+  //   console.log(contactData);
+  // }, [contactData]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -117,75 +149,90 @@ export default function ContactsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 text-sm">
-                {filtered.map(contact => (
-                  <tr key={contact.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <Checkbox></Checkbox>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className="w-8 h-8 shrink-0">
-                          <AvatarImage src={'/placeholder.svg?height=32&width=32&query=avatar'} />
-                          <AvatarFallback className="bg-gray-900 text-white text-xs font-semibold">{contact.avatar}</AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <div className="font-medium text-gray-900 truncate" title={contact.name}>
-                            {contact.name}
+                {!taskLoading &&
+                  filtered?.map(contact => (
+                    <tr key={contact.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <Checkbox></Checkbox>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="w-8 h-8 shrink-0">
+                            {/* <AvatarImage
+                            src={
+                              "/placeholder.svg?height=32&width=32&query=avatar"
+                            }
+                          /> */}
+                            {contact?.name ? (
+                              <AvatarFallback className="bg-gray-900 text-white text-xs font-semibold">{contact?.name[0]}</AvatarFallback>
+                            ) : (
+                              <AvatarFallback className="bg-gray-900 text-white text-xs font-semibold">
+                                {contact?.company[0]}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="font-medium text-gray-900 truncate" title={contact?.name}>
+                              {contact?.name}
+                            </div>
+                            <div className="text-xs text-gray-600 truncate" title={contact?.company}>
+                              {contact?.company}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-600 truncate" title={contact.company}>
-                            {contact.company}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate" title={contact?.email}>
+                            <Mail className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{contact?.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate" title={contact?.phone}>
+                            <Phone className="w-4 h-4 shrink-0" />
+                            <span className="truncate">{contact?.phone}</span>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1 min-w-0">
-                        <div className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate" title={contact.email}>
-                          <Mail className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{contact.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate" title={contact.phone}>
-                          <Phone className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{contact.phone}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <TypeChip label={contact.type} />
-                    </td>
-                    <td className="pl-4 pr-6 py-3 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                            aria-label={`Open actions for ${contact.name}`}
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenSheet(contact)}>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              if (contact?.email) {
-                                window.location.href = `mailto:${contact.email}`;
-                              } else {
-                                alert('No email address available for this contact.');
-                              }
-                            }}
-                          >
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Schedule Meeting</DropdownMenuItem>
-                          <DropdownMenuItem>Add Note</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenContactFrom(contact)}>Edit Contact</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <TypeChip label={contact?.type} />
+                      </td>
+                      <td className="pl-4 pr-6 py-3 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                              aria-label={`Open actions for ${contact?.name}`}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOpenSheet(contact)}>View Profile</DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                if (contact?.email) {
+                                  window.location.href = `mailto:${contact?.email}`;
+                                } else {
+                                  alert('No email address available for this contact.');
+                                }
+                              }}
+                            >
+                              Send Email
+                            </DropdownMenuItem>
+                            <DropdownMenuItem>Schedule Meeting</DropdownMenuItem>
+                            <DropdownMenuItem>Add Note</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenContactFrom(contact)}>Edit Contact</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(contact)}>
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -193,7 +240,17 @@ export default function ContactsPage() {
       </div>
       <ContactDetailSheet open={sheetOpen} onOpenChange={setSheetOpen} contact={selected} />
 
-      <ContactFormModal open={contactModalOpen} onOpenChange={setContactModalOpen} contact={selected} />
+      <ContactFormModal open={contactModalOpen} onOpenChange={setContactModalOpen} contact={selected} setSelected={setSelected} />
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selected?.id)}
+        title="Delete Contact"
+        description="Are you sure you want to delete this contact? This action cannot be undone."
+        itemName={selected?.name}
+        requireConfirmation={false} // 👈 disables the typing step
+      />
     </div>
   );
 }

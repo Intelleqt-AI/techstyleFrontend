@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import useUser from '@/hooks/useUser';
 import { TaskModal } from './tasks/task-modal';
+import NotificationButton from './ui/Notification';
 
 type IconButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: 'neutral' | 'notify' | 'activity' | 'primary';
@@ -149,7 +150,7 @@ export function TopBar() {
     error: taskError,
     refetch: refetchTask,
   } = useQuery({
-    queryKey: ['tasksMyTask'],
+    queryKey: ['task'],
     queryFn: getTask,
   });
 
@@ -213,10 +214,7 @@ export function TopBar() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton variant="notify" aria-label="Notifications">
-                <Bell className="w-5 h-5 stroke-[1.75]" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-clay-500" />
-              </IconButton>
+              <NotificationButton />
             </TooltipTrigger>
             <TooltipContent>
               <p>Notifications</p>
@@ -225,10 +223,14 @@ export function TopBar() {
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton variant="activity" aria-label="Activity Log" onClick={handleNavigate}>
+              <button
+                className="bg-neutral-50 hover:bg-neutral-100 text-ink focus-visible:ring-neutral-300 w-11 h-11 flex items-center justify-center rounded-[12px] transition-all duration-200 relative focus-visible:outline-none focus-visible:ring-2  "
+                aria-label="Activity Log"
+                onClick={handleNavigate}
+              >
                 <History className="w-5 h-5 stroke-[1.75]" />
-                {activatedTask?.length > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-slatex-500" />}
-              </IconButton>
+                {activatedTask?.length > 0 && <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-slate-500" />}
+              </button>
             </TooltipTrigger>
             <TooltipContent>
               <p>Activity Log</p>
@@ -409,17 +411,6 @@ export function TopBar() {
           </div>
         </div>
       </Modal>
-
-      <TaskModal
-        open={TaskmodalOpen}
-        onOpenChange={setTaskmodalOpen}
-        projectId={null}
-        team={null}
-        defaultListId={null}
-        taskToEdit={null}
-        onSave={null}
-        setEditing={null}
-      />
     </header>
   );
 }

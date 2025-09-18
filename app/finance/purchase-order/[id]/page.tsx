@@ -19,20 +19,23 @@ import { getPurchaseOrder, updatePurchaseOrder } from '@/supabase/API';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { useCurrency } from '@/hooks/useCurrency';
 
 export default function NewPurchaseOrderForm({ params }) {
-  const [defaultValue, setDefaultValue] = useState([]);
+  const [defaultValue, setDefaultValue] = useState<any>(null);
   const id = params?.id;
   const form2 = useForm({});
   const form = useForm({});
-
+  const router = useRouter();
+  const { currency } = useCurrency();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['pruchaseOrder'],
     queryFn: getPurchaseOrder,
   });
 
   const handleBack = () => {
-    // navigate(-1);
+    router.back();
   };
 
   // update PO
@@ -47,12 +50,6 @@ export default function NewPurchaseOrderForm({ params }) {
       toast('Error! Try again');
     },
   });
-
-  // Set order info
-  useEffect(() => {
-    if (isLoading) return;
-    setDefaultValue(data?.data.find(item => item.id === id));
-  }, [id, isLoading, data]);
 
   const updateClientInfo = e => {
     const { name, value } = e.target;
@@ -152,6 +149,12 @@ export default function NewPurchaseOrderForm({ params }) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+
+  // Set order info
+  useEffect(() => {
+    if (isLoading) return;
+    setDefaultValue(data?.data.find(item => String(item.id) == String(id)));
+  }, [id, data?.data]);
 
   return (
     <form onSubmit={handleSubmit} className="relative max-w-4xl mx-auto py-10">
@@ -257,7 +260,7 @@ export default function NewPurchaseOrderForm({ params }) {
         {/* Due Date */}
         <div className="space-y-2  col-span-2">
           <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-            Valid Until
+            Due Date
           </Label>
           <Form {...form2}>
             <form className="flex items-end gap-4 justify-center">
@@ -471,9 +474,7 @@ export default function NewPurchaseOrderForm({ params }) {
                         className="bg-white border rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2"
                         id="amount"
                         name="amount"
-                        value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${parseFloat(
-                          item?.amount?.replace(/[^0-9.-]+/g, '')
-                        ).toLocaleString()}`}
+                        value={`${currency?.symbol || '£'}${parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString()}`}
                         onChange={e => updateInfo(e, item.itemID)}
                       />
                     </td>
@@ -482,7 +483,7 @@ export default function NewPurchaseOrderForm({ params }) {
                         className="bg-white rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2 border"
                         id="totalAmount"
                         name="totalAmount"
-                        value={`${defaultValue.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${(
+                        value={`${currency?.symbol || '£'}${(
                           item?.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))
                         ).toLocaleString()}`}
                         onChange={e => updateInfo(e, item.itemID)}
@@ -518,14 +519,10 @@ export default function NewPurchaseOrderForm({ params }) {
                 Status :
               </Label>
               <Select
-                value={defaultValue?.status || ''}
+                value={defaultValue?.status}
                 onValueChange={value => {
-                  const e = {
-                    target: {
-                      name: 'status',
-                      value: value,
-                    },
-                  };
+                  if (!defaultValue) return;
+                  const e = { target: { name: 'status', value } };
                   updateClientInfo(e);
                 }}
               >
@@ -547,16 +544,12 @@ export default function NewPurchaseOrderForm({ params }) {
           <div className="min-w-[220px]  space-y-[14px] text-[#091E42] text-[15px] font-medium">
             <div className="grid grid-cols-4">
               <p className="col-span-2">Subtotal:</p>
-              <p className="col-span-2 text-right">{` ${
-                defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-              }${subTotal}`}</p>
+              <p className="col-span-2 text-right">{` ${currency?.symbol || '£'}${subTotal}`}</p>
             </div>
             {defaultValue?.delivery_charge > 0 && (
               <div className="grid grid-cols-4">
                 <p className="col-span-2">Delivery Charge:</p>
-                <p className="col-span-2 text-right">{`${defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}${
-                  defaultValue?.delivery_charge
-                }`}</p>
+                <p className="col-span-2 text-right">{`${currency?.symbol || '£'}${defaultValue?.delivery_charge}`}</p>
               </div>
             )}
             {/* <div className="grid grid-cols-4">
@@ -567,9 +560,7 @@ export default function NewPurchaseOrderForm({ params }) {
             </div> */}
             <div className="grid grid-cols-4">
               <p className="col-span-2">Total:</p>
-              <p className="col-span-2 text-right">{`${
-                defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'
-              }${subTotalWithDelivery}`}</p>
+              <p className="col-span-2 text-right">{`${currency?.symbol || '£'}${subTotalWithDelivery}`}</p>
             </div>
           </div>
         </div>
@@ -590,7 +581,7 @@ export default function NewPurchaseOrderForm({ params }) {
             </div>
             <div className="grid grid-cols-4">
               <p className="col-span-2">Amount Due</p>
-              <p className="col-span-2 text-right">{defaultValue?.projectID == '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}0.00</p>
+              <p className="col-span-2 text-right">{currency?.symbol || '£'}0.00</p>
             </div>
             <div className="grid grid-cols-4">
               <p className="col-span-2">Due Date</p>

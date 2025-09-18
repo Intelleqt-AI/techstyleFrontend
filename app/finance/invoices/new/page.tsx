@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { Form } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { FormField, FormItem, FormControl } from '@/components/ui/form';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,26 +16,23 @@ import { toast } from 'sonner';
 import souqLogo from '/public/studio.jpeg';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import errorImage from '/public/product-placeholder-wp.jpg';
-
 import { Textarea } from '@/components/ui/textarea';
-import { getInvoices, updateInvoice } from '@/supabase/API';
-import Link from 'next/link';
+import { createInvoice } from '@/supabase/API';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
 
-const EditInvoice = ({ params }) => {
-  const [defaultValue, setDefaultValue] = useState(null);
-  const id = params.id;
+const EditInvoice = () => {
+  const [defaultValue, setDefaultValue] = useState({
+    products: [],
+    dueDate: new Date().toISOString(),
+    issueDate: new Date().toISOString(),
+  });
   const form2 = useForm({});
   const form = useForm({});
+  const queryClient = useQueryClient();
   const router = useRouter();
-  const { currency } = useCurrency();
-
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['invoices'],
-    queryFn: getInvoices,
-  });
+  const { currency, isLoading } = useCurrency();
 
   const handleBack = () => {
     router.back();
@@ -43,22 +40,16 @@ const EditInvoice = ({ params }) => {
 
   // update PO
   const mutation = useMutation({
-    mutationFn: updateInvoice,
+    mutationFn: createInvoice,
     onSuccess: () => {
-      refetch();
-      toast('Invoice Updated');
-      // navigate(-1);
+      queryClient.refetchQueries(['invoices']);
+      router.push('/finance');
+      toast('Invoice Created');
     },
     onError: () => {
       toast('Error! Try again');
     },
   });
-
-  // Set order info
-  useEffect(() => {
-    if (isLoading) return;
-    setDefaultValue(data?.data.find(item => item.id == id));
-  }, [id, isLoading, data]);
 
   const updateClientInfo = e => {
     const { name, value } = e.target;
@@ -151,6 +142,7 @@ const EditInvoice = ({ params }) => {
 
   const handleSubmit = e => {
     e.preventDefault();
+    console.log(defaultValue);
     mutation.mutate({ invoice: defaultValue });
   };
 
@@ -160,7 +152,7 @@ const EditInvoice = ({ params }) => {
       return total + amount * product?.QTY;
     }, 0) || 0;
 
-  const subTotalWithDeliveryNum = subTotalNum + Number(defaultValue?.delivery_charge);
+  const subTotalWithDeliveryNum = subTotalNum + Number(defaultValue?.delivery_charge || 0);
   const subTotalWithDelivery = subTotalWithDeliveryNum.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -193,8 +185,7 @@ const EditInvoice = ({ params }) => {
             {/* Heading */}
             <div className="flex items-start justify-between">
               <div>
-                <h1 className="text-[#091E42] font-semibold mb-1 text-2xl">Invoice</h1>
-                <h4 className="text-[20px]">#{defaultValue?.inNumber}</h4>
+                <h1 className="text-[#091E42] font-semibold mb-1 text-2xl">Create Invoice</h1>
                 <div className="my-8 text-[14px] leading-[180%]">
                   {/* <p className="mb-1 font-semibold">Supplier</p> */}
                   Issue Date : {new Date(defaultValue?.issueDate).toLocaleDateString('en-GB')}
@@ -208,7 +199,7 @@ const EditInvoice = ({ params }) => {
                 </div>
               </div>
               <div>
-                <Image src={souqLogo} className="w-[90px] h-[90px] mb-4" />
+                <Image alt="Souq Logo" src={souqLogo} className="w-[90px] h-[90px] mb-4" />
                 <p className="text-[#5D6573] font-medium text-[14px] leading-[150%]">
                   Manifest Designs Ltd t/a Souq.Studio <br /> Sandstones <br /> Langton Rd <br /> Tunbridge Wells <br /> TN3 0JU <br />
                   VAT NO: GB423127335 <br />
@@ -218,18 +209,6 @@ const EditInvoice = ({ params }) => {
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-                  Invoice Number
-                </Label>
-                <Input
-                  value={defaultValue?.inNumber}
-                  className="bg-white rounded-lg text-[15px] font-medium text-[#091E42]"
-                  id="inNumber"
-                  name="inNumber"
-                  readOnly
-                />
-              </div>
               <div className="space-y-2 col-span-2">
                 <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
                   Issue Date
@@ -279,57 +258,56 @@ const EditInvoice = ({ params }) => {
                   </form>
                 </Form>
               </div>
-            </div>
-
-            {/* Due Date */}
-            <div className="space-y-2  col-span-2">
-              <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
-                Due Date
-              </Label>
-              <Form {...form2}>
-                <form className="flex items-end gap-4 justify-center">
-                  <FormField
-                    control={form2.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem className="flex  w-full flex-col">
-                        <Popover>
-                          <FormControl>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className={cn(
-                                  'justify-between bg-white rounded-lg w-full text-left font-normal',
-                                  !field.value && 'text-[#595F69]'
-                                )}
-                              >
-                                {field.value ? format(field.value, 'MMM dd, yyyy') : <span>Pick a date</span>}
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                              </Button>
-                            </PopoverTrigger>
-                          </FormControl>
-                          <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
-                            <Calendar
-                              mode="single"
-                              selected={field.value || undefined}
-                              onSelect={date => {
-                                if (date instanceof Date) {
-                                  field.onChange(date);
-                                  handleDueDateChange(date);
-                                } else {
-                                  field.onChange(undefined);
-                                  handleDueDateChange(undefined);
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </FormItem>
-                    )}
-                  />
-                </form>
-              </Form>
+              {/* Due Date */}
+              <div className="space-y-2  col-span-2">
+                <Label className="font-normal text-[#091E42] text-[15px] " htmlFor="poNumber">
+                  Due Date
+                </Label>
+                <Form {...form2}>
+                  <form className="flex items-end gap-4 justify-center">
+                    <FormField
+                      control={form2.control}
+                      name="dueDate"
+                      render={({ field }) => (
+                        <FormItem className="flex  w-full flex-col">
+                          <Popover>
+                            <FormControl>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    'justify-between bg-white rounded-lg w-full text-left font-normal',
+                                    !field.value && 'text-[#595F69]'
+                                  )}
+                                >
+                                  {field.value ? format(field.value, 'MMM dd, yyyy') : <span>Pick a date</span>}
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                </Button>
+                              </PopoverTrigger>
+                            </FormControl>
+                            <PopoverContent className="w-auto pt-3 shadow-2xl bg-white">
+                              <Calendar
+                                mode="single"
+                                selected={field.value || undefined}
+                                onSelect={date => {
+                                  if (date instanceof Date) {
+                                    field.onChange(date);
+                                    handleDueDateChange(date);
+                                  } else {
+                                    field.onChange(undefined);
+                                    handleDueDateChange(undefined);
+                                  }
+                                }}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </FormItem>
+                      )}
+                    />
+                  </form>
+                </Form>
+              </div>
             </div>
 
             <div className="pt-8 mt-8 border-t">
@@ -413,9 +391,9 @@ const EditInvoice = ({ params }) => {
                         <td>
                           <div className="w-[80px] mb-2 h-[80px] rounded-md border overflow-hidden">
                             {item?.imageURL ? (
-                              <img className="w-full h-full object-cover" src={item.imageURL} />
+                              <Image className="w-full h-full object-cover" src={item.imageURL} />
                             ) : (
-                              <img className="w-full h-full object-cover" src={errorImage} />
+                              <Image className="w-full h-full object-cover" src={errorImage} />
                             )}
                           </div>
                         </td>
@@ -509,8 +487,12 @@ const EditInvoice = ({ params }) => {
                   <Select
                     value={defaultValue?.status || ''}
                     onValueChange={value => {
-                      if (!defaultValue) return;
-                      const e = { target: { name: 'status', value } };
+                      const e = {
+                        target: {
+                          name: 'status',
+                          value: value,
+                        },
+                      };
                       updateClientInfo(e);
                     }}
                   >

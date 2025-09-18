@@ -13,7 +13,7 @@ import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
-const PUBLIC_ROUTES = ['/login', '/register'];
+const PUBLIC_ROUTES = ['/login', '/register', '/verify-email'];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();

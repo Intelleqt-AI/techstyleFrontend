@@ -65,7 +65,6 @@ export default function ProjectsPage() {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [project, setProject] = useState([]);
-  const [filteredProjects, setfilteredProjects] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
 
   // Projects
@@ -91,8 +90,6 @@ export default function ProjectsPage() {
     if (isLoading) return;
     setProject(data);
   }, [data, isLoading]);
-
-  // const filteredProjects = projects;
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -151,6 +148,7 @@ export default function ProjectsPage() {
             {project &&
               project?.length > 0 &&
               project.map(project => {
+                console.log(project);
                 const nextPhase = project.phases
                   ?.filter(phase => dayjs(phase.endDate).isAfter(dayjs()))
                   .sort((a, b) => dayjs(a.endDate) - dayjs(b.endDate))[0];
@@ -167,7 +165,7 @@ export default function ProjectsPage() {
                             className="w-full h-full object-cover"
                             src={
                               project?.images[0]
-                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${project?.id}/${project?.images[0]?.name}`
                                 : projectCover
                             }
                             alt=""
@@ -191,22 +189,22 @@ export default function ProjectsPage() {
                               <Badge variant="outline" className={`text-xs ${getTypeColor(project?.type)}`}>
                                 <div className="flex capitalize items-center">
                                   {getTypeIcon(project?.projectType)}
-                                  {project?.projectType}
+                                  {project?.projectType || 'Not Set'}
                                 </div>
                               </Badge>
                             </div>
-                            {(project?.code || project?.client) && (
-                              <span className="text-sm text-ink-muted">
-                                {project?.code}
-                                {project?.client && (
-                                  <>
-                                    {' '}
-                                    {project?.code && project?.client && '•'}{' '}
-                                    {clientData?.data?.find(client => client?.id == project?.client)?.name}
-                                  </>
-                                )}
-                              </span>
-                            )}
+                            <span className="text-sm text-ink-muted">
+                              {project?.code ? (
+                                <>
+                                  {project?.code} •{' '}
+                                  {project?.client ? clientData?.data?.find(client => client?.id == project?.client)?.name : 'No client'}
+                                </>
+                              ) : project?.client ? (
+                                clientData?.data?.find(client => client?.id == project?.client)?.name || 'No client'
+                              ) : (
+                                'No client'
+                              )}
+                            </span>
                           </div>
 
                           {/* Progress */}
@@ -242,8 +240,8 @@ export default function ProjectsPage() {
                               <div className="font-medium text-ink">
                                 {project?.currency?.symbol || '£'}
                                 {Number(project?.budget).toLocaleString('en-GB', {
-                                  minimumFractionDigits: 1,
-                                  maximumFractionDigits: 1,
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
                                 })}
                               </div>
                               <div className="text-xs text-ink-muted"> {project?.currency?.symbol || '£'}0 spent</div>
@@ -328,7 +326,7 @@ export default function ProjectsPage() {
                                 className="w-full h-full object-cover"
                                 src={
                                   project?.images[0]
-                                    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/cover/${project?.id}/${project?.images[0]?.name}`
+                                    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Cover/${project?.id}/${project?.images[0]?.name}`
                                     : projectCover
                                 }
                                 alt=""
@@ -342,13 +340,13 @@ export default function ProjectsPage() {
                           </Link>
                         </td>
                         <td className="py-4 px-4 text-sm text-ink">
-                          {clientData && clientData?.data?.find(client => client?.id == project?.client)?.name}
+                          {(clientData && clientData?.data?.find(client => client?.id == project?.client)?.name) || '-'}
                         </td>
                         <td className="py-4 px-4 capitalize">
                           <Badge variant="outline" className={`text-xs ${getTypeColor(project?.projectType)}`}>
                             <div className="flex capitalize items-center">
                               {getTypeIcon(project?.projectType)}
-                              {project?.projectType}
+                              {project?.projectType || 'Not set'}
                             </div>
                           </Badge>
                         </td>
@@ -363,12 +361,12 @@ export default function ProjectsPage() {
                                 : 'bg-greige-50 text-greige-700 border-greige-200'
                             }`}
                           >
-                            {project?.status}
+                            {project?.status || 'In progress'}
                           </Badge>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex items-center gap-2">
-                            <div className="w-16 bg-greige-200 rounded-full h-1">
+                            <div className="w-16 bg-gray-200 rounded-full h-1">
                               <div
                                 className="bg-sage-500 h-1 rounded-full transition-all duration-300"
                                 style={{
@@ -385,7 +383,10 @@ export default function ProjectsPage() {
                           <div className="text-sm">
                             <div className="font-medium text-ink">
                               {project?.currency?.symbol || '£'}
-                              {Number(project?.budget).toLocaleString()}
+                              {Number(project?.budget).toLocaleString('en-GB', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
                             </div>
                             <div className="text-ink-muted">{project?.currency?.symbol || '£'}0 spent</div>
                           </div>

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DeleteDialog } from '@/components/DeleteDialog';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -33,6 +34,9 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const [checkedItems, setCheckedItems] = useState([]);
   const [buttonLoadingPO, setButtonLoadingPO] = useState(false);
   const [customLoading, setCustomLoading] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedPo, setSelectedPo] = useState(null);
+  const [isPo, setIsPo] = useState(null);
 
   const id = params.id;
 
@@ -257,11 +261,13 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
         ? project.currency.symbol +
           (totalInvoiceOrder + xeroTotal).toLocaleString('en-US', {
             maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
           })
         : gbp.format(totalInvoiceOrder),
-      subtitle: `${invoices?.length + xeroInvoices?.length && xeroInvoices?.length} ${invoices?.length === 1 ? 'Invoice' : 'Invoices'} (${
-        xeroInvoices && xeroInvoices?.length
-      } from Xero)`,
+      subtitle: `${(invoices?.length ?? 0) + (xeroInvoices?.length ?? 0)} ${
+        (invoices?.length ?? 0) + (xeroInvoices?.length ?? 0) === 1 ? 'Invoice' : 'Invoices'
+      }${xeroInvoices?.length ? ` (${xeroInvoices.length} from Xero)` : ''}`,
+
       icon: FileText,
     },
     {
@@ -270,6 +276,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
         ? project.currency.symbol +
           totalPurchaseOrder.toLocaleString('en-US', {
             maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
           })
         : gbp.format(totalPurchaseOrder),
       subtitle: `${purchaseOrder?.length} ${purchaseOrder?.length === 1 ? 'Purchase Order' : 'Purchase Orders'}`,
@@ -289,6 +296,24 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
         return 'bg-[#C5E7D9] text-green-900';
       default:
         return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const openDeleteModal = (po, tag) => {
+    setIsDeleteOpen(true);
+    setSelectedPo(po);
+    if (tag == 'po') {
+      setIsPo(true);
+    } else {
+      setIsPo(false);
+    }
+  };
+
+  const handleDelete = id => {
+    if (isPo) {
+      // deletePO.mutate({ orderID: id });
+    } else {
+      // deleteInvoice.mutate({ id });
     }
   };
 
@@ -441,7 +466,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                               po?.products?.reduce((total, product) => {
                                 return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
                               }, 0) || 0
-                            ).toLocaleString(undefined, {
+                            ).toLocaleString('en-GB', {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
@@ -479,6 +504,11 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                     Edit
                                   </Link>
                                 </DropdownMenuItem>
+                                {/* <DropdownMenuItem
+                                  className="text-red-600 cursor-pointer"
+                                  onClick={() => openDeleteModal(po, "po")}>
+                                  Delete
+                                </DropdownMenuItem> */}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>
@@ -516,6 +546,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                               ).toFixed(2)
                             ).toLocaleString('en-US', {
                               maximumFractionDigits: 2,
+                              minimumFractionDigits: 2,
                             })}
                           </td>
                           <td className="px-4 py-3">
@@ -629,6 +660,16 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
           </CardContent>
         </Card>
       </div>
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedPo?.id)}
+        title="Delete PO/IN?"
+        description="Are you sure you want to delete this? This action cannot be undone."
+        itemName={isPo ? selectedPo?.poNumber : selectedPo?.inNumber}
+        requireConfirmation={false}
+      />
     </div>
   );
 }

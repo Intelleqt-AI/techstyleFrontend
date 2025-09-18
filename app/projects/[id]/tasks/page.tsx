@@ -142,10 +142,15 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   const [activeTab, setActiveTab] = React.useState<'board' | 'list' | 'timeline'>('board');
 
   const { data: project, isLoading } = useQuery({
-    queryKey: [`projectOnly`, projectId],
+    queryKey: [`project`, projectId],
     queryFn: () => fetchOnlyProject({ projectID: projectId }),
     enabled: !!projectId,
   });
+
+  const handleModalClose = e => {
+    setModalOpen(e);
+    setEditing(null);
+  };
 
   const queryClient = useQueryClient();
   const [columnName, setColumsName] = React.useState(null);
@@ -186,7 +191,6 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   }, [taskData, projectId, project]);
 
   function openNewTask(phase?: string) {
-    console.log('phase', phase);
     setColumsName(phase);
     // setColumsName(getPhaseName(phase));
     setEditing(null);
@@ -223,8 +227,9 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   };
 
   const getPhaseName = phaseId => {
+    console.log(phaseId);
     const phase = project?.phases?.find(p => p.id == phaseId);
-    return phase ? phase.name : null;
+    return phase ? phase.name : phaseId;
   };
 
   const handleDrop = async (e: React.DragEvent, targetColumn: string) => {
@@ -314,7 +319,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
       toast.error('Failed to update task on server');
     }
   };
-  
+
   console.log(tasks);
 
   return (
@@ -510,7 +515,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
 
       <TaskModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={handleModalClose}
         projectId={projectId}
         team={TEAM}
         defaultListId={defaultListId}

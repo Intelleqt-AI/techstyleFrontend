@@ -79,6 +79,7 @@ export default function StudioTemplatesPage() {
     const defaultPhases: Phase[] = [
       {
         id: 'phase-discovery',
+        progress: 0,
         name: 'Discovery',
         task: [
           'Client kickoff meeting',
@@ -88,10 +89,12 @@ export default function StudioTemplatesPage() {
           'Programme outline and timeline',
           'Stakeholder identification',
         ],
+        createTask: true,
         color: '#6B7280',
       },
       {
         id: 'phase-concept',
+        progress: 0,
         name: 'Concept Design',
         task: [
           'Mood boards and style direction',
@@ -101,10 +104,12 @@ export default function StudioTemplatesPage() {
           'Client concept review meeting',
           'Concept refinements',
         ],
+        createTask: true,
         color: '#C7654F',
       },
       {
         id: 'phase-dd',
+        progress: 0,
         name: 'Design Development',
         task: [
           'Detailed floor plans and layouts',
@@ -114,10 +119,12 @@ export default function StudioTemplatesPage() {
           'Lighting and electrical plans',
           'Design development sign-off',
         ],
+        createTask: true,
         color: '#9CA3AF',
       },
       {
         id: 'phase-technical',
+        progress: 0,
         name: 'Technical Drawings',
         task: [
           'Technical drawings and construction details',
@@ -127,10 +134,12 @@ export default function StudioTemplatesPage() {
           'Issue drawings for pricing',
           'Technical specifications finalization',
         ],
+        createTask: true,
         color: '#3B82F6',
       },
       {
         id: 'phase-procurement',
+        progress: 0,
         name: 'Procurement',
         task: [
           'Issue RFQs to suppliers and contractors',
@@ -140,10 +149,12 @@ export default function StudioTemplatesPage() {
           'Track lead times and delivery schedules',
           'Confirm all POs placed',
         ],
+        createTask: true,
         color: '#8B5CF6',
       },
       {
         id: 'phase-implementation',
+        progress: 0,
         name: 'Site / Implementation',
         task: [
           'Site coordination and project management',
@@ -153,6 +164,7 @@ export default function StudioTemplatesPage() {
           'Practical completion inspection',
           'Client handover and final walkthrough',
         ],
+        createTask: true,
         color: '#10B981',
       },
     ];
@@ -198,7 +210,14 @@ export default function StudioTemplatesPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const next: Phase = { id: crypto.randomUUID(), name: 'New phase', color: '#9CA3AF', task: [] };
+                const next: Phase = {
+                  id: crypto.randomUUID(),
+                  progress: 0,
+                  createTask: true,
+                  name: 'New phase',
+                  color: '#9CA3AF',
+                  task: [],
+                };
                 setCurrentUser(prev => ({
                   ...prev,
                   defaultPhases: [...prev.defaultPhases, next],
@@ -250,9 +269,11 @@ export default function StudioTemplatesPage() {
                       onBlur={persist}
                     />
 
-                    <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
-                      {p.name}
-                    </Badge>
+                    {p?.name.length > 0 && (
+                      <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
+                        {p.name}
+                      </Badge>
+                    )}
 
                     <div className="ml-auto">
                       <Button
