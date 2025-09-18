@@ -119,9 +119,9 @@ export default function Register() {
     try {
       // Register user with Supabase
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
+        emails: formData.email,
+        passwords: formData.password,
+        optionss: {
           emailRedirectTo: `http://app.techstyles.ai/?onboarding=true`,
         },
       });
