@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import useUsers from '@/hooks/useUsers';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
+import Onboarding from '../_component/Onboarding';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -904,6 +905,7 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+      <Onboarding />
     </div>
   );
 }
