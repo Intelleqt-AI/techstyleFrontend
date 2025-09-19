@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ProjectNav } from '@/components/project-nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import useProjects from '@/supabase/hook/useProject';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { deleteCover, getTask, modifyProject, uploadCover } from '@/supabase/API';
+import { deleteCover, getPurchaseOrder, getTask, modifyProject, uploadCover } from '@/supabase/API';
 import Image from 'next/image';
 import projectCover from '/public/project_cover.jpg';
 import useClient from '@/hooks/useClient';
@@ -143,12 +143,36 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
   const [uploadModal, setUploadModal] = useState(false);
   const [file, setFile] = useState<File[]>([]);
   const [error, setError] = useState('');
+  const [purchaseOrder, setPurchaseOrder] = useState([]);
   const [renamingIndex, setRenamingIndex] = useState(-1);
   const router = useRouter();
   const queryClient = useQueryClient();
   const { data: project, isLoading: projectLoading, refetch } = useProjects();
   // Get clients
   const { data: clientData, isLoading: loadingClient, refetch: refetchClient } = useClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    setPurchaseOrder(data?.data.filter(item => item.projectID == params?.id));
+  }, [isLoading, data?.data, params?.id]);
+
+  const needApprove = useMemo(() => {
+    return purchaseOrder?.filter(item => item.status === 'Pending').length || 0;
+  }, [purchaseOrder]);
+
+  const delayedPo = useMemo(() => {
+    return (
+      purchaseOrder?.filter(item => {
+        const dueDate = new Date(item.dueDate);
+        const today = new Date();
+        return today > dueDate;
+      }).length || 0
+    );
+  }, [purchaseOrder]);
 
   const mutation = useMutation({
     mutationFn: modifyProject,
@@ -305,6 +329,14 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
     });
   };
 
+  const today = new Date().toISOString().split('T')[0];
+
+  const pendingTasksCount = useMemo(() => {
+    if (!taskData?.data || !selectedProject?.id) return 0;
+
+    return taskData.data.filter(task => task.projectID === selectedProject.id && task.dueDate === today && task.status !== 'done').length;
+  }, [taskData?.data, selectedProject?.id, today]);
+
   return (
     <div className="flex-1 bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -400,7 +432,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 {/* <DollarSign className="w-4 h-4 text-slatex-600" /> */}
-                <span> {selectedProject?.currency?.symbol || '£'}</span>
+                <span className="text-slate-600"> {selectedProject?.currency?.symbol || '£'}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700">Budget Utilization</p>
                   <p className="text-lg font-semibold text-neutral-900">
@@ -451,7 +483,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
           <Card className="border border-greige-500/30 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <TrendingUp className="w-4 h-4 text-slatex-600" />
+                <TrendingUp className="w-4 h-4 text-slate-600" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700">Profit Margin</p>
                   <p className="text-lg font-semibold text-neutral-900">0%</p>
@@ -466,7 +498,7 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
           <Card className="border border-greige-500/30 shadow-sm">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-4 h-4 text-slatex-600" />
+                <CheckCircle className="w-4 h-4 text-slate-600" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-neutral-700">Tasks Complete</p>
                   <p className="text-lg font-semibold text-neutral-900">
@@ -481,15 +513,11 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                     )}
                     % completion
                   </p>
-                  <p className="text-xs mt-1 text-ochre-700">
-                    {taskData?.data?.filter(
-                      task =>
-                        task.projectID === selectedProject?.id &&
-                        task.dueDate === new Date().toISOString().split('T')[0] &&
-                        task.status !== 'done'
-                    ).length || 0}{' '}
-                    due today
-                  </p>
+                  {pendingTasksCount > 0 ? (
+                    <p className="text-xs mt-1 text-ochre-700">{pendingTasksCount} due today</p>
+                  ) : (
+                    <p className="text-xs mt-1 text-olive-700">No due task today</p>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -497,14 +525,18 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
 
           {/* POs Delayed Card */}
           <Card className="border border-greige-500/30 shadow-sm">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-4 h-4 text-slatex-600" />
-                <div className="flex-1 min-w-0">
+            <CardContent className="p-4 h-full">
+              <div className="flex h-full  items-center gap-3">
+                <AlertTriangle className="w-4  h-4 text-slate-600" />
+                <div className="flex-1  min-w-0">
                   <p className="text-sm font-medium text-neutral-700">POs Delayed</p>
-                  <p className="text-lg font-semibold text-neutral-900">5</p>
-                  <p className="text-xs text-neutral-600">2 need approval</p>
-                  <p className="text-xs mt-1 text-terracotta-600">Action required</p>
+                  {<p className="text-lg font-semibold text-neutral-900">{delayedPo}</p>}
+                  {needApprove > 0 && <p className="text-xs text-neutral-600">{needApprove} need approval</p>}
+                  {needApprove > 0 ? (
+                    <p className="text-xs mt-1 text-terracotta-600">Action required</p>
+                  ) : (
+                    <p className="text-xs mt-1 text-olive-700">No action required</p>
+                  )}
                 </div>
               </div>
             </CardContent>
