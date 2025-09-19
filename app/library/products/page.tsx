@@ -502,44 +502,6 @@ export default function ProductsPage() {
             </div>
           )}
 
-          {/* Pagination */}
-
-          {data && data?.totalPages > 1 && (
-            <Pagination className="mt-8">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-
-                {getPageNumbers().map((pageNum, index) => (
-                  <PaginationItem key={index}>
-                    {pageNum === 'ellipsis' ? (
-                      <PaginationEllipsis />
-                    ) : (
-                      <PaginationLink
-                        onClick={() => handlePageChange(pageNum)}
-                        isActive={currentPage === pageNum}
-                        className="cursor-pointer"
-                      >
-                        {pageNum}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    className={currentPage === data.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          )}
-
           {/* Add to project Drawer */}
 
           <Dialog open={modalOpen} onOpenChange={open => (!open ? closeModal() : null)}>
@@ -588,6 +550,46 @@ export default function ProductsPage() {
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Pagination */}
+
+          <div className="mt-8">
+            {data && data?.totalPages > 1 && (
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+
+                  {getPageNumbers().map((pageNum, index) => (
+                    <PaginationItem key={index}>
+                      {pageNum === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          onClick={() => handlePageChange(pageNum)}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      className={currentPage === data.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </div>
         </div>
       </div>
 

@@ -434,8 +434,9 @@ export default function ProjectSettingsPage() {
         requireConfirmation={false}
         confirmationText={selectedProject?.name}
         title={selectedProject?.isArchive ? 'Unarchive Project' : 'Archive Project'}
-        confirmText="Move"
+        confirmText={'Confirm'}
         description={`Move  ${selectedProject?.name} to ${selectedProject?.isArchive ? 'Active' : 'Archive'} .`}
+        isArchive={true}
       />
 
       <DeleteDialog

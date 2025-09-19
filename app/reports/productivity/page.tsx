@@ -565,8 +565,8 @@ export default function ProductivityReportsPage() {
         <ChartCard title="Billable vs Non‑billable" description="Distribution of time by week">
           <ChartContainer
             config={{
-              billable: { label: 'Billable', color: 'hsl(var(--chart-1))' },
-              nonbillable: { label: 'Non‑billable', color: 'hsl(var(--chart-4))' },
+              Billable: { label: 'Billable', color: 'hsl(var(--chart-1))' },
+              Nonbillable: { label: 'Non‑billable', color: 'hsl(var(--chart-4))' },
             }}
             className="h-[260px]"
           >
@@ -574,8 +574,8 @@ export default function ProductivityReportsPage() {
               <BarChart
                 data={weekly.map(w => ({
                   week: w.week,
-                  billable: w.billable,
-                  nonbillable: Math.max(0, w.hours - w.billable),
+                  Billable: w.billable,
+                  Nonbillable: Math.max(0, w.hours - w.billable),
                 }))}
                 margin={{ top: 10, right: 16, left: 8, bottom: 0 }}
               >
@@ -583,10 +583,10 @@ export default function ProductivityReportsPage() {
                 <XAxis dataKey="week" tickLine={false} axisLine={false} />
                 <YAxis tickLine={false} axisLine={false} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
+                <Legend formatter={(value, entry) => <span style={{ color: '#333' }}>{value}</span>} />
 
-                <Bar dataKey="billable" stackId="a" fill="#837e72" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="nonbillable" stackId="a" fill="#efeae2" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Billable" stackId="a" fill="#837e72" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Nonbillable" stackId="a" fill="#efeae2" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>

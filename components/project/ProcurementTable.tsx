@@ -450,9 +450,8 @@ const ProcurementTable = ({
                             <span className=" ">
                               {project?.currency?.symbol ? project?.currency?.symbol : '£'}
 
-                              {(item?.matchedProduct?.priceMember
-                                ? parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, ''))
-                                : parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, ''))
+                              {Number(
+                                (item?.matchedProduct?.priceMember || item?.matchedProduct?.priceRegular || '0').replace(/[^\d.]/g, '')
                               ).toLocaleString('en-GB', {
                                 maximumFractionDigits: 2,
                                 minimumFractionDigits: 2,
