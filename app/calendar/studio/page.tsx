@@ -10,6 +10,8 @@ import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calenda
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import useTask from '@/supabase/hook/useTask';
+import { useQuery } from '@tanstack/react-query';
+import { fetchOnlyProject } from '@/supabase/API';
 
 const todayEvents = [
   {
@@ -43,94 +45,6 @@ const todayEvents = [
     color: 'bg-[#8FA58F] border-[#6E7A58]',
   },
 ];
-const calendarEvents = [
-  {
-    day: 6,
-    events: [
-      {
-        type: 'meeting',
-        color: 'bg-[#E68E71]',
-        title: 'Client Meeting - Penthouse Review',
-        time: '10:00 AM',
-        attendees: 3,
-      },
-      {
-        type: 'task',
-        color: 'bg-[#6B7C85]',
-        title: 'Design Review',
-        time: '2:00 PM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 8,
-    events: [
-      {
-        type: 'site-visit',
-        color: 'bg-[#8FA58F]',
-        title: 'Site Visit - Office Space',
-        time: '2:30 PM',
-        attendees: 5,
-      },
-    ],
-  },
-  {
-    day: 12,
-    events: [
-      {
-        type: 'delivery',
-        color: 'bg-[#C78A3B]',
-        title: 'Material Delivery',
-        time: '11:00 AM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 15,
-    events: [
-      {
-        type: 'meeting',
-        color: 'bg-[#E07A57]',
-        title: 'Project Review',
-        time: '9:00 AM',
-        attendees: 4,
-      },
-      {
-        type: 'meeting',
-        color: 'bg-[#E68E71]',
-        title: 'Client Call',
-        time: '3:00 PM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 20,
-    events: [
-      {
-        type: 'task',
-        color: 'bg-[#6B7C85]',
-        title: 'Documentation Update',
-        time: '1:00 PM',
-        attendees: 1,
-      },
-    ],
-  },
-  {
-    day: 22,
-    events: [
-      {
-        type: 'pto',
-        color: 'bg-[#D9D5CC]',
-        title: 'Personal Time Off',
-        time: 'All Day',
-        attendees: 0,
-      },
-    ],
-  },
-];
 
 export default function CalendarStudioPage() {
   const [mode, setMode] = useState<'calendar' | 'timeline'>('calendar');
@@ -144,8 +58,11 @@ export default function CalendarStudioPage() {
       year: new Date(today.getFullYear(), 0), // current year
     };
   });
-
   const { data, isLoading, error, refetch } = useTask();
+  const { data: project } = useQuery({
+    queryKey: [`fetchOnlyProject`],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
