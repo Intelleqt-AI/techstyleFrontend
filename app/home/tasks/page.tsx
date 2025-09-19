@@ -307,7 +307,7 @@ export default function MyTasksPage() {
   }
 
   const [searchText, setSearchText] = useState('');
-  const [filter, setFilter] = useState<null | 'today' | 'overdue'>(null);
+  const [filter, setFilter] = useState<null | 'today' | 'overdue' | 'archive'>(null);
 
   function openEditTask(task: any) {
     setEditing(task);
@@ -447,9 +447,14 @@ export default function MyTasksPage() {
     }
   };
 
+  const showArchiveTask = tasks => {
+    if (!tasks) return;
+    const tempTask = tasks.filter(item => item.isArchived);
+    return tempTask;
+  };
+
   useEffect(() => {
     if (taskLoading) return;
-
     let list = myTaskList(taskData?.data);
     setMyTask(list);
 
@@ -457,11 +462,14 @@ export default function MyTasksPage() {
       const s = searchText.toLowerCase();
       list = list.filter(t => t.name?.toLowerCase().includes(s));
     }
-
     if (filter === 'today') list = todayTasks(list);
     else if (filter === 'overdue') list = myRecentTask(list);
+    else if (filter === 'archive') {
+      list = showArchiveTask(list);
+    }
 
-    setTasks(taskData && taskData.data?.length > 0 ? updatetaskList(list) : []);
+    const removedArhive = list.filter(item => !item.isArchived);
+    setTasks(taskData && taskData.data?.length > 0 ? updatetaskList(filter === 'archive' ? list : removedArhive) : []);
   }, [taskData, taskLoading, user?.email, searchText, filter]);
 
   const myRecentTask = (arr: any[]) => {
@@ -710,6 +718,7 @@ export default function MyTasksPage() {
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="center" className="w-40">
+                <DropdownMenuItem onClick={() => setFilter('archive')}>Archive</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter('overdue')}>Overdue</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setFilter('today')}>Added Today</DropdownMenuItem>
               </DropdownMenuContent>

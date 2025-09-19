@@ -9,6 +9,9 @@ import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calendar, Users, Video } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import useTask from '@/supabase/hook/useTask';
+import { useQuery } from '@tanstack/react-query';
+import { fetchOnlyProject } from '@/supabase/API';
 
 const todayEvents = [
   {
@@ -43,111 +46,59 @@ const todayEvents = [
   },
 ];
 
-const viewOptions = [
-  { id: 'month', label: 'Month', icon: Calendar },
-  { id: 'week', label: 'Week', icon: Calendar },
-  { id: 'today', label: 'Today', icon: Calendar },
-];
-
-// Calendar events with earthy colors and tooltips - Updated for August 2025
-const calendarEvents = [
-  {
-    day: 6,
-    events: [
-      {
-        type: 'meeting',
-        color: 'bg-[#E68E71]',
-        title: 'Client Meeting - Penthouse Review',
-        time: '10:00 AM',
-        attendees: 3,
-      },
-      {
-        type: 'task',
-        color: 'bg-[#6B7C85]',
-        title: 'Design Review',
-        time: '2:00 PM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 8,
-    events: [
-      {
-        type: 'site-visit',
-        color: 'bg-[#8FA58F]',
-        title: 'Site Visit - Office Space',
-        time: '2:30 PM',
-        attendees: 5,
-      },
-    ],
-  },
-  {
-    day: 12,
-    events: [
-      {
-        type: 'delivery',
-        color: 'bg-[#C78A3B]',
-        title: 'Material Delivery',
-        time: '11:00 AM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 15,
-    events: [
-      {
-        type: 'meeting',
-        color: 'bg-[#E07A57]',
-        title: 'Project Review',
-        time: '9:00 AM',
-        attendees: 4,
-      },
-      {
-        type: 'meeting',
-        color: 'bg-[#E68E71]',
-        title: 'Client Call',
-        time: '3:00 PM',
-        attendees: 2,
-      },
-    ],
-  },
-  {
-    day: 20,
-    events: [
-      {
-        type: 'task',
-        color: 'bg-[#6B7C85]',
-        title: 'Documentation Update',
-        time: '1:00 PM',
-        attendees: 1,
-      },
-    ],
-  },
-  {
-    day: 22,
-    events: [
-      {
-        type: 'pto',
-        color: 'bg-[#D9D5CC]',
-        title: 'Personal Time Off',
-        time: 'All Day',
-        attendees: 0,
-      },
-    ],
-  },
-];
-
 export default function CalendarStudioPage() {
   const [mode, setMode] = useState<'calendar' | 'timeline'>('calendar');
   const [activeView, setActiveView] = useState('month');
-  const [currentPeriod, setCurrentPeriod] = useState({
-    month: new Date(2025, 7), // August 2025
-    week: new Date(2025, 7, 4), // Week starting Aug 4, 2025
-    today: new Date(2025, 7, 6), // Aug 6, 2025
-    year: new Date(2025, 0), // 2025
+  const [currentPeriod, setCurrentPeriod] = useState(() => {
+    const today = new Date();
+    return {
+      month: new Date(today.getFullYear(), today.getMonth()), // current month
+      week: new Date(today.setDate(today.getDate() - today.getDay() + 1)), // current week (Mon as start)
+      today: new Date(), // today
+      year: new Date(today.getFullYear(), 0), // current year
+    };
   });
+  const { data, isLoading, error, refetch } = useTask();
+  const { data: project } = useQuery({
+    queryKey: [`fetchOnlyProject`],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
+
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
+  // Helpers to map tasks from API to calendar cells
+  const getTasksForDate = (date: Date) => {
+    const raw = (data as any)?.data;
+    if (!raw || !Array.isArray(raw)) return [] as any[];
+    return raw.filter((task: any) => {
+      if (!task.created_at) return false;
+      const created = new Date(task.created_at);
+      return created.getFullYear() === date.getFullYear() && created.getMonth() === date.getMonth() && created.getDate() === date.getDate();
+    });
+  };
+
+  const priorityToColor = (priority: string) => {
+    switch ((priority || '').toLowerCase()) {
+      case 'high':
+        return 'bg-[#e07a57] text-white';
+      case 'medium':
+        return 'bg-[#8fa58f] text-white';
+      case 'low':
+      default:
+        return 'bg-[#d9d5cc] text-black';
+    }
+  };
+
+  const getTasksForWeek = (weekStart: Date) => {
+    // return tasks for 7-day range starting at weekStart
+    const days: any[] = [];
+    for (let d = 0; d < 7; d++) {
+      const dt = new Date(weekStart);
+      dt.setDate(weekStart.getDate() + d);
+      days.push(...getTasksForDate(dt));
+    }
+    return days;
+  };
 
   const navigatePeriod = (direction: 'prev' | 'next') => {
     setCurrentPeriod(prev => {
@@ -681,12 +632,27 @@ export default function CalendarStudioPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="grid grid-cols-8 border-b border-gray-200">
               <div className="p-4 bg-gray-50 border-r border-gray-200"></div>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                <div key={day} className="p-4 text-center border-r border-gray-200 last:border-r-0">
-                  <div className="text-sm font-medium text-gray-500">{day}</div>
-                  <div className="text-lg font-semibold text-gray-900 mt-1">{4 + index}</div>
-                </div>
-              ))}
+              {(() => {
+                // Compute the 7 dates for the week view starting from currentPeriod.week
+                const start = new Date(currentPeriod.week);
+                const days = [] as Date[];
+                for (let d = 0; d < 7; d++) {
+                  const dt = new Date(start);
+                  dt.setDate(start.getDate() + d);
+                  days.push(dt);
+                }
+
+                return days.map((date, index) => (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedDate(date)}
+                    className="p-4 text-center border-r border-gray-200 last:border-r-0"
+                  >
+                    <div className="text-sm font-medium text-gray-500">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index]}</div>
+                    <div className="text-lg font-semibold text-gray-900 mt-1">{date.getDate()}</div>
+                  </div>
+                ));
+              })()}
             </div>
 
             <div className="grid grid-cols-8 min-h-[500px]">
@@ -698,26 +664,60 @@ export default function CalendarStudioPage() {
                 ))}
               </div>
 
-              {Array.from({ length: 7 }, (_, dayIndex) => (
-                <div key={dayIndex} className="border-r border-gray-200 last:border-r-0 relative">
-                  {Array.from({ length: 12 }, (_, hourIndex) => (
-                    <div key={hourIndex} className="h-16 border-b border-gray-200 hover:bg-gray-50">
-                      {dayIndex === 2 && hourIndex === 2 && (
-                        <div className="absolute top-1 left-1 right-1 bg-[#FBEAE1] border border-[#F1BBAA] rounded p-1 text-xs">
-                          <div className="font-medium text-[#A14A35]">Client Meeting</div>
-                          <div className="text-[#CE6B4E]">10:00 - 11:00</div>
+              {Array.from({ length: 7 }, (_, dayIndex) => {
+                const dayDate = new Date(currentPeriod.week);
+                dayDate.setDate(dayDate.getDate() + dayIndex);
+                const tasksForDay = getTasksForDate(dayDate);
+
+                return (
+                  <div
+                    key={dayIndex}
+                    onClick={() => setSelectedDate(dayDate)}
+                    className="border-r border-gray-200 last:border-r-0 relative"
+                  >
+                    {Array.from({ length: 12 }, (_, hourIndex) => (
+                      <div key={hourIndex} className="h-16 border-b border-gray-200 hover:bg-gray-50" />
+                    ))}
+
+                    {/* Render tasks for this day as small absolute cards positioned by created_at time */}
+                    {tasksForDay.map((task: any, tIdx: number) => {
+                      const created = task.created_at ? new Date(task.created_at) : null;
+                      let topPx = 8;
+                      if (created) {
+                        const hour = created.getHours();
+                        const minute = created.getMinutes();
+                        const hourOffset = Math.max(0, hour - 8);
+                        topPx = 8 + hourOffset * 64;
+                      }
+
+                      // small card color by priority
+                      let bgClass = 'bg-[#FBEAE1]';
+                      let borderClass = 'border-[#F1BBAA]';
+                      let titleClass = 'text-[#A14A35]';
+                      if ((task.priority || '').toLowerCase() === 'medium') {
+                        bgClass = 'bg-[#E8F0E8]';
+                        borderClass = 'border-[#B8D4B8]';
+                        titleClass = 'text-[#4A6B4A]';
+                      } else if ((task.priority || '').toLowerCase() === 'low') {
+                        bgClass = 'bg-white';
+                        borderClass = 'border-gray-200';
+                        titleClass = 'text-gray-900';
+                      }
+
+                      return (
+                        <div key={task.id || tIdx} className="absolute left-1 right-1 rounded p-1 text-xs" style={{ top: `${topPx}px` }}>
+                          <div className={`${bgClass} ${borderClass} border rounded p-1 text-xs`}>
+                            <div className={`font-medium capitalize ${titleClass} truncate`}>{task.name}</div>
+                            <div className="text-[10px] text-gray-500">
+                              {created ? created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                      {dayIndex === 4 && hourIndex === 6 && (
-                        <div className="absolute top-1 left-1 right-1 bg-[#E8F0E8] border border-[#B8D4B8] rounded p-1 text-xs">
-                          <div className="font-medium text-[#4A6B4A]">Site Visit</div>
-                          <div className="text-[#6E7A58]">14:30 - 16:30</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -726,14 +726,18 @@ export default function CalendarStudioPage() {
         return (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Wednesday, August 6</h3>
-              <p className="text-sm text-gray-500">2 events scheduled</p>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {currentPeriod.today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''} scheduled
+              </p>
             </div>
 
             <div className="grid grid-cols-12 min-h-[600px]">
               <div className="col-span-2 bg-gray-50 border-r border-gray-200">
                 {Array.from({ length: 12 }, (_, i) => (
-                  <div key={i} className="h-16 border-b border-gray-200 flex items-center justify-center text-sm text-gray-500">
+                  <div key={i} className="h-20 border-b border-gray-200 flex items-center justify-center text-sm text-gray-500">
                     {8 + i}:00
                   </div>
                 ))}
@@ -741,34 +745,57 @@ export default function CalendarStudioPage() {
 
               <div className="col-span-10 relative">
                 {Array.from({ length: 12 }, (_, i) => (
-                  <div key={i} className="h-16 border-b border-gray-200 hover:bg-gray-50"></div>
+                  <div key={i} className="h-20 border-b border-gray-200 hover:bg-gray-50"></div>
                 ))}
 
-                <div className="absolute top-32 left-4 right-4 bg-[#FBEAE1] border border-[#F1BBAA] rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-[#A14A35]">Client Meeting - Penthouse Review</h4>
-                      <p className="text-sm text-[#CE6B4E]">10:00 AM - 11:00 AM • Office</p>
-                      <p className="text-xs text-[#CE6B4E] mt-1">Smith Family</p>
-                    </div>
-                    <Badge variant="outline" style={{ color: '#6E7A58', borderColor: '#8FA58F' }}>
-                      meeting
-                    </Badge>
-                  </div>
-                </div>
+                {/* Render today's events from API tasks for currentPeriod.today, preserving original styles */}
+                {getTasksForDate(new Date(currentPeriod.today)).map((task: any, idx: number) => {
+                  // Position based on created_at time
+                  const created = task.created_at ? new Date(task.created_at) : null;
+                  let topPx = 20;
 
-                <div className="absolute top-96 left-4 right-4 bg-[#E8F0E8] border border-[#B8D4B8] rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium text-[#4A6B4A]">Site Visit - Office Space</h4>
-                      <p className="text-sm text-[#6E7A58]">2:30 PM - 4:30 PM • Downtown</p>
-                      <p className="text-xs text-[#6E7A58] mt-1">TechCorp Inc.</p>
+                  if (created) {
+                    const hour = created.getHours();
+                    const minute = created.getMinutes();
+                    const hourOffset = Math.max(0, hour - 10);
+                    topPx = 10 + hourOffset * 64 + Math.floor((minute / 60) * 64);
+                  }
+
+                  // Determine styling - attempt to reuse priority -> color mapping if present
+                  const isHigh = (task.priority || '').toLowerCase() === 'high';
+
+                  return (
+                    <div key={task.id || idx} className="absolute left-4  right-4 rounded-lg p-4" style={{ top: `${topPx}px` }}>
+                      <div
+                        className={`border rounded-lg p-4 drop-shadow-lg ${
+                          isHigh ? 'bg-[#FBEAE1] border-[#F1BBAA]' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className={`font-medium text-sm ${isHigh ? 'text-[#A14A35]' : 'text-[#4A6B4A]'}`}>
+                              {task.name || task.title}
+                            </h4>
+                            <p className={`text-xs ${isHigh ? 'text-[#CE6B4E]' : 'text-[#6E7A58]'}`}>
+                              {created ? created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'} •{' '}
+                              {task.location || 'Office'}
+                            </p>
+                            {task.project && <p className="text-xs text-gray-500 mt-1">{task.project}</p>}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            style={{
+                              color: isHigh ? '#6E7A58' : '#4A6B4A',
+                              borderColor: isHigh ? '#8FA58F' : '#B8D4B8',
+                            }}
+                          >
+                            {task.priority || 'Low'}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <Badge variant="outline" style={{ color: '#6E7A58', borderColor: '#8FA58F' }}>
-                      site-visit
-                    </Badge>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -787,53 +814,75 @@ export default function CalendarStudioPage() {
               </div>
 
               <div className="grid grid-cols-7 gap-1">
-                {Array.from({ length: 35 }, (_, i) => {
-                  const day = i - 2;
-                  const isToday = day === 6;
-                  const eventData = calendarEvents.find(e => e.day === day);
+                {(() => {
+                  // Compute grid for current month using 42 cells (6 weeks)
+                  const monthDate = currentPeriod.month;
+                  const year = monthDate.getFullYear();
+                  const month = monthDate.getMonth();
+                  const firstOfMonth = new Date(year, month, 1);
+                  const lastOfMonth = new Date(year, month + 1, 0);
+                  const totalDays = lastOfMonth.getDate();
+                  const startWeekday = firstOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
 
-                  return (
-                    <div
-                      key={i}
-                      className={`min-h-[100px] p-3 text-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                        day < 1 || day > 31 ? 'text-gray-300 bg-gray-25' : 'text-gray-900'
-                      } ${isToday ? 'bg-[#FBEAE1] border-[#F1BBAA] text-[#1F1D1A] font-semibold' : ''}`}
-                    >
-                      {day > 0 && day <= 31 && (
-                        <>
-                          <div className="font-medium mb-2 text-sm">{day}</div>
-                          {eventData && (
-                            <div className="space-y-1">
-                              {eventData.events.map((event, idx) => (
-                                <TooltipProvider key={idx}>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div
-                                        className={`w-full h-1.5 rounded-full ${event.color} ring-1 ring-gray-200 cursor-pointer hover:opacity-80`}
-                                      />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-xs">
-                                      <div className="space-y-1">
-                                        <p className="font-medium">{event.title}</p>
-                                        <p className="text-xs text-gray-500">{event.time}</p>
-                                        {event.attendees > 0 && (
-                                          <p className="text-xs text-gray-500 flex items-center gap-1">
-                                            <Users className="w-3 h-3" />
-                                            {event.attendees} attendee{event.attendees !== 1 ? 's' : ''}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                  const today = new Date();
+                  const isSameMonth = today.getFullYear() === year && today.getMonth() === month;
+
+                  return Array.from({ length: 42 }, (_, i) => {
+                    const dayNumber = i - startWeekday + 1; // may be <=0 or > totalDays
+                    const isValid = dayNumber >= 1 && dayNumber <= totalDays;
+                    const isToday = isValid && isSameMonth && dayNumber === today.getDate();
+                    const cellDate = new Date(year, month, dayNumber);
+                    const cellTasks = isValid ? getTasksForDate(cellDate) : [];
+
+                    const isSelected =
+                      isValid &&
+                      selectedDate.getFullYear() === year &&
+                      selectedDate.getMonth() === month &&
+                      selectedDate.getDate() === dayNumber;
+
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => isValid && setSelectedDate(new Date(year, month, dayNumber))}
+                        className={`min-h-[100px] p-3 text-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                          !isValid ? 'text-gray-300 bg-gray-25' : 'text-gray-900'
+                        } ${isToday || isSelected ? 'bg-[#FBEAE1] border-[#F1BBAA] text-[#1F1D1A] font-semibold' : ''}`}
+                      >
+                        {isValid && (
+                          <>
+                            <div className="font-medium mb-2 text-sm">{dayNumber}</div>
+                            {cellTasks.length > 0 && (
+                              <div className="space-y-1">
+                                {cellTasks.slice(0, 4).map((task: any, idx: number) => (
+                                  <TooltipProvider key={task.id || idx}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div
+                                          className={`w-full h-1.5 rounded-full ${
+                                            priorityToColor(task.priority).split(' ')[0]
+                                          } ring-1 ring-gray-200 cursor-pointer hover:opacity-80`}
+                                        />
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="max-w-xs">
+                                        <div className="space-y-1">
+                                          <p className="font-medium">{task.name || task.title}</p>
+                                          <p className="text-xs text-gray-500">Created: {new Date(task.created_at).toLocaleString()}</p>
+                                          <p className="text-xs text-gray-500">Assigned: {(task.assigned || []).length}</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ))}
+
+                                {cellTasks.length > 4 && <div className="text-xs text-gray-500">+{cellTasks.length - 4} more</div>}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           </div>
@@ -880,7 +929,7 @@ export default function CalendarStudioPage() {
                 size="sm"
                 onClick={() => setMode('calendar')}
                 className={`h-8 px-3 text-sm font-medium ${
-                  mode === 'calendar' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'text-gray-600'
+                  mode === 'calendar' ? 'bg-gray-900 hover:text-white text-white hover:bg-gray-800' : 'text-gray-600'
                 }`}
               >
                 Calendar
@@ -890,7 +939,7 @@ export default function CalendarStudioPage() {
                 size="sm"
                 onClick={() => setMode('timeline')}
                 className={`h-8 px-3 text-sm font-medium ${
-                  mode === 'timeline' ? 'bg-gray-900 text-white hover:bg-gray-800' : 'text-gray-600'
+                  mode === 'timeline' ? 'bg-gray-900 hover:text-white text-white hover:bg-gray-800' : 'text-gray-600'
                 }`}
               >
                 Timeline
@@ -996,7 +1045,31 @@ export default function CalendarStudioPage() {
               <div className="bg-white border border-gray-200 rounded-xl shadow-sm sticky top-6 max-h-[calc(100vh-3rem)] flex flex-col">
                 <div className="p-6 flex-shrink-0">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900">Today's Schedule</h3>
+                    <div>
+                      {/* Dynamic header: Today's / This Week's / "Friday's" Schedule based on view */}
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {activeView === 'week'
+                          ? "This Week's Tasks"
+                          : // For 'today' and 'month' views show the selected date's weekday possessive, e.g., "Monday's Schedule"
+                            `${selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}'s Tasks`}
+                      </h3>
+                      <div className="text-xs text-gray-500">
+                        {activeView === 'week'
+                          ? (() => {
+                              const start = new Date(currentPeriod.week);
+                              const end = new Date(currentPeriod.week);
+                              end.setDate(end.getDate() + 6);
+                              return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString(
+                                'en-US',
+                                {
+                                  month: 'short',
+                                  day: 'numeric',
+                                }
+                              )}`;
+                            })()
+                          : selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500 ml-auto">
                       <span>72°F</span>
                     </div>
@@ -1017,53 +1090,61 @@ export default function CalendarStudioPage() {
                 {/* Scrollable Events */}
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                   <div className="space-y-3">
-                    {todayEvents.map(event => (
-                      <div
-                        key={event.id}
-                        className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 bg-white shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center gap-3 mb-1">
-                          <div
-                            className={`w-3 h-3 rounded-full ${event.color.split(' ')[0]} ring-2 ${event.color
-                              .split(' ')[1]
-                              .replace('border-', 'ring-')}`}
-                          />
-                          <span className="text-sm font-medium text-gray-900">{event.time}</span>
-                        </div>
+                    {(() => {
+                      // If in week view, show that week's tasks. If in today view, show all tasks for the week containing the selected date.
+                      let tasks: any[] = [];
 
-                        {/* Title */}
-                        <h4 className="font-medium text-gray-900 text-sm leading-relaxed mb-1">{event.title}</h4>
+                      if (activeView === 'week') {
+                        tasks = getTasksForWeek(new Date(currentPeriod.week));
+                      } else if (activeView === 'today') {
+                        // In Today view, show tasks for currentPeriod.today (matches the Today header)
+                        tasks = getTasksForDate(new Date(currentPeriod.today));
+                      } else {
+                        tasks = getTasksForDate(selectedDate);
+                      }
 
-                        {/* Project Badge */}
-                        <div className="mb-2">
-                          <Badge
-                            variant="outline"
-                            className="text-xs"
-                            style={{ color: event.projectTextHex, borderColor: event.projectBorderHex }}
-                          >
-                            {event.project}
-                          </Badge>
-                        </div>
+                      return (tasks || []).map((task: any) => (
+                        <div
+                          key={task.id}
+                          className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 bg-white shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center gap-3 mb-1">
+                            <div className={`w-3 h-3 rounded-full ${priorityToColor(task.priority).split(' ')[0]} ring-2`} />
+                            <span className="text-sm font-medium text-gray-900">
+                              {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
 
-                        {/* Meta info */}
-                        <div className="text-xs text-gray-600 mb-2">{event.location}</div>
+                          {/* Title */}
+                          <h4 className="font-medium text-gray-900 capitalize text-sm leading-relaxed mb-1">{task.name}</h4>
 
-                        {/* Footer */}
-                        <div className="flex items-center justify-between pt-2 text-xs text-gray-500 border-t border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {event.duration}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              {event.attendees}
+                          {/* Assigned count Badge */}
+                          <div className="mb-2">
+                            <Badge variant="outline" className="text-xs">
+                              {(task.assigned || []).length || 0} assigned
+                            </Badge>
+                          </div>
+
+                          {/* Meta info */}
+                          <div className="text-xs capitalize text-gray-600 mb-2">{task.status}</div>
+
+                          {/* Footer */}
+                          <div className="flex items-center justify-between pt-2 text-xs text-gray-500 border-t border-gray-100">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {task.startTime || task.endTime || '—'}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {(task.assigned || []).length || 0}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
 
                   {/* Quick Actions */}

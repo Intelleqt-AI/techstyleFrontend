@@ -134,6 +134,7 @@ export default function ProjectSettingsPage() {
   const projectId = params?.id ?? 'project-1';
   const [selected, setSelected] = useState<SectionKey>('overview');
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [openArchive, setOpenArchive] = useState(false);
   const { isOpen, item, openDialog, closeDialog } = useDeleteDialog();
   const router = useRouter();
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
@@ -197,6 +198,16 @@ export default function ProjectSettingsPage() {
   async function handleSave(section: SectionKey, payload: unknown) {
     mutation.mutate(selectedProject);
   }
+
+  const handleArchive = id => {
+    mutation.mutate({ ...selectedProject, isArchive: true });
+    toast.success('Moved to Archive');
+  };
+
+  const handleUnArchive = id => {
+    mutation.mutate({ ...selectedProject, isArchive: false });
+    toast.success('Moved to Active');
+  };
 
   const handleDelete = id => {
     router.push('/projects');
@@ -297,6 +308,13 @@ export default function ProjectSettingsPage() {
                       </Button>
                     );
                   })}
+                  <Button
+                    className="justify-start bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                    onClick={() => setOpenArchive(true)}
+                  >
+                    <Trash className="w-4 h-4 mr-2" />
+                    {selectedProject?.isArchive ? 'Unarchive' : 'Archive'}
+                  </Button>
 
                   <Button
                     variant={'destructive'}
@@ -304,7 +322,7 @@ export default function ProjectSettingsPage() {
                     onClick={() => openDialog(selectedProject?.id)}
                   >
                     <Trash className="w-4 h-4 mr-2" />
-                    Delete Project
+                    Delete
                   </Button>
                 </nav>
               </CardContent>
@@ -405,6 +423,19 @@ export default function ProjectSettingsPage() {
           // reflect completion in header badges
           // no-op for now; you can hook real data as needed.
         }}
+      />
+
+      <DeleteDialog
+        isOpen={openArchive}
+        onClose={setOpenArchive}
+        onConfirm={selectedProject?.isArchive ? handleUnArchive : handleArchive}
+        id={selectedProject?.id}
+        itemName={selectedProject?.name}
+        requireConfirmation={false}
+        confirmationText={selectedProject?.name}
+        title={selectedProject?.isArchive ? 'Unarchive Project' : 'Archive Project'}
+        confirmText="Move"
+        description={`Move  ${selectedProject?.name} to ${selectedProject?.isArchive ? 'Active' : 'Archive'} .`}
       />
 
       <DeleteDialog

@@ -42,6 +42,7 @@ export default function Login() {
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    toast.error('Failed to send reset email. Please try again.');
     if (!email) {
       toast.error('Please enter your email address');
       return;
