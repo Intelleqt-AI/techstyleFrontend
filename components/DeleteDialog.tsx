@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Trash2, AlertTriangle } from 'lucide-react';
+import { Trash2, AlertTriangle, ArchiveRestore } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ export const DeleteDialog = ({
   cancelText = 'Cancel',
   requireConfirmation = false,
   confirmationText = 'confirm',
+  isArchive = false,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmationInput, setConfirmationInput] = useState('');
@@ -50,8 +51,10 @@ export const DeleteDialog = ({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader className="flex flex-row items-center gap-3">
-          <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+          <div
+            className={`flex-shrink-0 w-10 h-10 ${isArchive ? 'bg-gray-100' : 'bg-red-100'}  rounded-full flex items-center justify-center`}
+          >
+            <AlertTriangle className={`w-5 h-5 ${isArchive ? 'text-black' : 'text-red-600'} `} />
           </div>
           <div>
             <DialogTitle>{title}</DialogTitle>
@@ -81,7 +84,12 @@ export const DeleteDialog = ({
           <Button type="button" variant="outline" onClick={handleClose} disabled={isDeleting}>
             {cancelText}
           </Button>
-          <Button type="button" variant="destructive" onClick={handleConfirm} disabled={isDeleting || !isConfirmationValid}>
+          <Button
+            type="button"
+            variant={isArchive ? 'default' : 'destructive'}
+            onClick={handleConfirm}
+            disabled={isDeleting || !isConfirmationValid}
+          >
             {isDeleting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -89,7 +97,7 @@ export const DeleteDialog = ({
               </>
             ) : (
               <>
-                <Trash2 className="w-4 h-4 mr-1" />
+                {isArchive ? <ArchiveRestore className="w-4 h-4 mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
                 {confirmText}
               </>
             )}

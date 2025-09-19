@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import useTask from '@/supabase/hook/useTask';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnlyProject } from '@/supabase/API';
+import useUser from '@/hooks/useUser';
 
 const todayEvents = [
   {
@@ -49,6 +50,7 @@ const todayEvents = [
 export default function CalendarStudioPage() {
   const [mode, setMode] = useState<'calendar' | 'timeline'>('calendar');
   const [activeView, setActiveView] = useState('month');
+  const { user, isLoading: userLoading } = useUser();
   const [currentPeriod, setCurrentPeriod] = useState(() => {
     const today = new Date();
     return {
@@ -58,17 +60,47 @@ export default function CalendarStudioPage() {
       year: new Date(today.getFullYear(), 0), // current year
     };
   });
+
+  const admins = [
+    'david.zeeman@intelleqt.ai',
+    'roxi.zeeman@souqdesign.co.uk',
+    'risalat.shahriar@intelleqt.ai',
+    'dev@intelleqt.ai',
+    'saif@intelleqt.ai',
+  ];
   const { data, isLoading, error, refetch } = useTask();
   const { data: project } = useQuery({
     queryKey: [`fetchOnlyProject`],
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
+  const myTaskList = (arr: any[]) => {
+    if (!arr) return [];
+    if (!user) return [];
+
+    let filtered = admins.includes(user?.email)
+      ? arr
+      : arr.filter(task => {
+          const isAssigned =
+            task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === user.email);
+          const isCreator = task.creator === user.email;
+          return isAssigned || isCreator;
+        });
+
+    // Sort by updated_at (newest first)
+    return filtered.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  };
+
+  const userTask = useMemo(() => {
+    if (!data?.data || !user) return [];
+    return myTaskList(data.data);
+  }, [data?.data, user]);
+
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
   // Helpers to map tasks from API to calendar cells
   const getTasksForDate = (date: Date) => {
-    const raw = (data as any)?.data;
+    const raw = userTask;
     if (!raw || !Array.isArray(raw)) return [] as any[];
     return raw.filter((task: any) => {
       if (!task.created_at) return false;
@@ -937,7 +969,7 @@ export default function CalendarStudioPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMode('timeline')}
+                // onClick={() => setMode('timeline')}
                 className={`h-8 px-3 text-sm font-medium ${
                   mode === 'timeline' ? 'bg-gray-900 hover:text-white text-white hover:bg-gray-800' : 'text-gray-600'
                 }`}
