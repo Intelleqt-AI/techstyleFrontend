@@ -644,7 +644,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     { title: 'Pending Approval', value: totalPendingCount, subtitle: 'Waiting for sign-off', icon: Clock },
     {
       title: 'Total Cost',
-      value: `${project?.currency?.symbol}${totalCostCount.toLocaleString('en-GB', {
+      value: `${project?.currency?.symbol || '£'}${totalCostCount.toLocaleString('en-GB', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`,

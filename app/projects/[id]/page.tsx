@@ -174,6 +174,20 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
     );
   }, [purchaseOrder]);
 
+  const overDueItems = useMemo(() => {
+    if (!selectedProject?.type) return 0;
+    // Today's date in YYYY-MM-DD format
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    return selectedProject.type
+      .flatMap(t => t || [])
+      .flatMap(room => room.product || [])
+      .filter(product => {
+        if (!product.delivery) return false;
+        return product.delivery < todayStr;
+      }).length;
+  }, [selectedProject]);
+
   const mutation = useMutation({
     mutationFn: modifyProject,
     onSuccess: () => {
@@ -336,6 +350,8 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
 
     return taskData.data.filter(task => task.projectID === selectedProject.id && task.dueDate === today && task.status !== 'done').length;
   }, [taskData?.data, selectedProject?.id, today]);
+
+  console.log(overDueItems, selectedProject);
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">
@@ -632,13 +648,27 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                 Open Procurement
               </Button>
             </div>
-            <div className="bg-terracotta-600/10 border border-terracotta-600/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-terracotta-600" />
-                <span className="text-sm font-medium text-terracotta-600">Action Required</span>
+            <div
+              className={`${
+                overDueItems > 0 || needApprove > 0 ? 'bg-terracotta-600/10 border-terracotta-600/30' : 'bg-green-600/5 border-green-600/30'
+              } border space-y-2 rounded-lg p-4`}
+            >
+              <div className="flex  items-center   gap-2">
+                {overDueItems > 0 || needApprove > 0 ? (
+                  <AlertTriangle className="w-4 h-4 text-terracotta-600" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 text-olive-600" />
+                )}
+                {overDueItems > 0 || needApprove > 0 ? (
+                  <span className="text-sm font-medium text-terracotta-600">Action Required</span>
+                ) : (
+                  <span className="text-sm font-medium text-olive-600">No Action Required</span>
+                )}
               </div>
+
               <p className="text-sm text-terracotta-600">
-                <strong>5 items overdue delivery</strong> • 2 POs need approval
+                {overDueItems > 0 && <strong>{overDueItems} items overdue delivery</strong>}
+                {needApprove > 0 && `• ${needApprove} POs need approval`}
               </p>
             </div>
           </CardContent>
