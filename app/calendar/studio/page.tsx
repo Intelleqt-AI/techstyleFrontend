@@ -6,13 +6,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calendar, Users, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calendar, Users, Video, CheckCircle } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import useTask from '@/supabase/hook/useTask';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOnlyProject } from '@/supabase/API';
 import useUser from '@/hooks/useUser';
+import { TaskModal } from '@/components/tasks/task-modal';
 
 const todayEvents = [
   {
@@ -60,6 +61,38 @@ export default function CalendarStudioPage() {
       year: new Date(today.getFullYear(), 0), // current year
     };
   });
+  const { data, isLoading, error, refetch } = useTask();
+  const { data: project } = useQuery({
+    queryKey: [`fetchOnlyProject`],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
+  });
+
+  const [temp, setTemp] = useState<string>('--°F');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  function openModal(id) {
+    setModalOpen(true);
+    setSelectedTask(data?.data?.find(item => item.id == id));
+  }
+
+  function afterOpenModal() {}
+
+  function closeModal() {
+    setSelectedTask(null);
+    setModalOpen(false);
+  }
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const { latitude, longitude } = pos.coords;
+      const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=d7221f53a7e93bf71c325675d2914007&units=imperial`
+      );
+      const data = await res.json();
+      setTemp(`${Math.round(data?.main?.temp || 0)}°F`);
+    });
+  }, []);
 
   const admins = [
     'david.zeeman@intelleqt.ai',
@@ -68,11 +101,6 @@ export default function CalendarStudioPage() {
     'dev@intelleqt.ai',
     'saif@intelleqt.ai',
   ];
-  const { data, isLoading, error, refetch } = useTask();
-  const { data: project } = useQuery({
-    queryKey: [`fetchOnlyProject`],
-    queryFn: () => fetchOnlyProject({ projectID: null }),
-  });
 
   const myTaskList = (arr: any[]) => {
     if (!arr) return [];
@@ -722,29 +750,48 @@ export default function CalendarStudioPage() {
                         topPx = 8 + hourOffset * 64;
                       }
 
+                      let bgClass = 'bg-[#F5F4F0]';
+                      let borderClass = 'border-[#E8E6E0]';
+                      let titleClass = 'text-[#6E6A61]';
+
                       // small card color by priority
-                      let bgClass = 'bg-[#FBEAE1]';
-                      let borderClass = 'border-[#F1BBAA]';
-                      let titleClass = 'text-[#A14A35]';
-                      if ((task.priority || '').toLowerCase() === 'medium') {
+
+                      if ((task.priority || '').toLowerCase() == 'medium') {
                         bgClass = 'bg-[#E8F0E8]';
                         borderClass = 'border-[#B8D4B8]';
                         titleClass = 'text-[#4A6B4A]';
-                      } else if ((task.priority || '').toLowerCase() === 'low') {
-                        bgClass = 'bg-white';
-                        borderClass = 'border-gray-200';
-                        titleClass = 'text-gray-900';
+                      } else if ((task.priority || '').toLowerCase() == 'high') {
+                        bgClass = 'bg-[#FBEAE1]';
+                        borderClass = 'border-[#F1BBAA]';
+                        titleClass = 'text-[#A14A35]';
                       }
 
                       return (
-                        <div key={task.id || tIdx} className="absolute left-1 right-1 rounded p-1 text-xs" style={{ top: `${topPx}px` }}>
-                          <div className={`${bgClass} ${borderClass} border rounded p-1 text-xs`}>
-                            <div className={`font-medium capitalize ${titleClass} truncate`}>{task.name}</div>
-                            <div className="text-[10px] text-gray-500">
-                              {created ? created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            </div>
-                          </div>
-                        </div>
+                        <TooltipProvider key={task.id}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div
+                                key={task.id || tIdx}
+                                className="absolute left-1 right-1 rounded p-1 text-xs"
+                                style={{ top: `${topPx}px` }}
+                              >
+                                <div className={`${bgClass} ${borderClass} border rounded p-1 text-xs`}>
+                                  <div className={`font-medium capitalize ${titleClass} truncate`}>{task.name}</div>
+                                  <div className="text-[10px] text-gray-500">
+                                    {created ? created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                  </div>
+                                </div>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="space-y-1">
+                                <p className="font-medium capitalize">{task.name || task.title}</p>
+                                <p className="text-xs text-gray-500">Created: {new Date(task.created_at).toLocaleString()}</p>
+                                <p className="text-xs text-gray-500">Assigned: {(task.assigned || []).length}</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       );
                     })}
                   </div>
@@ -762,7 +809,8 @@ export default function CalendarStudioPage() {
                 {currentPeriod.today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
               </h3>
               <p className="text-sm text-gray-500">
-                {todayEvents.length} event{todayEvents.length !== 1 ? 's' : ''} scheduled
+                {getTasksForDate(new Date(currentPeriod.today)).length} task
+                {getTasksForDate(new Date(currentPeriod.today)).length > 0 ? 's' : ''} available
               </p>
             </div>
 
@@ -796,31 +844,34 @@ export default function CalendarStudioPage() {
                   // Determine styling - attempt to reuse priority -> color mapping if present
                   const isHigh = (task.priority || '').toLowerCase() === 'high';
 
+                  let bgClass = 'bg-[#F5F4F0]';
+                  let borderClass = 'border-[#E8E6E0]';
+                  let titleClass = 'text-[#6E6A61]';
+                  // small card color by priority
+
+                  if ((task.priority || '').toLowerCase() == 'medium') {
+                    bgClass = 'bg-[#E8F0E8]';
+                    borderClass = 'border-[#B8D4B8]';
+                    titleClass = 'text-[#4A6B4A]';
+                  } else if ((task.priority || '').toLowerCase() == 'high') {
+                    bgClass = 'bg-[#FBEAE1]';
+                    borderClass = 'border-[#F1BBAA]';
+                    titleClass = 'text-[#A14A35]';
+                  }
+
                   return (
                     <div key={task.id || idx} className="absolute left-4  right-4 rounded-lg p-4" style={{ top: `${topPx}px` }}>
-                      <div
-                        className={`border rounded-lg p-4 drop-shadow-lg ${
-                          isHigh ? 'bg-[#FBEAE1] border-[#F1BBAA]' : 'bg-white border-gray-200'
-                        }`}
-                      >
+                      <div className={`border rounded-lg p-4 drop-shadow-lg ${bgClass} ${borderClass} border ${titleClass}`}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className={`font-medium text-sm ${isHigh ? 'text-[#A14A35]' : 'text-[#4A6B4A]'}`}>
-                              {task.name || task.title}
-                            </h4>
+                            <h4 className={`font-medium text-sm ${titleClass} capitalize mb-1`}>{task.name || task.title}</h4>
                             <p className={`text-xs ${isHigh ? 'text-[#CE6B4E]' : 'text-[#6E7A58]'}`}>
                               {created ? created.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'} •{' '}
                               {task.location || 'Office'}
                             </p>
                             {task.project && <p className="text-xs text-gray-500 mt-1">{task.project}</p>}
                           </div>
-                          <Badge
-                            variant="outline"
-                            style={{
-                              color: isHigh ? '#6E7A58' : '#4A6B4A',
-                              borderColor: isHigh ? '#8FA58F' : '#B8D4B8',
-                            }}
-                          >
+                          <Badge variant="outline" className={`${borderClass} ${titleClass} ${borderClass}`}>
                             {task.priority || 'Low'}
                           </Badge>
                         </div>
@@ -876,9 +927,9 @@ export default function CalendarStudioPage() {
                       <div
                         key={i}
                         onClick={() => isValid && setSelectedDate(new Date(year, month, dayNumber))}
-                        className={`min-h-[100px] p-3 text-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        className={`min-h-[100px] rounded-md p-3 text-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                           !isValid ? 'text-gray-300 bg-gray-25' : 'text-gray-900'
-                        } ${isToday || isSelected ? 'bg-[#FBEAE1] border-[#F1BBAA] text-[#1F1D1A] font-semibold' : ''}`}
+                        } ${isToday || isSelected ? 'bg-[#FBEAE1] border-[#E0A48F] text-[#1F1D1A] font-semibold' : ''}`}
                       >
                         {isValid && (
                           <>
@@ -897,7 +948,7 @@ export default function CalendarStudioPage() {
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="max-w-xs">
                                         <div className="space-y-1">
-                                          <p className="font-medium">{task.name || task.title}</p>
+                                          <p className="font-medium capitalize">{task.name || task.title}</p>
                                           <p className="text-xs text-gray-500">Created: {new Date(task.created_at).toLocaleString()}</p>
                                           <p className="text-xs text-gray-500">Assigned: {(task.assigned || []).length}</p>
                                         </div>
@@ -969,7 +1020,7 @@ export default function CalendarStudioPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                // onClick={() => setMode('timeline')}
+                onClick={() => setMode('timeline')}
                 className={`h-8 px-3 text-sm font-medium ${
                   mode === 'timeline' ? 'bg-gray-900 hover:text-white text-white hover:bg-gray-800' : 'text-gray-600'
                 }`}
@@ -1020,9 +1071,9 @@ export default function CalendarStudioPage() {
 
         {/* Second Row - View Options and Date Navigation */}
         <div className={`flex items-center ${mode === 'timeline' ? 'justify-center' : 'justify-between'}`}>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 w-full">
             {/* View Options */}
-            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-white  border-gray-200 rounded-lg p-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -1059,6 +1110,25 @@ export default function CalendarStudioPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+
+            <div className=" border-gray-200 bg-gray-50 p-4 flex justify-end flex-1">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#d9d5cc] rounded"></div>
+                    <span>Low</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#8fa58f] rounded"></div>
+                    <span>Medium</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-[#e07a57] rounded"></div>
+                    <span>High</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1081,9 +1151,10 @@ export default function CalendarStudioPage() {
                       {/* Dynamic header: Today's / This Week's / "Friday's" Schedule based on view */}
                       <h3 className="text-lg font-semibold text-gray-900">
                         {activeView === 'week'
-                          ? "This Week's Tasks"
-                          : // For 'today' and 'month' views show the selected date's weekday possessive, e.g., "Monday's Schedule"
-                            `${selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}'s Tasks`}
+                          ? "Week's Tasks"
+                          : activeView === 'month' // For 'today' and 'month' views show the selected date's weekday possessive, e.g., "Monday's Schedule"
+                          ? `${selectedDate.toLocaleDateString('en-US', { weekday: 'long' })}'s Tasks`
+                          : `Day View`}
                       </h3>
                       <div className="text-xs text-gray-500">
                         {activeView === 'week'
@@ -1099,11 +1170,13 @@ export default function CalendarStudioPage() {
                                 }
                               )}`;
                             })()
-                          : selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          : activeView == 'month'
+                          ? selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                          : `${getNavigatorLabel()}`}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 text-xs text-gray-500 ml-auto">
-                      <span>72°F</span>
+                      <span>{temp || '-'}</span>
                     </div>
                   </div>
 
@@ -1112,7 +1185,23 @@ export default function CalendarStudioPage() {
                     <div className="flex items-start gap-3">
                       <div className="w-2 h-2 bg-[#E07A57] rounded-full mt-2 flex-shrink-0" />
                       <div className="text-sm">
-                        <p className="font-medium text-[#A14A35] mb-1">Free 2-hour focus block at 2:00 PM</p>
+                        <p className="font-medium text-[#A14A35] mb-1">
+                          <p className="font-medium text-[#A14A35] mb-1">
+                            {(() => {
+                              let tasks: any[] = [];
+
+                              if (activeView === 'week') {
+                                tasks = getTasksForWeek(new Date(currentPeriod.week));
+                              } else if (activeView === 'today') {
+                                tasks = getTasksForDate(new Date(currentPeriod.today));
+                              } else {
+                                tasks = getTasksForDate(selectedDate);
+                              }
+
+                              return tasks.length > 0 ? `Total ${tasks.length} tasks` : 'No tasks';
+                            })()}
+                          </p>
+                        </p>
                         <p className="text-[#CE6B4E]">Perfect for deep work between meetings</p>
                       </div>
                     </div>
@@ -1137,12 +1226,15 @@ export default function CalendarStudioPage() {
 
                       return (tasks || []).map((task: any) => (
                         <div
+                          onClick={() => openModal(task?.id)}
                           key={task.id}
-                          className="flex flex-col gap-1 rounded-lg border border-gray-200 p-3 bg-white shadow-sm hover:shadow-md transition-shadow"
+                          className="flex flex-col gap-1 cursor-pointer rounded-lg border border-gray-200 p-3 bg-white shadow-sm hover:shadow-md transition-shadow"
                         >
                           {/* Header */}
                           <div className="flex items-center gap-3 mb-1">
-                            <div className={`w-3 h-3 rounded-full ${priorityToColor(task.priority).split(' ')[0]} ring-2`} />
+                            <div
+                              className={`w-3.5 h-3.5 rounded-full ${priorityToColor(task.priority).split(' ')[0]} ring-2 ring-black/10 `}
+                            />
                             <span className="text-sm font-medium text-gray-900">
                               {new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
@@ -1153,8 +1245,8 @@ export default function CalendarStudioPage() {
 
                           {/* Assigned count Badge */}
                           <div className="mb-2">
-                            <Badge variant="outline" className="text-xs">
-                              {(task.assigned || []).length || 0} assigned
+                            <Badge variant="outline" className="text-xs truncate border-olive-600 text-olive-600">
+                              {(project && project.find((p: any) => p.id === task?.projectID)?.name) || 'No Project'}
                             </Badge>
                           </div>
 
@@ -1171,6 +1263,13 @@ export default function CalendarStudioPage() {
                               <div className="flex items-center gap-1">
                                 <Users className="w-3 h-3" />
                                 {(task.assigned || []).length || 0}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3 text-slate-600" />
+                                {task?.subtasks?.filter((subtask: any) => subtask.selected === true).length || 0}/
+                                {task?.subtasks?.length || 0}
                               </div>
                             </div>
                           </div>
@@ -1192,6 +1291,18 @@ export default function CalendarStudioPage() {
           </div>
         )}
       </div>
+
+      <TaskModal
+        open={modalOpen}
+        onOpenChange={closeModal}
+        projectId={null}
+        team={null}
+        defaultListId={null}
+        taskToEdit={selectedTask}
+        // onSave={handleSave}
+        // setEditing={setEditing}
+        // openDeleteModal={openDeleteModal}
+      />
     </div>
   );
 }

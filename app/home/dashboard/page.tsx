@@ -1,8 +1,7 @@
 'use client';
 
 import type React from 'react';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,12 +20,6 @@ import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
 import Onboarding from '../_component/Onboarding';
 
-const gbp = new Intl.NumberFormat('en-GB', {
-  style: 'currency',
-  currency: 'GBP',
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
 const updatetaskList = data => {
   return [
     {
@@ -348,29 +341,34 @@ export default function DashboardPage() {
     queryFn: getPurchaseOrder,
   });
 
-  // Calculate totals for stats
-  let totalPurchaseOrder = 0;
-  let totalInvoiceOrder = 0;
+  const { totalInvoiceOrder, totalPurchaseOrder } = useMemo(() => {
+    let totalInvoiceOrder = 0;
+    let totalPurchaseOrder = 0;
 
-  InvoiceData?.data?.forEach(item => {
-    const temp =
-      item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
-        return total + amount * product.QTY;
-      }, 0) || 0;
+    // Invoice Orders
+    InvoiceData?.data?.forEach(item => {
+      const temp =
+        item?.products?.reduce((total, product) => {
+          const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
+          return total + amount * (product.QTY || 0);
+        }, 0) || 0;
 
-    totalInvoiceOrder += temp;
-  });
+      totalInvoiceOrder += temp;
+    });
 
-  data?.data?.forEach(item => {
-    const temp =
-      item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
-        return total + amount * product.QTY;
-      }, 0) || 0;
+    // Purchase Orders
+    data?.data?.forEach(item => {
+      const temp =
+        item?.products?.reduce((total, product) => {
+          const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
+          return total + amount * (product.QTY || 0);
+        }, 0) || 0;
 
-    totalPurchaseOrder += temp;
-  });
+      totalPurchaseOrder += temp;
+    });
+
+    return { totalInvoiceOrder, totalPurchaseOrder };
+  }, [InvoiceData, data]);
 
   const {
     data: project,
@@ -386,6 +384,17 @@ export default function DashboardPage() {
     queryKey: ['Time Tracking'],
     queryFn: getTimeTracking,
   });
+
+  const totalHours = useMemo(() => {
+    if (!trackingData?.data) return 0;
+
+    const totalSeconds = trackingData.data.reduce((acc, item) => {
+      const sessionSeconds = item.session?.reduce((sAcc, session) => sAcc + (session.totalTime || 0), 0);
+      return acc + sessionSeconds;
+    }, 0);
+
+    return (totalSeconds / 3600).toFixed(2); // Convert seconds -> hours (2 decimals)
+  }, [trackingData]);
 
   function getFormattedTimeFromMondayToSaturday(tasks) {
     const now = new Date();
@@ -451,7 +460,6 @@ export default function DashboardPage() {
 
   function enrichUsersWithProjectCount(users) {
     if (!users) return [];
-
     return users.map(user => {
       const totalTime = getFormattedTimeFromMondayToSaturday(getTrackingByUser(user.email));
 
@@ -743,7 +751,7 @@ export default function DashboardPage() {
       },
       {
         label: 'Utilisation',
-        value: `${Math.round((totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder)}%`,
+        value: `${Math.round(((totalPurchaseOrder - totalHours) / totalInvoiceOrder) * 100)}%`,
         trend: 'up',
         change: '+3%',
       },
