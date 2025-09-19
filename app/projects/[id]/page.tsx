@@ -666,10 +666,13 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
                 )}
               </div>
 
-              <p className="text-sm text-terracotta-600">
-                {overDueItems > 0 && <strong>{overDueItems} items overdue delivery</strong>}
-                {needApprove > 0 && `• ${needApprove} POs need approval`}
-              </p>
+              {overDueItems > 0 ||
+                (needApprove > 0 && (
+                  <p className="text-sm text-terracotta-600">
+                    {overDueItems > 0 && <strong>{overDueItems} items overdue delivery</strong>}
+                    {needApprove > 0 && `• ${needApprove} POs need approval`}
+                  </p>
+                ))}
             </div>
           </CardContent>
         </Card>
