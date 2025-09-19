@@ -13,7 +13,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import useUsers from '@/hooks/useUsers';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOnlyProject, getTimeTracking } from '@/supabase/API';
+import { fetchOnlyProject, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
 import useTask from '@/supabase/hook/useTask';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
@@ -290,6 +290,79 @@ export default function ProductivityReportsPage() {
     queryFn: getTimeTracking,
   });
 
+  const {
+    data: InvoiceData,
+    isLoading: InvoiceLoading,
+    refetch: InvoiceRefetch,
+  } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: getInvoices,
+  });
+
+  const { data, isLoading: Poloading } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
+
+  function getPeriodRange(period: 'month' | 'quarter' | 'year') {
+    const now = new Date();
+    let start: Date, end: Date;
+
+    if (period === 'month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (period === 'quarter') {
+      const quarter = Math.floor(now.getMonth() / 3);
+      start = new Date(now.getFullYear(), quarter * 3, 1);
+      end = new Date(now.getFullYear(), quarter * 3 + 3, 0, 23, 59, 59, 999);
+    } else {
+      // year
+      start = new Date(now.getFullYear(), 0, 1);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+
+    return { start, end };
+  }
+
+  const { totalInvoiceOrder, totalPurchaseOrder } = useMemo(() => {
+    if (!period) return { totalInvoiceOrder: 0, totalPurchaseOrder: 0 };
+
+    const { start, end } = getPeriodRange(period);
+
+    let totalInvoiceOrder = 0;
+    let totalPurchaseOrder = 0;
+
+    // Invoice Orders
+    InvoiceData?.data?.forEach(item => {
+      const createdAt = new Date(item.created_at);
+      if (createdAt >= start && createdAt <= end) {
+        const temp =
+          item?.products?.reduce((total, product) => {
+            const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
+            return total + amount * (product.QTY || 0);
+          }, 0) || 0;
+
+        totalInvoiceOrder += temp;
+      }
+    });
+
+    // Purchase Orders
+    data?.data?.forEach(item => {
+      const createdAt = new Date(item.created_at);
+      if (createdAt >= start && createdAt <= end) {
+        const temp =
+          item?.products?.reduce((total, product) => {
+            const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
+            return total + amount * (product.QTY || 0);
+          }, 0) || 0;
+
+        totalPurchaseOrder += temp;
+      }
+    });
+
+    return { totalInvoiceOrder, totalPurchaseOrder };
+  }, [InvoiceData, data, period]);
+
   // Projects
   const {
     data: project,
@@ -432,7 +505,11 @@ export default function ProductivityReportsPage() {
     const avgUtil = Math.round(rawMembers.reduce((sum, m) => sum + m.utilisation, 0) / rawMembers.length);
     const totalTasks = countDoneTasks(((taskData as any)?.data ?? []) as any[], period);
     return [
-      { label: 'Avg Utilisation', value: formatPercent(0), sub: 'Billable time share' },
+      {
+        label: 'Avg Utilisation',
+        value: Math.round(((totalPurchaseOrder - totalHour) / totalInvoiceOrder) * 100),
+        sub: 'Billable time share',
+      },
       {
         label: 'Hours Logged',
         value: `${totalHour || 0.0}`,
