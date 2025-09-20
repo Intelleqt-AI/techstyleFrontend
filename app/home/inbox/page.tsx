@@ -306,12 +306,6 @@ export default function InboxPage() {
     },
   });
 
-  // Get Project
-  // const { data: project, isLoading: ProjectLoading } = useQuery({
-  //   queryKey: ['projects'],
-  //   queryFn: () => fetchProjects(),
-  // });
-
   useEffect(() => {
     if (contactLoading) {
       return;
