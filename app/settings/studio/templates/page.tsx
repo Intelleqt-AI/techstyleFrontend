@@ -240,56 +240,57 @@ export default function StudioTemplatesPage() {
               className="rounded-md p-1 border space-y-2"
               draggedItemClassName="opacity-70"
             >
-              {currentUser.defaultPhases.map(p => (
-                <SortableItem key={p.id}>
-                  <div className="flex items-center gap-3 bg-white border-b p-3 last:border-b-0">
-                    <div className="flex items-center cursor-grab text-muted-foreground">
-                      <GripVertical className="h-5 w-5" />
-                    </div>
+              {currentUser?.defaultPhases &&
+                currentUser?.defaultPhases?.map(p => (
+                  <SortableItem key={p.id}>
+                    <div className="flex items-center gap-3 bg-white border-b p-3 last:border-b-0">
+                      <div className="flex items-center cursor-grab text-muted-foreground">
+                        <GripVertical className="h-5 w-5" />
+                      </div>
 
-                    <div className="h-8 w-8 rounded-md border overflow-hidden">
-                      <input
-                        type="color"
-                        className="h-full w-full cursor-pointer p-0 border-0"
-                        value={p.color}
+                      <div className="h-8 w-8 rounded-md border overflow-hidden">
+                        <input
+                          type="color"
+                          className="h-full w-full cursor-pointer p-0 border-0"
+                          value={p.color}
+                          onChange={e => {
+                            const updated = currentUser.defaultPhases.map(ph => (ph.id === p.id ? { ...ph, color: e.target.value } : ph));
+                            setCurrentUser(prev => ({ ...prev, defaultPhases: updated }));
+                          }}
+                        />
+                      </div>
+
+                      <Input
+                        className="max-w-xs"
+                        value={p.name}
                         onChange={e => {
-                          const updated = currentUser.defaultPhases.map(ph => (ph.id === p.id ? { ...ph, color: e.target.value } : ph));
+                          const updated = currentUser.defaultPhases.map(ph => (ph.id === p.id ? { ...ph, name: e.target.value } : ph));
                           setCurrentUser(prev => ({ ...prev, defaultPhases: updated }));
                         }}
+                        onBlur={persist}
                       />
+
+                      {p?.name.length > 0 && (
+                        <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
+                          {p.name}
+                        </Badge>
+                      )}
+
+                      <div className="ml-auto">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const updated = currentUser.defaultPhases.filter(ph => ph.id !== p.id);
+                            setCurrentUser(prev => ({ ...prev, defaultPhases: updated }));
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-
-                    <Input
-                      className="max-w-xs"
-                      value={p.name}
-                      onChange={e => {
-                        const updated = currentUser.defaultPhases.map(ph => (ph.id === p.id ? { ...ph, name: e.target.value } : ph));
-                        setCurrentUser(prev => ({ ...prev, defaultPhases: updated }));
-                      }}
-                      onBlur={persist}
-                    />
-
-                    {p?.name.length > 0 && (
-                      <Badge variant="secondary" style={{ backgroundColor: p.color, color: '#fff' }}>
-                        {p.name}
-                      </Badge>
-                    )}
-
-                    <div className="ml-auto">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          const updated = currentUser.defaultPhases.filter(ph => ph.id !== p.id);
-                          setCurrentUser(prev => ({ ...prev, defaultPhases: updated }));
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </SortableItem>
-              ))}
+                  </SortableItem>
+                ))}
             </SortableList>
           </CardContent>
         </Card>
@@ -311,11 +312,12 @@ export default function StudioTemplatesPage() {
                     <SelectValue placeholder="Select a phase" />
                   </SelectTrigger>
                   <SelectContent>
-                    {currentUser.defaultPhases.map(p => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
+                    {currentUser.defaultPhases &&
+                      currentUser.defaultPhases.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -325,7 +327,7 @@ export default function StudioTemplatesPage() {
                   id="tasks-textarea"
                   className="mt-1 h-48 w-full resize-y rounded-md border p-3 font-mono text-sm whitespace-pre-wrap"
                   placeholder="One task per line"
-                  value={currentUser.defaultPhases.find(p => p.id === selectedPhaseForTasks)?.task?.join('\n') ?? ''}
+                  value={currentUser?.defaultPhases?.find(p => p.id === selectedPhaseForTasks)?.task?.join('\n') ?? ''}
                   onChange={e => {
                     const nextTasks = e.target.value.split('\n');
                     const updated = currentUser.defaultPhases.map(p => (p.id === selectedPhaseForTasks ? { ...p, task: nextTasks } : p));
