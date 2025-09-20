@@ -929,7 +929,7 @@ export default function CalendarStudioPage() {
                         onClick={() => isValid && setSelectedDate(new Date(year, month, dayNumber))}
                         className={`min-h-[100px] rounded-md p-3 text-sm border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                           !isValid ? 'text-gray-300 bg-gray-25' : 'text-gray-900'
-                        } ${isToday || isSelected ? 'bg-[#FBEAE1] border-[#E0A48F] text-[#1F1D1A] font-semibold' : ''}`}
+                        } ${isToday || isSelected ? 'bg-[#FBEAE1] !border-[#e5ac98] text-[#1F1D1A] font-semibold' : ''}`}
                       >
                         {isValid && (
                           <>
@@ -1017,7 +1017,7 @@ export default function CalendarStudioPage() {
               >
                 Calendar
               </Button>
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setMode('timeline')}
@@ -1026,7 +1026,7 @@ export default function CalendarStudioPage() {
                 }`}
               >
                 Timeline
-              </Button>
+              </Button> */}
             </div>
           </div>
 
@@ -1073,7 +1073,7 @@ export default function CalendarStudioPage() {
         <div className={`flex items-center ${mode === 'timeline' ? 'justify-center' : 'justify-between'}`}>
           <div className="flex items-center gap-4 w-full">
             {/* View Options */}
-            <div className="flex items-center gap-1 bg-white  border-gray-200 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-white border  border-gray-200 rounded-lg p-1">
               <Button
                 variant="ghost"
                 size="sm"
