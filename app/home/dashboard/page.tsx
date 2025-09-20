@@ -286,7 +286,7 @@ function TodaysMeetingsCard({ scope, userRole }) {
             </div>
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
+          <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="h-12 w-12 text-neutral-400 mb-3"

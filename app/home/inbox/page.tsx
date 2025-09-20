@@ -44,6 +44,7 @@ import EmailIframe from '@/components/inbox/EmailIframe';
 import Drawer from 'react-modern-drawer';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useTypingEffect } from './useTypingEffect';
+import { useRouter } from 'next/navigation';
 
 // extend once in your app (e.g., in _app.tsx or a utils/date.ts file)
 dayjs.extend(relativeTime);
@@ -249,6 +250,7 @@ export default function InboxPage() {
   const [projectOpen, setProjectOpen] = useState(false);
   const [aiReply, setAiReply] = useState('');
   const displayedReply = useTypingEffect(aiReply, 30);
+  const router = useRouter();
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -329,6 +331,8 @@ export default function InboxPage() {
     enabled: !!accessToken,
   });
 
+  console.log('setEmails', inboxEmails);
+
   // Fetch Sent Emails
   const { data: sentEmails, isLoading: sentEmailLoading } = useQuery({
     queryKey: ['sentEmails', accessToken],
@@ -355,6 +359,12 @@ export default function InboxPage() {
     // if (filter) {
     //   result = result.filter(item => item.labelIds?.includes('UNREAD'));
     // }
+
+    if (Array.isArray(contactEmails) && contactEmails.length > 0) {
+      result = result.filter(
+        item => contactEmails.includes(item.from?.email) // <-- adjust key if needed
+      );
+    }
 
     if (searchText.trim()) {
       const lower = searchText.toLowerCase();
@@ -415,8 +425,9 @@ export default function InboxPage() {
   useEffect(() => {
     const savedToken = localStorage.getItem('gmail_access_token');
     if (!savedToken) {
+      toast.error('Please connect your Gmail account first.');
       signOut();
-      window.location.href = '/settings/studio/integrations';
+      router.push('/settings/studio/integrations');
     }
     if (savedToken) {
       setAccessToken(savedToken);
@@ -911,6 +922,18 @@ The most recent email came from ${from}. Guess the sender’s first name from th
                       </div>
                     </div>
                   ))}
+
+                {!emails?.length && (
+                  <div className="flex flex-col items-center justify-center py-16 px-6">
+                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <Mail className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">No emails found</h3>
+                    <p className="text-sm text-gray-500 text-center max-w-sm">
+                      When you receive new emails from your contacts, they'll appear here in your inbox.
+                    </p>
+                  </div>
+                )}
 
                 {filteredMessages.length === 0 && <div className="p-8 text-center text-sm text-gray-500">No items for this filter.</div>}
               </div>
