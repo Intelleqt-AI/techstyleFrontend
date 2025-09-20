@@ -331,8 +331,6 @@ export default function InboxPage() {
     enabled: !!accessToken,
   });
 
-  console.log('setEmails', inboxEmails);
-
   // Fetch Sent Emails
   const { data: sentEmails, isLoading: sentEmailLoading } = useQuery({
     queryKey: ['sentEmails', accessToken],
@@ -342,18 +340,20 @@ export default function InboxPage() {
 
   // Filter read , unread, send , inbox
   useEffect(() => {
-    let result = inboxEmails;
-    if (filter === 'all' || (filter == 'emails' && !isLoading)) {
-      result = inboxEmails;
+    let result = Array.isArray(inboxEmails) ? inboxEmails : [];
+
+    if (filter === 'all' || (filter === 'emails' && !isLoading)) {
+      // result stays as inboxEmails
     } else {
       result = [];
     }
 
+    // Uncomment and use when needed
     // else if (currentTab === 'Sent' && !sentEmailLoading) {
-    //   result = sentEmails;
+    //   result = Array.isArray(sentEmails) ? sentEmails : [];
     // }
-    //  else if (currentTab == 'Drafts' && !draftEmailLoading) {
-    //   result = draftEmails;
+    // else if (currentTab === 'Drafts' && !draftEmailLoading) {
+    //   result = Array.isArray(draftEmails) ? draftEmails : [];
     // }
 
     // if (filter) {
@@ -361,23 +361,22 @@ export default function InboxPage() {
     // }
 
     if (Array.isArray(contactEmails) && contactEmails.length > 0) {
-      result = result.filter(
-        item => contactEmails.includes(item.from?.email) // <-- adjust key if needed
-      );
+      result = result.filter(item => item && contactEmails.includes(item.from?.email));
     }
 
     if (searchText.trim()) {
       const lower = searchText.toLowerCase();
       result = result.filter(
         item =>
-          item.snippet?.toLowerCase().includes(lower) ||
-          item.subject?.toLowerCase().includes(lower) ||
-          item.sender?.name?.toLowerCase().includes(lower)
+          item &&
+          (item.snippet?.toLowerCase().includes(lower) ||
+            item.subject?.toLowerCase().includes(lower) ||
+            item.sender?.name?.toLowerCase().includes(lower))
       );
     }
 
     setEmails(result);
-  }, [searchText, inboxEmails, isLoading, filter]);
+  }, [searchText, inboxEmails, isLoading, filter, contactEmails]);
 
   // Initialize Google Identity Services
   useEffect(() => {
