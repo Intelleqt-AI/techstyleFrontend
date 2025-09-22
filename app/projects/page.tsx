@@ -98,8 +98,6 @@ export default function ProjectsPage() {
     }
   }, [data, isLoading, activeTab]);
 
-  console.log(activeTab);
-
   return (
     <div className="flex-1 space-y-6 p-6">
       {/* Header */}

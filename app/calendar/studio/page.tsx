@@ -6,59 +6,35 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calendar, Users, Video, CheckCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin, Search, Filter, Calendar, Users, Video, CheckCircle, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import useTask from '@/supabase/hook/useTask';
 import { useQuery } from '@tanstack/react-query';
-import { fetchOnlyProject } from '@/supabase/API';
+import { fetchOnlyProject, getTask } from '@/supabase/API';
 import useUser from '@/hooks/useUser';
 import { TaskModal } from '@/components/tasks/task-modal';
-
-const todayEvents = [
-  {
-    id: 1,
-    title: 'Client Meeting - Penthouse Review',
-    time: '10:00 AM',
-    duration: '1h',
-    location: 'Office Conference Room',
-    type: 'meeting',
-    project: 'Luxury Penthouse',
-    projectTextHex: '#6E7A58',
-    projectBorderHex: '#8FA58F',
-    attendees: 3,
-    hasConflict: false,
-    canJoin: true,
-    color: 'bg-[#E07A57] border-[#CE6B4E]',
-  },
-  {
-    id: 2,
-    title: 'Site Visit - Office Space Progress',
-    time: '2:30 PM',
-    duration: '2h',
-    location: 'Downtown Construction Site',
-    type: 'site-visit',
-    project: 'Modern Office',
-    projectTextHex: '#6E7A58',
-    projectBorderHex: '#8FA58F',
-    attendees: 5,
-    hasConflict: true,
-    canJoin: false,
-    color: 'bg-[#8FA58F] border-[#6E7A58]',
-  },
-];
+import useUsers from '@/hooks/useUsers';
+import { useRouter } from 'next/navigation';
 
 export default function CalendarStudioPage() {
   const [mode, setMode] = useState<'calendar' | 'timeline'>('calendar');
   const [activeView, setActiveView] = useState('month');
   const { user, isLoading: userLoading } = useUser();
   const [currentPeriod, setCurrentPeriod] = useState(() => {
-    const today = new Date();
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth()); // current month start
+    // compute current week start (Monday)
+    const weekStart = new Date(now);
+    const dayOfWeek = weekStart.getDay();
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday as first day
+    weekStart.setDate(weekStart.getDate() - daysToSubtract);
+
     return {
-      month: new Date(today.getFullYear(), today.getMonth()), // current month
-      week: new Date(today.setDate(today.getDate() - today.getDay() + 1)), // current week (Mon as start)
-      today: new Date(), // today
-      year: new Date(today.getFullYear(), 0), // current year
+      month: monthStart,
+      week: weekStart,
+      today: new Date(),
+      year: new Date(now.getFullYear(), 0),
     };
   });
   const { data, isLoading, error, refetch } = useTask();
@@ -67,13 +43,26 @@ export default function CalendarStudioPage() {
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
+  const {
+    data: taskData,
+    isLoading: taskLoading,
+    error: taskError,
+    refetch: taskRefetch,
+  } = useQuery({
+    queryKey: ['task'],
+    queryFn: getTask,
+  });
+
+  const router = useRouter();
+
+  const { users, isLoading: usersLoading } = useUsers();
   const [temp, setTemp] = useState<string>('--°F');
   const [selectedTask, setSelectedTask] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  function openModal(id) {
+  function openModal(id: any) {
     setModalOpen(true);
-    setSelectedTask(data?.data?.find(item => item.id == id));
+    setSelectedTask((data as any)?.data?.find((item: any) => item.id == id));
   }
 
   function afterOpenModal() {}
@@ -82,6 +71,18 @@ export default function CalendarStudioPage() {
     setSelectedTask(null);
     setModalOpen(false);
   }
+
+  const calculateProjectProgress = (projectId: string, tasks: any[] | undefined, isLoading: boolean): number => {
+    if (isLoading || !tasks) return 0;
+
+    const projectTasks = tasks.filter(item => item.projectID === projectId);
+    if (projectTasks.length === 0) return 0;
+
+    const completedTasks = projectTasks.filter(task => task.status === 'done');
+    const progress = Math.floor((completedTasks.length / projectTasks.length) * 100);
+
+    return progress;
+  };
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(async pos => {
@@ -120,9 +121,10 @@ export default function CalendarStudioPage() {
   };
 
   const userTask = useMemo(() => {
-    if (!data?.data || !user) return [];
-    return myTaskList(data.data);
-  }, [data?.data, user]);
+    const rawData = (data as any)?.data;
+    if (!rawData || !user) return [];
+    return myTaskList(rawData);
+  }, [(data as any)?.data, user]);
 
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
 
@@ -217,7 +219,7 @@ export default function CalendarStudioPage() {
         case 'today':
           return currentPeriod.month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         default:
-          return '2025';
+          return currentPeriod.year ? currentPeriod.year.getFullYear().toString() : new Date().getFullYear().toString();
       }
     }
 
@@ -270,112 +272,63 @@ export default function CalendarStudioPage() {
 
   const renderCalendarContent = () => {
     if (mode === 'timeline') {
-      // Sample staff data with projects and time allocations - Updated for August 2025
-      const staffData = [
-        {
-          id: 1,
-          name: 'Alex Morgan',
-          role: 'Lead Designer',
-          avatar: 'AM',
-          projects: [
-            {
-              name: 'Luxury Penthouse',
-              start: '2025-01-01',
-              end: '2025-03-31',
-              color: 'bg-[#E07A57]',
-              allocation: 100,
-            },
-            {
-              name: 'Hotel Lobby Design',
-              start: '2025-04-01',
-              end: '2025-07-31',
-              color: 'bg-[#8FA58F]',
-              allocation: 80,
-            },
-          ],
-        },
-        {
-          id: 2,
-          name: 'Sarah Chen',
-          role: 'Interior Designer',
-          avatar: 'SC',
-          projects: [
-            {
-              name: 'Modern Office',
-              start: '2025-02-01',
-              end: '2025-06-30',
-              color: 'bg-[#6E7A58]',
-              allocation: 100,
-            },
-          ],
-        },
-        {
-          id: 3,
-          name: 'Mike Rodriguez',
-          role: 'Project Manager',
-          avatar: 'MR',
-          projects: [
-            {
-              name: 'Luxury Penthouse',
-              start: '2025-01-01',
-              end: '2025-02-28',
-              color: 'bg-[#E07A57]',
-              allocation: 60,
-            },
-            {
-              name: 'Modern Office',
-              start: '2025-03-01',
-              end: '2025-05-31',
-              color: 'bg-[#6E7A58]',
-              allocation: 80,
-            },
-            {
-              name: 'Hotel Lobby Design',
-              start: '2025-06-01',
-              end: '2025-08-31',
-              color: 'bg-[#8FA58F]',
-              allocation: 70,
-            },
-          ],
-        },
-        {
-          id: 4,
-          name: 'Emma Wilson',
-          role: '3D Visualizer',
-          avatar: 'EW',
-          projects: [
-            {
-              name: 'Hotel Lobby Design',
-              start: '2025-03-01',
-              end: '2025-07-31',
-              color: 'bg-[#8FA58F]',
-              allocation: 100,
-            },
-          ],
-        },
-        {
-          id: 5,
-          name: 'David Park',
-          role: 'Technical Designer',
-          avatar: 'DP',
-          projects: [
-            {
-              name: 'Modern Office',
-              start: '2025-02-15',
-              end: '2025-06-15',
-              color: 'bg-[#6E7A58]',
-              allocation: 90,
-            },
-            {
-              name: 'Luxury Penthouse',
-              start: '2025-07-01',
-              end: '2025-08-31',
-              color: 'bg-[#E07A57]',
-              allocation: 85,
-            },
-          ],
-        },
-      ];
+      // Build staff list from real project data and assigned team members
+      const projects = (project as any) || [];
+      const usersList = (users as any)?.data || [];
+
+      const staffMap = new Map<string, any>();
+
+      // helper to make initials
+      const makeInitials = (name: string) => {
+        if (!name) return 'TM';
+        return name
+          .split(' ')
+          .map(s => s[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase();
+      };
+
+      projects.forEach((p: any, pIdx: number) => {
+        const assigned = Array.isArray(p.assigned) ? p.assigned : [];
+        // if assigned is empty, try to find project owner or skip
+        assigned.forEach((assignee: any) => {
+          const key = assignee.id ?? assignee.email ?? assignee.name ?? JSON.stringify(assignee);
+
+          if (!staffMap.has(key)) {
+            // try to find full user object
+            const usr = usersList.find((u: any) => u.id === assignee.id || u.email === assignee.email) || assignee;
+            const name = usr?.name || usr?.fullName || usr?.email || 'Team Member';
+            staffMap.set(key, {
+              id: usr?.id ?? key,
+              name,
+              role: usr?.title || ' ',
+              avatar: makeInitials(name),
+              projects: [],
+            });
+          }
+
+          const staff = staffMap.get(key);
+
+          // compute allocation and determine color: green when allocation===100 or end date passed, otherwise orange
+          const allocationVal = calculateProjectProgress(p?.id, taskData?.data, isLoading);
+          const rawEnd = p?.end || p?.endDate || p?.end_date || null;
+          const endDt = rawEnd ? new Date(rawEnd) : null;
+          const endPassed = endDt ? endDt.getTime() < new Date().getTime() : false;
+          const colorClass = allocationVal === 100 || endPassed ? 'bg-[#8FA58F]' : 'bg-[#E07A57]';
+
+          staff.projects.push({
+            id: p?.id,
+            name: p?.name || p?.title || `Project ${pIdx + 1}`,
+            start: p?.start || p?.startDate || p?.start_date || null,
+            end: rawEnd,
+            color: p?.color || p?.colorHex || colorClass,
+            allocation: allocationVal,
+          });
+        });
+      });
+
+      const staffData = Array.from(staffMap.values());
 
       // Generate date range based on current view
       const generateTimelineData = () => {
@@ -457,34 +410,67 @@ export default function CalendarStudioPage() {
       const timelineData = generateTimelineData();
       const { periods, type } = timelineData;
 
-      // Calculate project bar positions
+      // Calculate project bar positions; return null when the project does not overlap the current timeline periods
       const getProjectBarStyle = (project: any) => {
-        const startDate = new Date(project.start);
-        const endDate = new Date(project.end);
+        const safeDate = (d: any, fallback: Date) => {
+          if (!d) return fallback;
+          const dt = new Date(d);
+          return isNaN(dt.getTime()) ? fallback : dt;
+        };
+
+        // Define the visible range depending on timeline type
+        const periodStart = periods[0]?.date ? new Date(periods[0].date) : null;
+        const periodEnd = periods[periods.length - 1]?.date ? new Date(periods[periods.length - 1].date) : null;
+        if (!periodStart || !periodEnd) return null;
+
+        // For month type, periodStart is start of Jan of the year, periodEnd is start of Dec; make periodEnd end-of-month
+        const periodRangeStart = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1, 0, 0, 0);
+        const lastPeriod = periods[periods.length - 1];
+        const periodRangeEnd = new Date(lastPeriod.date.getFullYear(), lastPeriod.date.getMonth() + 1, 0, 23, 59, 59);
+
+        const startDate = safeDate(project.start || project.startDate || project.start_date, periodRangeStart);
+        const endDate = safeDate(project.end || project.endDate || project.end_date, periodRangeEnd);
+
+        // If the project does not overlap the visible period at all, skip rendering
+        if (endDate < periodRangeStart || startDate > periodRangeEnd) return null;
+
+        // Compute overlap between project and visible period
+        const overlapStart = startDate < periodRangeStart ? periodRangeStart : startDate;
+        const overlapEnd = endDate > periodRangeEnd ? periodRangeEnd : endDate;
 
         let startIndex = 0;
         let endIndex = periods.length - 1;
 
         if (type === 'month') {
-          startIndex = startDate.getMonth();
-          endIndex = endDate.getMonth();
+          // index by month in the visible year
+          startIndex = overlapStart.getMonth();
+          endIndex = overlapEnd.getMonth();
         } else if (type === 'week') {
-          // Find which week the project starts and ends in
-          startIndex = periods.findIndex(period => {
-            const weekStart = period.date;
+          // Find which week the overlap starts and ends in
+          startIndex = periods.findIndex((period: any) => {
+            const weekStart = new Date(period.date);
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
-            return startDate >= weekStart && startDate <= weekEnd;
+            return overlapStart <= weekEnd && overlapEnd >= weekStart;
           });
-          endIndex = periods.findIndex(period => {
-            const weekStart = period.date;
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            return endDate >= weekStart && endDate <= weekEnd;
-          });
+          endIndex = periods
+            .slice()
+            .reverse()
+            .findIndex((period: any) => {
+              const weekStart = new Date(period.date);
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekEnd.getDate() + 6);
+              return overlapStart <= weekEnd && overlapEnd >= weekStart;
+            });
+
+          if (endIndex >= 0) {
+            endIndex = periods.length - 1 - endIndex;
+          } else {
+            endIndex = periods.length - 1;
+          }
         } else if (type === 'day') {
-          startIndex = Math.max(0, startDate.getDate() - 1);
-          endIndex = Math.min(periods.length - 1, endDate.getDate() - 1);
+          startIndex = Math.max(0, overlapStart.getDate() - 1);
+          endIndex = Math.min(periods.length - 1, overlapEnd.getDate() - 1);
         }
 
         startIndex = Math.max(0, startIndex);
@@ -512,7 +498,7 @@ export default function CalendarStudioPage() {
 
               {/* Date Header - Synchronized scrolling */}
               <div className="overflow-x-auto timeline-header-scroll" id="timeline-header-scroll">
-                <div className="flex" style={{ minWidth: `${periods.length * (periods[0]?.width || 100)}px` }}>
+                <div className="flex h-full" style={{ minWidth: `${periods.length * (periods[0]?.width || 100)}px` }}>
                   {periods.map((period, index) => {
                     const isToday = type === 'day' && period.date.toDateString() === new Date().toDateString();
                     const isCurrentMonth =
@@ -534,7 +520,7 @@ export default function CalendarStudioPage() {
                     return (
                       <div
                         key={index}
-                        className={`flex-shrink-0 p-2 text-center border-r border-gray-200 bg-gray-50 ${
+                        className={`flex-shrink-0 p-2 text-center border-r h-full items-center flex flex-col justify-center border-gray-200 bg-gray-50 ${
                           isCurrent ? 'bg-[#FBEAE1] border-[#F1BBAA]' : ''
                         }`}
                         style={{ width: `${period.width}px` }}
@@ -558,14 +544,20 @@ export default function CalendarStudioPage() {
               {/* Staff List */}
               <div className="border-r border-gray-200">
                 {staffData.map(staff => (
-                  <div key={staff.id} className="p-4 border-b border-gray-100 hover:bg-gray-50">
+                  <div key={staff.id} className="p-4 border-b h-[70px] border-gray-100 hover:bg-gray-50">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-[#E07A57] rounded-full flex items-center justify-center text-white text-xs font-medium">
                         {staff.avatar}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{staff.name}</div>
-                        <div className="text-xs text-gray-500">{staff.role}</div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {staff.name}
+
+                          <Badge variant="outline" className="ml-2 px-2 h-0 py-2 text-[10px] border-gray-300 text-gray-600">
+                            {staff?.projects?.length}
+                          </Badge>
+                        </div>
+                        <div className="text-xs capitalize text-gray-500">{staff.role}</div>
                       </div>
                     </div>
                   </div>
@@ -576,7 +568,7 @@ export default function CalendarStudioPage() {
               <div className="overflow-x-auto timeline-body-scroll" id="timeline-body-scroll">
                 <div style={{ minWidth: `${periods.length * (periods[0]?.width || 100)}px` }}>
                   {staffData.map((staff, staffIndex) => (
-                    <div key={staff.id} className="relative border-b border-gray-100" style={{ height: '73px' }}>
+                    <div key={staff.id} className="relative border-b border-gray-100" style={{ height: '70px' }}>
                       {/* Background grid */}
                       <div className="absolute inset-0 flex">
                         {periods.map((period, periodIndex) => {
@@ -627,18 +619,21 @@ export default function CalendarStudioPage() {
                         })()}
 
                       {/* Project bars */}
-                      {staff.projects.map((project, projectIndex) => {
+                      {staff.projects.map((project: any, projectIndex: any) => {
                         const barStyle = getProjectBarStyle(project);
+
+                        if (!barStyle) return null;
 
                         return (
                           <TooltipProvider key={projectIndex}>
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div
+                                  onClick={() => router.push(`/projects/${project.id}`)}
                                   className={`absolute top-4 h-6 ${project.color} rounded-md border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity z-20`}
-                                  style={barStyle}
+                                  style={barStyle as React.CSSProperties}
                                 >
-                                  <div className="px-2 py-1 text-xs text-white font-medium truncate">{project.name}</div>
+                                  <div className="px-2 py-1 capitalize text-xs text-white font-medium truncate">{project.name}</div>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-xs">
@@ -664,8 +659,8 @@ export default function CalendarStudioPage() {
 
           {/* Timeline Footer */}
           <div className="border-t border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 justify-end text-xs text-gray-500">
+              {/* <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-[#E07A57] rounded"></div>
                   <span>Luxury Penthouse</span>
@@ -678,8 +673,15 @@ export default function CalendarStudioPage() {
                   <div className="w-3 h-3 bg-[#6E7A58] rounded"></div>
                   <span>Modern Office</span>
                 </div>
+              </div> */}
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                <span>Click to open project details</span>
               </div>
-              <div>Hover over bars for project details</div>
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4" />
+                <span>Hover over bars for project details</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1017,7 +1019,7 @@ export default function CalendarStudioPage() {
               >
                 Calendar
               </Button>
-              {/* <Button
+              <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setMode('timeline')}
@@ -1026,7 +1028,7 @@ export default function CalendarStudioPage() {
                 }`}
               >
                 Timeline
-              </Button> */}
+              </Button>
             </div>
           </div>
 
@@ -1111,20 +1113,22 @@ export default function CalendarStudioPage() {
               </Button>
             </div>
 
-            <div className=" border-gray-200 bg-gray-50 p-4 flex justify-end flex-1">
+            <div className="  bg-gray-50 p-4 flex justify-end flex-1">
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 bg-[#d9d5cc] rounded"></div>
-                    <span>Low</span>
-                  </div>
+                  {mode === 'calendar' && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-[#d9d5cc] rounded"></div>
+                      <span>Low</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-[#8fa58f] rounded"></div>
-                    <span>Medium</span>
+                    <span>{mode === 'calendar' ? 'Medium' : 'Completed'}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-[#e07a57] rounded"></div>
-                    <span>High</span>
+                    <span>{mode === 'calendar' ? 'High' : 'In Progress'}</span>
                   </div>
                 </div>
               </div>
@@ -1295,11 +1299,13 @@ export default function CalendarStudioPage() {
       <TaskModal
         open={modalOpen}
         onOpenChange={closeModal}
-        projectId={null}
-        team={null}
-        defaultListId={null}
+        projectId={undefined as any}
+        team={undefined as any}
+        defaultListId={undefined as any}
         taskToEdit={selectedTask}
-        // onSave={handleSave}
+        lists={[] as any}
+        phases={[] as any}
+        onSave={() => {}}
         // setEditing={setEditing}
         // openDeleteModal={openDeleteModal}
       />
