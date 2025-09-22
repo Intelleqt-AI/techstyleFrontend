@@ -175,8 +175,8 @@ export const NotificationButton = () => {
             <span className="relative">
               <Bell className="w-5 h-5 stroke-[1.75]" />
               {!notificationLoading && unreadCount?.length > 0 && (
-                <span className=" absolute -top-[3px]  right-0 font-semibold  w-[14px] h-[14px] text-[11px] rounded-full bg-[#E62323] text-white flex items-center justify-center">
-                  {unreadCount.length}
+                <span className="absolute -top-[5px] -right-1 font-medium w-[15px] h-[15px] text-[10px] rounded-full bg-red-500 text-white flex items-center justify-center">
+                  {unreadCount.length > 9 ? '9+' : unreadCount.length}
                 </span>
               )}
             </span>
