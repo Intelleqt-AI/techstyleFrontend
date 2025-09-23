@@ -1,21 +1,40 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
-import { Filter, GripHorizontal, Target, ChevronDown, ChevronRight, Plus } from 'lucide-react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import {
+  Filter,
+  GripHorizontal,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Local types to keep this component self-contained and compatible with varying task shapes
-type Priority = 'low' | 'medium' | 'high' | 'urgent';
-type Status = 'todo' | 'in_progress' | 'in_review' | 'done';
+type Priority = "low" | "medium" | "high" | "urgent";
+type Status = "todo" | "in_progress" | "in_review" | "done";
 type TeamMember = { id: string; name: string };
-type ListColumn = { id: string; title: string; tasks: any[]; colorClass?: string };
+type ListColumn = {
+  id: string;
+  title: string;
+  tasks: any[];
+  colorClass?: string;
+};
 type Phase = { id: string; name: string };
 type UITask = {
   id: string;
@@ -42,15 +61,47 @@ const HEADER_H = 60;
 const MONTH_WIDTH = 120;
 const WEEK_WIDTH = 120;
 
-type Timescale = 'month' | 'week' | 'day';
+type Timescale = "month" | "week" | "day";
 
-function toggle<T>(id: T, values: T[], setter: React.Dispatch<React.SetStateAction<T[]>>) {
-  if (values.includes(id)) setter(values.filter(v => v !== id));
+function toggle<T>(
+  id: T,
+  values: T[],
+  setter: React.Dispatch<React.SetStateAction<T[]>>
+) {
+  if (values.includes(id)) setter(values.filter((v) => v !== id));
   else setter([...values, id]);
 }
 function cap(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+const colorMap: Record<string, string> = {
+  "text-gray-600": "bg-gray-600",
+  "text-emerald-600": "bg-emerald-600",
+  "text-red-500": "bg-red-500",
+  // add all colors you use
+};
+
+function parseISO(d: ISODate) {
+  const [y, m, day] = d.split("-").map((n) => Number.parseInt(n, 10));
+  return new Date(y, m - 1, day);
+}
+
+function formatShort(d: ISODate) {
+  const dt = parseISO(d);
+  return dt.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+}
+
+// function phaseTheme(idx: number, custom?: string) {
+//   const base = custom || BRAND_PHASE_COLORS[idx % BRAND_PHASE_COLORS.length];
+//   const { r, g, b } = hexToRgb(base);
+//   return {
+//     base,
+//     bg: `rgba(${r}, ${g}, ${b}, 0.12)`,
+//     border: `rgba(${r}, ${g}, ${b}, 0.32)`,
+//     text: "#0f172a",
+//   };
+// }
 
 export default function TimelineView({
   tasks,
@@ -82,18 +133,18 @@ export default function TimelineView({
     assigned?: BoardAssignee[];
     created_at?: string;
   };
-  type BoardColumn = { 
+  type BoardColumn = {
     id: string;
-    name: string; 
-    status?: string; 
-    colorClass?: string; 
+    name: string;
+    status?: string;
+    colorClass?: string;
     items: BoardItem[];
     icon?: string | null;
   };
 
   function toYMDString(d?: string | null): string | undefined {
     if (!d) return undefined;
-    if (d.includes('T')) return d.slice(0, 10);
+    if (d.includes("T")) return d.slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
     try {
       const dd = new Date(d);
@@ -103,14 +154,18 @@ export default function TimelineView({
   }
 
   function normalizeStatus(s?: string): any {
-    if (!s) return 'todo';
-    return s.replace(/\s+/g, '_').replace(/-/g, '_').toLowerCase();
+    if (!s) return "todo";
+    return s.replace(/\s+/g, "_").replace(/-/g, "_").toLowerCase();
   }
 
-  const isBoardShape = Array.isArray(tasks as any) && (tasks as any)[0] && 'items' in (tasks as any)[0];
+  const isBoardShape =
+    Array.isArray(tasks as any) &&
+    (tasks as any)[0] &&
+    "items" in (tasks as any)[0];
 
   const { tasksView, phasesView, listsView } = React.useMemo(() => {
-    if (!isBoardShape) return { tasksView: tasks, phasesView: phases, listsView: lists };
+    if (!isBoardShape)
+      return { tasksView: tasks, phasesView: phases, listsView: lists };
     const cols = (tasks as unknown as BoardColumn[]) || [];
     const outTasks: UITask[] = [];
     const phaseSet = new Map<string, { name: string; colorClass?: string }>();
@@ -118,29 +173,34 @@ export default function TimelineView({
 
     for (const col of cols) {
       const listId = col.id || col.status || col.name;
-      outLists.push({ id: listId, title: col.name, tasks: [] as any, colorClass: col.colorClass });
-      
+      outLists.push({
+        id: listId,
+        title: col.name,
+        tasks: [] as any,
+        colorClass: col.colorClass,
+      });
+
       // Store phase information
       if (col.id && !phaseSet.has(col.id)) {
         phaseSet.set(col.id, { name: col.name, colorClass: col.colorClass });
       }
-      
+
       for (const it of col.items || []) {
         const start = toYMDString(it.startDate);
         const due = toYMDString(it.dueDate);
         const end = due || start;
-        const title = it.name || '';
+        const title = it.name || "";
         const status = normalizeStatus(it.status);
-        const priority = (it.priority || '').toString().toLowerCase() as any;
-        const assigneeIds = (it.assigned || []).map(a => a.id);
-        const phaseId = it.phase || col.id || '__unscheduled__';
-        
+        const priority = (it.priority || "").toString().toLowerCase() as any;
+        const assigneeIds = (it.assigned || []).map((a) => a.id);
+        const phaseId = it.phase || col.id || "__unscheduled__";
+
         outTasks.push({
           id: it.id,
           title,
           description: undefined as any,
           status: status as any,
-          priority: (priority || 'low') as any,
+          priority: (priority || "low") as any,
           assignee: undefined as any,
           assigneeIds: assigneeIds as any,
           startDate: start,
@@ -155,11 +215,21 @@ export default function TimelineView({
     }
 
     // Merge detected phases with provided phases so empty phases are preserved
-    const providedPhaseMap = new Map<string, { name: string; colorClass?: string }>((phases || []).map(p => [p.id, { name: p.name }]));
+    const providedPhaseMap = new Map<
+      string,
+      { name: string; colorClass?: string }
+    >((phases || []).map((p) => [p.id, { name: p.name }]));
     for (const [id, phaseInfo] of phaseSet.entries()) {
       if (!providedPhaseMap.has(id)) providedPhaseMap.set(id, phaseInfo);
     }
-    const outPhases: Phase[] = Array.from(providedPhaseMap.entries()).map(([id, phaseInfo]) => ({ id, name: phaseInfo.name })) as any;
+    const outPhases: Phase[] = Array.from(providedPhaseMap.entries()).map(
+      ([id, phaseInfo]) => ({
+        id,
+        name: phaseInfo.name,
+        startDate: phaseInfo?.startDate,
+        endDate: phaseInfo?.endDate,
+      })
+    ) as any;
     return { tasksView: outTasks, phasesView: outPhases, listsView: outLists };
   }, [tasks, phases, lists, isBoardShape]);
 
@@ -168,14 +238,14 @@ export default function TimelineView({
     setWorkingTasks(tasksView);
   }, [tasksView]);
   function updateWorkingTasks(updater: (prev: UITask[]) => UITask[]) {
-    setWorkingTasks(prev => {
+    setWorkingTasks((prev) => {
       const next = updater(prev);
       if (!isBoardShape && setTasks) setTasks(() => next);
       return next;
     });
   }
   // Controls
-  const [timescale, setTimescale] = React.useState<Timescale>('month');
+  const [timescale, setTimescale] = React.useState<Timescale>("month");
   const dayWidth = 48; // used only in Week mode
   const monthWidth = 120; // Declare monthWidth variable
 
@@ -190,13 +260,16 @@ export default function TimelineView({
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
 
   // Phases with Unscheduled
-  const ALL_PHASES = [{ id: '__unscheduled__', name: 'Unscheduled' }, ...(phasesView || [])];
-  
+  const ALL_PHASES = [
+    { id: "__unscheduled__", name: "Unscheduled" },
+    ...(phasesView || []),
+  ];
+
   // Helper to get colorClass for a phase
   const getPhaseColorClass = (phaseId: string) => {
     if (isBoardShape) {
       const cols = (tasks as unknown as BoardColumn[]) || [];
-      const col = cols.find(c => c.id === phaseId);
+      const col = cols.find((c) => c.id === phaseId);
       return col?.colorClass;
     }
     return undefined;
@@ -204,13 +277,17 @@ export default function TimelineView({
 
   // Filtered tasks for rows
   const filteredTasks = React.useMemo(() => {
-    return workingTasks.filter(t => {
-      if (assignees.length && !(t.assigneeIds || []).some(id => assignees.includes(id))) return false;
+    return workingTasks?.filter((t) => {
+      if (
+        assignees.length &&
+        !(t.assigneeIds || []).some((id) => assignees.includes(id))
+      )
+        return false;
       if (priorities.length && !priorities.includes(t.priority)) return false;
       if (phasesSel.length) {
-        const pid = t.phaseId ?? '__unscheduled__';
+        const pid = t.phaseId ?? "__unscheduled__";
         const uns = !t.startDate && !t.endDate && !t.dueDate;
-        if (phasesSel.includes('__unscheduled__')) {
+        if (phasesSel.includes("__unscheduled__")) {
           if (!uns) return false;
         } else if (!phasesSel.includes(pid)) {
           return false;
@@ -222,30 +299,90 @@ export default function TimelineView({
   }, [workingTasks, assignees, priorities, phasesSel, statuses]);
 
   // Build rows: phase header row + task rows
-  type Row = { key: string; type: 'phase' | 'task'; phaseId: string; task?: UITask };
+  type Row = {
+    key: string;
+    type: "phase" | "task";
+    phaseId: string;
+    task?: UITask;
+    startDate?: string;
+    endDate?: string;
+  };
+
   const rows: Row[] = React.useMemo(() => {
-    const out: Row[] = [];
-    for (const p of ALL_PHASES) {
-      out.push({ key: `phase-${p.id}`, type: 'phase', phaseId: p.id });
-      if (!collapsed[p.id]) {
-        const pts = filteredTasks
-          .filter(t => {
-            const pid = t.phaseId ?? '__unscheduled__';
-            const uns = !t.startDate && !t.endDate && !t.dueDate;
-            return p.id === '__unscheduled__' ? uns : pid === p.id;
-          })
-          .sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-        for (const t of pts) out.push({ key: `task-${t.id}`, type: 'task', phaseId: p.id, task: t });
+    const out: (Row & { colorClass?: string })[] = [];
+    const phaseColorMap = new Map<string, string>();
+
+    // Build a map of phase -> [minStart, maxEnd] from ALL workingTasks
+    const phaseRangesLocal = new Map<string, { start: string; end: string }>();
+    for (const t of workingTasks || []) {
+      const pid = t.phaseId ?? "__unscheduled__";
+      const s = t.startDate ?? t.dueDate;
+      const e = t.endDate ?? t.dueDate;
+      if (!s || !e) continue;
+      const cur = phaseRangesLocal.get(pid);
+      if (!cur) phaseRangesLocal.set(pid, { start: s, end: e });
+      else {
+        if (s < cur.start) cur.start = s;
+        if (e > cur.end) cur.end = e;
       }
     }
+
+    if (isBoardShape) {
+      const cols = tasks as unknown as BoardColumn[];
+      for (const col of cols) {
+        if (col.id && col.colorClass) {
+          const color = col.colorClass.startsWith("text-[")
+            ? col.colorClass.slice(6, -1)
+            : undefined;
+          phaseColorMap.set(col.id, color);
+        }
+      }
+    }
+    for (const p of ALL_PHASES) {
+      const pr = phaseRangesLocal.get(p.id);
+      out.push({
+        key: `phase-${p.id}`,
+        type: "phase",
+        phaseId: p.id,
+        colorClass: phaseColorMap.get(p.id),
+        startDate: pr?.start,
+        endDate: pr?.end,
+      });
+
+      if (!collapsed[p.id]) {
+        const pts =
+          filteredTasks &&
+          filteredTasks
+            .filter((t) => {
+              const pid = t.phaseId ?? "__unscheduled__";
+              const uns = !t.startDate && !t.endDate && !t.dueDate;
+              return p.id === "__unscheduled__" ? uns : pid === p.id;
+            })
+            .sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        if (pts) {
+          for (const t of pts)
+            out.push({
+              key: `task-${t.id}`,
+              type: "task",
+              phaseId: p.id,
+              task: t,
+              startDate: t?.startDate,
+              endDate: t?.endDate,
+            });
+        }
+      }
+    }
+
     return out;
-  }, [filteredTasks, collapsed]);
+  }, [filteredTasks, collapsed, tasks, isBoardShape, workingTasks, ALL_PHASES]);
 
   // Determine project range (min→max) from all tasks, but show at least a full year
   const projectRange = React.useMemo(() => {
+    const tasksArray = workingTasks || []; // fallback to empty array
     let min: Date | null = null;
     let max: Date | null = null;
-    for (const t of workingTasks) {
+
+    for (const t of tasksArray) {
       const s = t.startDate ?? t.dueDate;
       const e = t.endDate ?? t.dueDate;
       if (!s || !e) continue;
@@ -254,17 +391,17 @@ export default function TimelineView({
       if (!min || +sd < +min) min = sd;
       if (!max || +ed > +max) max = ed;
     }
-    
-    // If no tasks have dates, show current year
+
     if (!min || !max) {
       const today = new Date();
       const yearStart = new Date(today.getFullYear(), 0, 1);
       const yearEnd = new Date(today.getFullYear(), 11, 31);
       return { from: yearStart, to: yearEnd };
     }
-    
-    // Ensure we show at least 12 months
-    const rangeMonths = (max.getFullYear() - min.getFullYear()) * 12 + (max.getMonth() - min.getMonth());
+
+    const rangeMonths =
+      (max.getFullYear() - min.getFullYear()) * 12 +
+      (max.getMonth() - min.getMonth());
     if (rangeMonths < 12) {
       const centerDate = new Date((+min + +max) / 2);
       const sixMonthsBefore = new Date(centerDate);
@@ -273,16 +410,20 @@ export default function TimelineView({
       sixMonthsAfter.setMonth(sixMonthsAfter.getMonth() + 6);
       return { from: sixMonthsBefore, to: sixMonthsAfter };
     }
-    
+
     return { from: min, to: max };
   }, [workingTasks]);
 
   // DAY MODE CALENDAR: daily columns from project start to end (aligned)
   const { dates, monthSpans, todayIndex } = React.useMemo(() => {
-    if (timescale !== 'day')
+    if (timescale !== "day")
       return {
         dates: [] as string[],
-        monthSpans: [] as { startIndex: number; length: number; label: string }[],
+        monthSpans: [] as {
+          startIndex: number;
+          length: number;
+          label: string;
+        }[],
         todayIndex: -1,
       };
 
@@ -307,7 +448,10 @@ export default function TimelineView({
           i++;
         }
         const length = i - monthStart;
-        const label = new Date(y, m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const label = new Date(y, m, 1).toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        });
         spans.push({ startIndex: monthStart, length, label });
       }
     }
@@ -317,10 +461,14 @@ export default function TimelineView({
 
   // WEEK MODE CALENDAR: weekly columns from project start to end
   const { weeks, weekMonthSpans, weekTodayIndex } = React.useMemo(() => {
-    if (timescale !== 'week')
+    if (timescale !== "week")
       return {
         weeks: [] as string[],
-        weekMonthSpans: [] as { startIndex: number; length: number; label: string }[],
+        weekMonthSpans: [] as {
+          startIndex: number;
+          length: number;
+          label: string;
+        }[],
         weekTodayIndex: -1,
       };
 
@@ -336,10 +484,12 @@ export default function TimelineView({
 
     const todayStr = toYMD(new Date());
     const todayWeekStart = startOfWeekMonday(new Date());
-    const tIdx = weekList.findIndex(weekStart => {
+    const tIdx = weekList.findIndex((weekStart) => {
       const weekEnd = new Date(toDate(weekStart));
       weekEnd.setDate(weekEnd.getDate() + 6);
-      return toDate(todayStr) >= toDate(weekStart) && toDate(todayStr) <= weekEnd;
+      return (
+        toDate(todayStr) >= toDate(weekStart) && toDate(todayStr) <= weekEnd
+      );
     });
 
     // Month spans for top header row
@@ -357,7 +507,10 @@ export default function TimelineView({
           i++;
         }
         const length = i - monthStart;
-        const label = new Date(y, m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const label = new Date(y, m, 1).toLocaleDateString(undefined, {
+          month: "long",
+          year: "numeric",
+        });
         spans.push({ startIndex: monthStart, length, label });
       }
     }
@@ -367,7 +520,8 @@ export default function TimelineView({
 
   // MONTH MODE CALENDAR: project months only (may span multiple years)
   const { months, monthTodayIndex } = React.useMemo(() => {
-    if (timescale !== 'month') return { months: [] as string[], monthTodayIndex: -1 };
+    if (timescale !== "month")
+      return { months: [] as string[], monthTodayIndex: -1 };
     const startM = startOfMonth(projectRange.from);
     const endM = startOfMonth(projectRange.to);
     const out: string[] = [];
@@ -392,36 +546,54 @@ export default function TimelineView({
     const ROClass = (window as any).ResizeObserver;
     const ro = ROClass ? new ROClass(() => update()) : null;
     if (ro) ro.observe(el);
-    window.addEventListener('resize', update);
+    window.addEventListener("resize", update);
     return () => {
       if (ro) ro.disconnect();
-      window.removeEventListener('resize', update);
+      window.removeEventListener("resize", update);
     };
   }, []);
 
   const naturalGridWidth =
-    timescale === 'day' ? dates.length * dayWidth : timescale === 'week' ? weeks.length * WEEK_WIDTH : months.length * MONTH_WIDTH;
+    timescale === "day"
+      ? dates.length * dayWidth
+      : timescale === "week"
+      ? weeks.length * WEEK_WIDTH
+      : months.length * MONTH_WIDTH;
   const minGridWidth = Math.max(0, scrollerWidth - LEFT_WIDTH);
   const gridWidth = Math.max(naturalGridWidth, minGridWidth);
   const bodyHeight = rows.length * ROW_HEIGHT;
 
   function scrollToToday() {
     if (!scrollerRef.current) return;
-    const idx = timescale === 'day' ? todayIndex : timescale === 'week' ? weekTodayIndex : monthTodayIndex;
+    const idx =
+      timescale === "day"
+        ? todayIndex
+        : timescale === "week"
+        ? weekTodayIndex
+        : monthTodayIndex;
     if (idx < 0) return;
-    const cellWidth = timescale === 'day' ? dayWidth : timescale === 'week' ? WEEK_WIDTH : MONTH_WIDTH;
-    const left = idx * cellWidth - scrollerRef.current.clientWidth / 2 + LEFT_WIDTH / 2;
-    scrollerRef.current.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+    const cellWidth =
+      timescale === "day"
+        ? dayWidth
+        : timescale === "week"
+        ? WEEK_WIDTH
+        : MONTH_WIDTH;
+    const left =
+      idx * cellWidth - scrollerRef.current.clientWidth / 2 + LEFT_WIDTH / 2;
+    scrollerRef.current.scrollTo({
+      left: Math.max(0, left),
+      behavior: "smooth",
+    });
   }
   function fitProject() {
     if (!scrollerRef.current) return;
-    scrollerRef.current.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+    scrollerRef.current.scrollTo({ left: 0, top: 0, behavior: "smooth" });
   }
 
   // Drag state and behavior
   const [dragging, setDragging] = React.useState<{
     taskId: string;
-    mode: 'move' | 'resize-start' | 'resize-end' | 'schedule';
+    mode: "move" | "resize-start" | "resize-end" | "schedule";
     startX: number;
     originalStart?: string;
     originalEnd?: string;
@@ -430,38 +602,42 @@ export default function TimelineView({
 
   React.useEffect(() => {
     if (!dragging) return;
-    
+
     let animationFrame: number;
-    
+
     function onMove(e: MouseEvent) {
       if (animationFrame) {
         cancelAnimationFrame(animationFrame);
       }
-      
+
       animationFrame = requestAnimationFrame(() => {
         const d = dragging!;
         const deltaPx = e.clientX - d.startX;
-        
-        if (timescale === 'day') {
+
+        if (timescale === "day") {
           const deltaDays = Math.round(deltaPx / dayWidth);
-          updateWorkingTasks(prev => {
-            const idx = prev.findIndex(t => t.id === d.taskId);
+          updateWorkingTasks((prev) => {
+            const idx = prev.findIndex((t) => t.id === d.taskId);
             if (idx === -1) return prev;
             const t = { ...prev[idx] } as UITask;
-            if (d.mode === 'move') {
+            if (d.mode === "move") {
               if (t.startDate && t.endDate) {
                 t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaDays));
                 t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaDays));
               } else if (t.dueDate) {
                 t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaDays));
               }
-            } else if (d.mode === 'resize-start' && d.originalStart) {
-              t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
-            } else if (d.mode === 'resize-end' && d.originalEnd) {
+            } else if (d.mode === "resize-start" && d.originalStart) {
+              t.startDate = toYMD(
+                shiftDate(toDate(d.originalStart), deltaDays)
+              );
+            } else if (d.mode === "resize-end" && d.originalEnd) {
               t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaDays));
-            } else if (d.mode === 'schedule') {
+            } else if (d.mode === "schedule") {
               if (d.originalStart) {
-                const start = toYMD(shiftDate(toDate(d.originalStart), deltaDays));
+                const start = toYMD(
+                  shiftDate(toDate(d.originalStart), deltaDays)
+                );
                 t.startDate = start;
                 t.endDate = start;
               }
@@ -470,26 +646,34 @@ export default function TimelineView({
             next[idx] = t;
             return next;
           });
-        } else if (timescale === 'week') {
+        } else if (timescale === "week") {
           const deltaWeeks = Math.round(deltaPx / WEEK_WIDTH);
-          updateWorkingTasks(prev => {
-            const idx = prev.findIndex(t => t.id === d.taskId);
+          updateWorkingTasks((prev) => {
+            const idx = prev.findIndex((t) => t.id === d.taskId);
             if (idx === -1) return prev;
             const t = { ...prev[idx] } as UITask;
-            if (d.mode === 'move') {
+            if (d.mode === "move") {
               if (t.startDate && t.endDate) {
-                t.startDate = toYMD(shiftDate(toDate(t.startDate), deltaWeeks * 7));
+                t.startDate = toYMD(
+                  shiftDate(toDate(t.startDate), deltaWeeks * 7)
+                );
                 t.endDate = toYMD(shiftDate(toDate(t.endDate), deltaWeeks * 7));
               } else if (t.dueDate) {
                 t.dueDate = toYMD(shiftDate(toDate(t.dueDate), deltaWeeks * 7));
               }
-            } else if (d.mode === 'resize-start' && d.originalStart) {
-              t.startDate = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
-            } else if (d.mode === 'resize-end' && d.originalEnd) {
-              t.endDate = toYMD(shiftDate(toDate(d.originalEnd), deltaWeeks * 7));
-            } else if (d.mode === 'schedule') {
+            } else if (d.mode === "resize-start" && d.originalStart) {
+              t.startDate = toYMD(
+                shiftDate(toDate(d.originalStart), deltaWeeks * 7)
+              );
+            } else if (d.mode === "resize-end" && d.originalEnd) {
+              t.endDate = toYMD(
+                shiftDate(toDate(d.originalEnd), deltaWeeks * 7)
+              );
+            } else if (d.mode === "schedule") {
               if (d.originalStart) {
-                const start = toYMD(shiftDate(toDate(d.originalStart), deltaWeeks * 7));
+                const start = toYMD(
+                  shiftDate(toDate(d.originalStart), deltaWeeks * 7)
+                );
                 t.startDate = start;
                 t.endDate = start;
               }
@@ -500,22 +684,28 @@ export default function TimelineView({
           });
         } else {
           const deltaMonths = Math.round(deltaPx / MONTH_WIDTH);
-          updateWorkingTasks(prev => {
-            const idx = prev.findIndex(t => t.id === d.taskId);
+          updateWorkingTasks((prev) => {
+            const idx = prev.findIndex((t) => t.id === d.taskId);
             if (idx === -1) return prev;
             const t = { ...prev[idx] } as UITask;
-            if (d.mode === 'move') {
+            if (d.mode === "move") {
               if (t.startDate && t.endDate) {
-                t.startDate = toYMD(shiftMonths(toDate(t.startDate), deltaMonths));
+                t.startDate = toYMD(
+                  shiftMonths(toDate(t.startDate), deltaMonths)
+                );
                 t.endDate = toYMD(shiftMonths(toDate(t.endDate), deltaMonths));
               } else if (t.dueDate) {
                 t.dueDate = toYMD(shiftMonths(toDate(t.dueDate), deltaMonths));
               }
-            } else if (d.mode === 'resize-start' && d.originalStart) {
-              t.startDate = toYMD(shiftMonths(toDate(d.originalStart), deltaMonths));
-            } else if (d.mode === 'resize-end' && d.originalEnd) {
-              t.endDate = toYMD(shiftMonths(toDate(d.originalEnd), deltaMonths));
-            } else if (d.mode === 'schedule') {
+            } else if (d.mode === "resize-start" && d.originalStart) {
+              t.startDate = toYMD(
+                shiftMonths(toDate(d.originalStart), deltaMonths)
+              );
+            } else if (d.mode === "resize-end" && d.originalEnd) {
+              t.endDate = toYMD(
+                shiftMonths(toDate(d.originalEnd), deltaMonths)
+              );
+            } else if (d.mode === "schedule") {
               if (d.originalStart) {
                 const base = toDate(d.originalStart);
                 const start = toYMD(shiftMonths(base, deltaMonths));
@@ -530,30 +720,32 @@ export default function TimelineView({
         }
       });
     }
-    
+
     function onUp() {
       if (animationFrame) {
         cancelAnimationFrame(animationFrame);
       }
       setDragging(null);
     }
-    
-    window.addEventListener('mousemove', onMove, { passive: true });
-    window.addEventListener('mouseup', onUp);
+
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mouseup", onUp);
     return () => {
       if (animationFrame) {
         cancelAnimationFrame(animationFrame);
       }
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
     };
   }, [dragging, dayWidth, setTasks, timescale]);
 
   // Phase ranges computed from ALL tasks (not filtered), per your rule
   const phaseRanges = React.useMemo(() => {
     const map = new Map<string, { start: string; end: string }>();
-    for (const t of workingTasks) {
-      const pid = t.phaseId ?? '__unscheduled__';
+    const tasksArray = workingTasks || []; // ensure it's always an array
+
+    for (const t of tasksArray) {
+      const pid = t.phaseId ?? "__unscheduled__";
       const s = t.startDate ?? t.dueDate;
       const e = t.endDate ?? t.dueDate;
       if (!s || !e) continue;
@@ -564,15 +756,23 @@ export default function TimelineView({
         if (e > cur.end) cur.end = e;
       }
     }
+
     return map;
   }, [workingTasks]);
 
   // Active filter pills
   const activePills: string[] = [
-    ...assignees.map(id => `@${team.find(t => t.id === id)?.name?.split(' ')[0] || id}`),
-    ...phasesSel.map(pid => `Phase: ${(phasesView || []).find(p => p.id === pid)?.name || 'Unscheduled'}`),
-    ...priorities.map(p => `Priority: ${p}`),
-    ...statuses.map(s => `Status: ${s.replaceAll('_', ' ')}`),
+    ...assignees.map(
+      (id) => `@${team.find((t) => t.id === id)?.name?.split(" ")[0] || id}`
+    ),
+    ...phasesSel.map(
+      (pid) =>
+        `Phase: ${
+          (phasesView || []).find((p) => p.id === pid)?.name || "Unscheduled"
+        }`
+    ),
+    ...priorities.map((p) => `Priority: ${p}`),
+    ...statuses.map((s) => `Status: ${s.replaceAll("_", " ")}`),
   ];
 
   const scrollbarStyles = `
@@ -607,21 +807,26 @@ export default function TimelineView({
 
   const generateTimelineData = () => {
     switch (timescale) {
-      case 'month': {
+      case "month": {
         // Show 12 months of the year
         const year = currentPeriod.year.getFullYear();
         const months = [];
         for (let i = 0; i < 12; i++) {
           months.push({
-            label: new Date(year, i, 1).toLocaleDateString('en-US', { month: 'short' }),
-            fullLabel: new Date(year, i, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            label: new Date(year, i, 1).toLocaleDateString("en-US", {
+              month: "short",
+            }),
+            fullLabel: new Date(year, i, 1).toLocaleDateString("en-US", {
+              month: "long",
+              year: "numeric",
+            }),
             date: new Date(year, i, 1),
             width: 100,
           });
         }
-        return { periods: months, type: 'month' as const };
+        return { periods: months, type: "month" as const };
       }
-      case 'week': {
+      case "week": {
         // Show weeks in the current month
         const year = currentPeriod.month.getFullYear();
         const month = currentPeriod.month.getMonth();
@@ -643,10 +848,13 @@ export default function TimelineView({
 
           weeks.push({
             label: `Week ${Math.ceil(currentWeek.getDate() / 7)}`,
-            fullLabel: `${currentWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString(
-              'en-US',
-              { month: 'short', day: 'numeric' }
-            )}`,
+            fullLabel: `${currentWeek.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })} - ${weekEnd.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}`,
             date: new Date(currentWeek),
             width: 120,
           });
@@ -656,9 +864,9 @@ export default function TimelineView({
           // Break if we've gone too far past the month
           if (weeks.length > 6) break;
         }
-        return { periods: weeks, type: 'week' as const };
+        return { periods: weeks, type: "week" as const };
       }
-      case 'day': {
+      case "day": {
         // Show days in the current month
         const year = currentPeriod.month.getFullYear();
         const month = currentPeriod.month.getMonth();
@@ -669,29 +877,36 @@ export default function TimelineView({
           const date = new Date(year, month, i);
           days.push({
             label: i.toString(),
-            fullLabel: date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+            fullLabel: date.toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            }),
             date: date,
             width: 40,
           });
         }
-        return { periods: days, type: 'day' as const };
+        return { periods: days, type: "day" as const };
       }
       default:
-        return { periods: [], type: 'month' as const };
+        return { periods: [], type: "month" as const };
     }
   };
+
+  console.log(rows, tasks);
 
   return (
     <div className="bg-white border border-border rounded-xl shadow-sm">
       {/* Header */}
-      <div className="grid grid-cols-3 items-center px-4" style={{ height: 56 }}>
+      <div
+        className="grid grid-cols-3 items-center px-4"
+        style={{ height: 56 }}>
         <div className="flex items-center gap-2 overflow-hidden">
-          {activePills.map(pill => (
+          {activePills.map((pill) => (
             <span
               key={pill}
               className="inline-flex items-center h-8 px-3 rounded-full border border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white text-sm"
-              title={pill}
-            >
+              title={pill}>
               {pill}
             </span>
           ))}
@@ -700,38 +915,35 @@ export default function TimelineView({
         <div className="flex items-center justify-center gap-2">
           <button
             className={cn(
-              'h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0',
-              timescale === 'day'
-                ? 'bg-[var(--clay-filled)] text-[var(--clay-on-filled)]'
-                : 'border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white'
+              "h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0",
+              timescale === "day"
+                ? "bg-[var(--clay-filled)] text-[var(--clay-on-filled)]"
+                : "border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white"
             )}
-            aria-pressed={timescale === 'day'}
-            onClick={() => setTimescale('day')}
-          >
+            aria-pressed={timescale === "day"}
+            onClick={() => setTimescale("day")}>
             Day
           </button>
           <button
             className={cn(
-              'h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0',
-              timescale === 'week'
-                ? 'bg-[var(--clay-filled)] text-[var(--clay-on-filled)]'
-                : 'border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white'
+              "h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0",
+              timescale === "week"
+                ? "bg-[var(--clay-filled)] text-[var(--clay-on-filled)]"
+                : "border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white"
             )}
-            aria-pressed={timescale === 'week'}
-            onClick={() => setTimescale('week')}
-          >
+            aria-pressed={timescale === "week"}
+            onClick={() => setTimescale("week")}>
             Week
           </button>
           <button
             className={cn(
-              'h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0',
-              timescale === 'month'
-                ? 'bg-[var(--clay-filled)] text-[var(--clay-on-filled)]'
-                : 'border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white'
+              "h-9 px-4 rounded-md border text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0",
+              timescale === "month"
+                ? "bg-[var(--clay-filled)] text-[var(--clay-on-filled)]"
+                : "border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white"
             )}
-            aria-pressed={timescale === 'month'}
-            onClick={() => setTimescale('month')}
-          >
+            aria-pressed={timescale === "month"}
+            onClick={() => setTimescale("month")}>
             Month
           </button>
         </div>
@@ -741,8 +953,7 @@ export default function TimelineView({
             variant="outline"
             size="sm"
             className="rounded-md border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0"
-            onClick={scrollToToday}
-          >
+            onClick={scrollToToday}>
             <Target className="h-4 w-4 mr-2" />
             Today
           </Button>
@@ -750,8 +961,7 @@ export default function TimelineView({
             variant="outline"
             size="sm"
             className="rounded-md border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0"
-            onClick={fitProject}
-          >
+            onClick={fitProject}>
             <GripHorizontal className="h-4 w-4 mr-2" />
             Fit
           </Button>
@@ -761,8 +971,7 @@ export default function TimelineView({
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-md border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0"
-              >
+                className="rounded-md border-[var(--clay-border)] text-[var(--clay-foreground)] bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0">
                 <Filter className="h-4 w-4 mr-2" />
                 Filter
               </Button>
@@ -775,30 +984,41 @@ export default function TimelineView({
                 <div className="p-5 space-y-6">
                   <FilterGroup
                     title="Assignees"
-                    items={team.map(m => ({ id: m.id, label: m.name }))}
+                    items={team.map((m) => ({ id: m.id, label: m.name }))}
                     values={assignees}
-                    onToggle={id => toggle(id, assignees, setAssignees)}
+                    onToggle={(id) => toggle(id, assignees, setAssignees)}
                   />
                   <FilterGroup
                     title="Priority"
-                    items={['low', 'medium', 'high'].map(p => ({ id: p as Priority, label: cap(p) }))}
+                    items={["low", "medium", "high"].map((p) => ({
+                      id: p as Priority,
+                      label: cap(p),
+                    }))}
                     values={priorities}
-                    onToggle={id => toggle(id, priorities, setPriorities)}
+                    onToggle={(id) => toggle(id, priorities, setPriorities)}
                   />
                   <FilterGroup
                     title="Phase"
-                    items={[{ id: '__unscheduled__', label: 'Unscheduled' }, ...((phasesView || []).map(p => ({ id: p.id, label: p.name })))]}
+                    items={[
+                      { id: "__unscheduled__", label: "Unscheduled" },
+                      ...(phasesView || []).map((p) => ({
+                        id: p.id,
+                        label: p.name,
+                      })),
+                    ]}
                     values={phasesSel}
-                    onToggle={id => toggle(id, phasesSel, setPhasesSel)}
+                    onToggle={(id) => toggle(id, phasesSel, setPhasesSel)}
                   />
                   <FilterGroup
                     title="Status"
-                    items={(['todo', 'in_progress', 'in_review', 'done'] as Status[]).map(s => ({
+                    items={(
+                      ["todo", "in_progress", "in_review", "done"] as Status[]
+                    ).map((s) => ({
                       id: s,
-                      label: cap(s.replaceAll('_', ' ')),
+                      label: cap(s.replaceAll("_", " ")),
                     }))}
                     values={statuses}
-                    onToggle={id => toggle(id, statuses, setStatuses)}
+                    onToggle={(id) => toggle(id, statuses, setStatuses)}
                   />
                 </div>
               </ScrollArea>
@@ -810,11 +1030,12 @@ export default function TimelineView({
                     setPriorities([]);
                     setPhasesSel([]);
                     setStatuses([]);
-                  }}
-                >
+                  }}>
                   Clear
                 </Button>
-                <Button onClick={() => setFilterOpen(false)} className="rounded-md">
+                <Button
+                  onClick={() => setFilterOpen(false)}
+                  className="rounded-md">
                   Apply
                 </Button>
               </div>
@@ -826,86 +1047,135 @@ export default function TimelineView({
       {/* Scroller */}
       <div>
         <style dangerouslySetInnerHTML={{ __html: scrollbarStyles }} />
-        <div ref={scrollerRef} className="timeline-scroller relative overflow-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
-          <div className="relative" style={{ minWidth: LEFT_WIDTH + gridWidth }}>
-            <div className="grid" style={{ gridTemplateColumns: `${LEFT_WIDTH}px ${gridWidth}px` }}>
+        <div
+          ref={scrollerRef}
+          className="timeline-scroller relative overflow-auto"
+          style={{ maxHeight: "calc(100vh - 320px)" }}>
+          <div
+            className="relative"
+            style={{ minWidth: LEFT_WIDTH + gridWidth }}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `${LEFT_WIDTH}px ${gridWidth}px` }}>
               {/* Left header */}
-              <div className="sticky left-0 top-0 z-30 bg-white border-b border-border flex items-center px-4" style={{ height: HEADER_H }}>
+              <div
+                className="sticky left-0 top-0 z-30 bg-white border-b border-border flex items-center px-4"
+                style={{ height: HEADER_H }}>
                 <div className="text-sm font-medium">Phase / Tasks</div>
               </div>
 
               {/* Right header */}
               <div
                 className="sticky top-0 z-20 bg-white border-b border-border overflow-hidden timeline-header"
-                style={{ height: HEADER_H }}
-              >
-                {timescale === 'day' ? (
+                style={{ height: HEADER_H }}>
+                {timescale === "day" ? (
                   <>
                     {/* Months row */}
-                    <div className="grid h-7" style={{ gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)` }} aria-hidden>
-                      {monthSpans.map(m => (
+                    <div
+                      className="grid h-7"
+                      style={{
+                        gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)`,
+                      }}
+                      aria-hidden>
+                      {monthSpans.map((m) => (
                         <div
                           key={`${m.label}-${m.startIndex}`}
                           className="flex items-center justify-center text-xs font-medium text-foreground/80 col-span-full"
-                          style={{ gridColumn: `${m.startIndex + 1} / span ${m.length}` }}
-                        >
+                          style={{
+                            gridColumn: `${m.startIndex + 1} / span ${
+                              m.length
+                            }`,
+                          }}>
                           {m.label}
                         </div>
                       ))}
                     </div>
                     {/* Days row */}
-                    <div className="grid h-[calc(100%-28px)]" style={{ gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)` }}>
+                    <div
+                      className="grid h-[calc(100%-28px)]"
+                      style={{
+                        gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)`,
+                      }}>
                       {dates.map((d, i) => {
                         const dt = toDate(d);
                         const first = dt.getDate() === 1;
                         const monday = dt.getDay() === 1;
                         const isToday = i === todayIndex;
                         const borderClass = first
-                          ? 'border-[color:var(--neutral-400,#9CA3AF)]'
+                          ? "border-[color:var(--neutral-400,#9CA3AF)]"
                           : monday
-                          ? 'border-[color:var(--neutral-300,#D1D5DB)]'
-                          : 'border-[color:var(--neutral-200,#E5E7EB)]';
+                          ? "border-[color:var(--neutral-300,#D1D5DB)]"
+                          : "border-[color:var(--neutral-200,#E5E7EB)]";
                         return (
                           <div
                             key={d}
-                            className={cn('flex flex-col items-center justify-center border-r', 'text-[11px] leading-4', borderClass)}
-                            aria-label={`${dt.toLocaleDateString(undefined, { weekday: 'long' })} ${dt.toLocaleDateString(undefined, {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
+                            className={cn(
+                              "flex flex-col items-center justify-center border-r",
+                              "text-[11px] leading-4",
+                              borderClass
+                            )}
+                            aria-label={`${dt.toLocaleDateString(undefined, {
+                              weekday: "long",
+                            })} ${dt.toLocaleDateString(undefined, {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
                             })}`}
                             title={dt.toLocaleDateString(undefined, {
-                              weekday: 'long',
-                              day: '2-digit',
-                              month: 'long',
-                              year: 'numeric',
-                            })}
-                          >
-                            <span className={cn('uppercase tracking-wide', isToday && 'font-semibold')}>
-                              {dt.toLocaleDateString(undefined, { weekday: 'short' })}
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "long",
+                              year: "numeric",
+                            })}>
+                            <span
+                              className={cn(
+                                "uppercase tracking-wide",
+                                isToday && "font-semibold"
+                              )}>
+                              {dt.toLocaleDateString(undefined, {
+                                weekday: "short",
+                              })}
                             </span>
-                            <span className={cn('tabular-nums', isToday && 'font-semibold')}>{String(dt.getDate()).padStart(2, '0')}</span>
+                            <span
+                              className={cn(
+                                "tabular-nums",
+                                isToday && "font-semibold"
+                              )}>
+                              {String(dt.getDate()).padStart(2, "0")}
+                            </span>
                           </div>
                         );
                       })}
                     </div>
                   </>
-                ) : timescale === 'week' ? (
+                ) : timescale === "week" ? (
                   <>
                     {/* Months row */}
-                    <div className="grid h-7" style={{ gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)` }} aria-hidden>
-                      {weekMonthSpans.map(m => (
+                    <div
+                      className="grid h-7"
+                      style={{
+                        gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)`,
+                      }}
+                      aria-hidden>
+                      {weekMonthSpans.map((m) => (
                         <div
                           key={`${m.label}-${m.startIndex}`}
                           className="flex items-center justify-center text-xs font-medium text-foreground/80 col-span-full"
-                          style={{ gridColumn: `${m.startIndex + 1} / span ${m.length}` }}
-                        >
+                          style={{
+                            gridColumn: `${m.startIndex + 1} / span ${
+                              m.length
+                            }`,
+                          }}>
                           {m.label}
                         </div>
                       ))}
                     </div>
                     {/* Weeks row */}
-                    <div className="grid h-[calc(100%-28px)]" style={{ gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)` }}>
+                    <div
+                      className="grid h-[calc(100%-28px)]"
+                      style={{
+                        gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)`,
+                      }}>
                       {weeks.map((w, i) => {
                         const weekStart = toDate(w);
                         const weekEnd = new Date(weekStart);
@@ -915,17 +1185,33 @@ export default function TimelineView({
                           <div
                             key={w}
                             className={cn(
-                              'flex flex-col items-center justify-center border-r border-[color:var(--neutral-200,#E5E7EB)]',
-                              'text-[11px] leading-4'
+                              "flex flex-col items-center justify-center border-r border-[color:var(--neutral-200,#E5E7EB)]",
+                              "text-[11px] leading-4"
                             )}
-                            title={`Week ${weekStart.toLocaleDateString(undefined, {
-                              day: '2-digit',
-                              month: 'short',
-                            })} - ${weekEnd.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}`}
-                          >
-                            <span className={cn('uppercase tracking-wide', isCurrentWeek && 'font-semibold')}>Week</span>
-                            <span className={cn('tabular-nums', isCurrentWeek && 'font-semibold')}>
-                              {String(weekStart.getDate()).padStart(2, '0')}
+                            title={`Week ${weekStart.toLocaleDateString(
+                              undefined,
+                              {
+                                day: "2-digit",
+                                month: "short",
+                              }
+                            )} - ${weekEnd.toLocaleDateString(undefined, {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })}`}>
+                            <span
+                              className={cn(
+                                "uppercase tracking-wide",
+                                isCurrentWeek && "font-semibold"
+                              )}>
+                              Week
+                            </span>
+                            <span
+                              className={cn(
+                                "tabular-nums",
+                                isCurrentWeek && "font-semibold"
+                              )}>
+                              {String(weekStart.getDate()).padStart(2, "0")}
                             </span>
                           </div>
                         );
@@ -934,18 +1220,24 @@ export default function TimelineView({
                   </>
                 ) : (
                   // Month header: project months only
-                  <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${months.length}, ${MONTH_WIDTH}px)` }}>
-                    {months.map(m => {
-                      const [y, mm] = m.split('-').map(Number);
+                  <div
+                    className="grid h-full"
+                    style={{
+                      gridTemplateColumns: `repeat(${months.length}, ${MONTH_WIDTH}px)`,
+                    }}>
+                    {months.map((m) => {
+                      const [y, mm] = m.split("-").map(Number);
                       return (
                         <div
                           key={m}
-                          className="flex items-center justify-center text-xs font-medium text-foreground/80 border-r border-[color:var(--neutral-200,#E5E7EB)]"
-                        >
-                          {new Date(y, (mm || 1) - 1, 1).toLocaleDateString(undefined, {
-                            month: 'long',
-                            year: 'numeric',
-                          })}
+                          className="flex items-center justify-center text-xs font-medium text-foreground/80 border-r border-[color:var(--neutral-200,#E5E7EB)]">
+                          {new Date(y, (mm || 1) - 1, 1).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "long",
+                              year: "numeric",
+                            }
+                          )}
                         </div>
                       );
                     })}
@@ -956,72 +1248,135 @@ export default function TimelineView({
               {/* Left rail rows */}
               <div className="sticky left-0 z-10 bg-white border-r border-border">
                 <AnimatePresence>
-                  {rows.map(row => {
-                    if (row.type === 'phase') {
-                      const p = ALL_PHASES.find(x => x.id === row.phaseId)!;
-                      const count = filteredTasks.filter(t => {
-                        const pid = t.phaseId ?? '__unscheduled__';
+                  {rows.map((row, idx) => {
+                    if (row.type === "phase") {
+                      const p = ALL_PHASES.find((x) => x.id === row.phaseId)!;
+                      const count = filteredTasks?.filter((t) => {
+                        const pid = t.phaseId ?? "__unscheduled__";
                         const uns = !t.startDate && !t.endDate && !t.dueDate;
-                        return row.phaseId === '__unscheduled__' ? uns : pid === row.phaseId;
+                        return row.phaseId === "__unscheduled__"
+                          ? uns
+                          : pid === row.phaseId;
                       }).length;
                       const isCollapsed = collapsed[row.phaseId];
+                      // console.log(row);
                       return (
-                        <motion.div 
-                          key={row.key} 
-                          className="flex items-center h-10 px-4 border-b border-border"
+                        <motion.div
+                          key={row.key}
+                          className="border-b border-gray-100"
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <button
-                            className="flex items-center gap-2 text-sm w-full text-left group text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)] focus-visible:ring-offset-0 rounded hover:bg-gray-50 transition-colors duration-200"
-                            onClick={() => setCollapsed(c => ({ ...c, [row.phaseId]: !c[row.phaseId] }))}
-                            aria-expanded={!isCollapsed}
-                            title={p.name}
-                          >
-                            <motion.div
-                              animate={{ rotate: isCollapsed ? 0 : 90 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <ChevronRight className="h-4 w-4" />
-                            </motion.div>
-                            <span className="inline-block w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)) }} />
-                            <span className="truncate font-medium">{p.name}</span>
-                            <span
-                              className="ml-2 inline-flex items-center justify-center h-5 min-w-5 px-2 rounded-full text-[11px] bg-blue-100 text-blue-700 font-medium"
-                              aria-label={`${count} tasks`}
-                            >
+                          transition={{ duration: 0.2 }}>
+                          <div
+                            className="flex items-center gap-3 px-5 h-10"
+                            title={`${p.name} • ${count} tasks`}>
+                            <button
+                              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCollapsed((c) => ({
+                                  ...c,
+                                  [row.phaseId]: !c[row.phaseId],
+                                }));
+                              }}
+                              aria-label={
+                                isCollapsed ? "Expand phase" : "Collapse phase"
+                              }>
+                              <ChevronRight
+                                className={cn(
+                                  "h-4 w-4 transition-transform",
+                                  isCollapsed ? "rotate-0" : "rotate-90"
+                                )}
+                              />
+                            </button>
+
+                            <div
+                              className={`h-8 w-1.5 rounded-full ${
+                                colorMap[row?.colorClass || "text-gray-600"]
+                              }`}
+                              style={{ backgroundColor: row.colorClass }}
+                            />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate capitalize">
+                                {p.name}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {/* <div className="text-xs text-gray-500">
+                                  {count} tasks
+                                </div> */}
+                                <div className="text-xs text-gray-500">
+                                  {row?.startDate
+                                    ? formatShort(row?.startDate)
+                                    : "-"}{" "}
+                                  –{" "}
+                                  {row?.endDate
+                                    ? formatShort(row?.endDate)
+                                    : "-"}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span className="inline-flex items-center px-2 h-7 rounded-full text-xs bg-gray-100 border border-gray-200 text-gray-700">
                               {count}
                             </span>
-                            <motion.span 
+
+                            {/* <motion.span
                               className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
                               whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
-                            >
+                              whileTap={{ scale: 0.9 }}>
                               <Plus
                                 className="h-4 w-4"
-                                onClick={e => {
+                                onClick={(e) => {
                                   e.stopPropagation();
                                   onCreateTask(row.phaseId);
                                 }}
                               />
-                            </motion.span>
-                          </button>
-                        </motion.div>
-                      );
-                    } else {
-                      const t = row.task!;
-                      return (
-                        <motion.div 
-                          key={row.key} 
-                          className="flex items-center h-10 px-4 border-b border-border hover:bg-gray-50 transition-colors duration-200"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div className="text-sm truncate text-gray-700" title={t.title}>
-                            {t.title}
+                            </motion.span> */}
                           </div>
+
+                          {!isCollapsed &&
+                            filteredTasks
+                              ?.filter((t) =>
+                                row.phaseId === "__unscheduled__"
+                                  ? !t?.startDate && !t?.endDate && !t?.dueDate
+                                  : t?.phaseId === row.phaseId
+                              )
+                              .map((t) => {
+                                return (
+                                  <motion.div
+                                    key={t?.id}
+                                    className="pl-14 pr-5 py-3 border-t border-gray-100 hover:bg-gray-50 transition-colors duration-200"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.2 }}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-sm truncate text-gray-700 capitalize">
+                                        {t?.title}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {t?.startDate
+                                          ? formatShort(t?.startDate)
+                                          : "-"}{" "}
+                                        –{" "}
+                                        {t?.endDate
+                                          ? formatShort(t?.endDate)
+                                          : "-"}
+                                      </div>
+                                      {/* <div className="flex items-center justify-end">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        // onClick={() => onDeleteTask(t?.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div> */}
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
                         </motion.div>
                       );
                     }
@@ -1032,59 +1387,102 @@ export default function TimelineView({
               {/* Right grid body */}
               <div className="relative overflow-hidden">
                 {/* Background grid and today highlight */}
-                <div className="absolute top-0 left-0" style={{ width: gridWidth, height: bodyHeight }}>
-                  {timescale === 'day' ? (
-                    <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)` }}>
-                      {dates.map(d => {
+                <div
+                  className="absolute top-0 left-0"
+                  style={{ width: gridWidth, height: bodyHeight }}>
+                  {timescale === "day" ? (
+                    <div
+                      className="grid h-full"
+                      style={{
+                        gridTemplateColumns: `repeat(${dates.length}, ${dayWidth}px)`,
+                      }}>
+                      {dates.map((d) => {
                         const dt = toDate(d);
                         const first = dt.getDate() === 1;
                         const monday = dt.getDay() === 1;
                         const borderClass = first
-                          ? 'border-[color:var(--neutral-400,#9CA3AF)]'
+                          ? "border-[color:var(--neutral-400,#9CA3AF)]"
                           : monday
-                          ? 'border-[color:var(--neutral-300,#D1D5DB)]'
-                          : 'border-[color:var(--neutral-200,#E5E7EB)]';
-                        return <div key={d} className={cn('border-r', borderClass)} />;
+                          ? "border-[color:var(--neutral-300,#D1D5DB)]"
+                          : "border-[color:var(--neutral-200,#E5E7EB)]";
+                        return (
+                          <div
+                            key={d}
+                            className={cn("border-r", borderClass)}
+                          />
+                        );
                       })}
                     </div>
-                  ) : timescale === 'week' ? (
-                    <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)` }}>
-                      {weeks.map(w => (
-                        <div key={w} className="border-r border-[color:var(--neutral-200,#E5E7EB)]" aria-label={`Week ${w}`} />
+                  ) : timescale === "week" ? (
+                    <div
+                      className="grid h-full"
+                      style={{
+                        gridTemplateColumns: `repeat(${weeks.length}, ${WEEK_WIDTH}px)`,
+                      }}>
+                      {weeks.map((w) => (
+                        <div
+                          key={w}
+                          className="border-r border-[color:var(--neutral-200,#E5E7EB)]"
+                          aria-label={`Week ${w}`}
+                        />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${months.length}, ${MONTH_WIDTH}px)` }}>
-                      {months.map(m => (
-                        <div key={m} className="border-r border-[color:var(--neutral-200,#E5E7EB)]" aria-label={`Month ${m}`} />
+                    <div
+                      className="grid h-full"
+                      style={{
+                        gridTemplateColumns: `repeat(${months.length}, ${MONTH_WIDTH}px)`,
+                      }}>
+                      {months.map((m) => (
+                        <div
+                          key={m}
+                          className="border-r border-[color:var(--neutral-200,#E5E7EB)]"
+                          aria-label={`Month ${m}`}
+                        />
                       ))}
                     </div>
                   )}
 
                   {/* Today highlight */}
-                  {timescale === 'day'
+                  {timescale === "day"
                     ? todayIndex >= 0 && (
                         <>
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)]/10 pointer-events-none"
-                            style={{ left: todayIndex * dayWidth, width: dayWidth }}
+                            style={{
+                              left: todayIndex * dayWidth,
+                              width: dayWidth,
+                            }}
                           />
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)] pointer-events-none"
-                            style={{ left: todayIndex * dayWidth + Math.floor(dayWidth / 2), width: 2 }}
+                            style={{
+                              left:
+                                todayIndex * dayWidth +
+                                Math.floor(dayWidth / 2),
+                              width: 2,
+                            }}
                           />
                         </>
                       )
-                    : timescale === 'week'
+                    : timescale === "week"
                     ? weekTodayIndex >= 0 && (
                         <>
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)]/10 pointer-events-none"
-                            style={{ left: weekTodayIndex * WEEK_WIDTH, width: WEEK_WIDTH }}
+                            style={{
+                              left: weekTodayIndex * WEEK_WIDTH,
+                              width: WEEK_WIDTH,
+                            }}
                           />
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)] pointer-events-none"
-                            style={{ left: weekTodayIndex * WEEK_WIDTH + Math.floor(WEEK_WIDTH / 2), width: 2 }}
+                            style={{
+                              left:
+                                weekTodayIndex * WEEK_WIDTH +
+                                Math.floor(WEEK_WIDTH / 2),
+                              width: 2,
+                            }}
                           />
                         </>
                       )
@@ -1092,98 +1490,144 @@ export default function TimelineView({
                         <>
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)]/10 pointer-events-none"
-                            style={{ left: monthTodayIndex * MONTH_WIDTH, width: MONTH_WIDTH }}
+                            style={{
+                              left: monthTodayIndex * MONTH_WIDTH,
+                              width: MONTH_WIDTH,
+                            }}
                           />
                           <div
                             className="absolute top-0 bottom-0 bg-[var(--clay-filled)] pointer-events-none"
-                            style={{ left: monthTodayIndex * MONTH_WIDTH + Math.floor(MONTH_WIDTH / 2), width: 2 }}
+                            style={{
+                              left:
+                                monthTodayIndex * MONTH_WIDTH +
+                                Math.floor(MONTH_WIDTH / 2),
+                              width: 2,
+                            }}
                           />
                         </>
                       )}
                 </div>
 
                 {/* Bars and phase bands */}
-                <div style={{ width: gridWidth, height: bodyHeight, position: 'relative' }}>
+                <div
+                  style={{
+                    width: gridWidth,
+                    height: bodyHeight,
+                    position: "relative",
+                  }}>
                   {rows.map((row, rIdx) => {
                     const top = rIdx * ROW_HEIGHT;
-                    if (row.type === 'phase') {
+                    if (row.type === "phase") {
                       const pr = phaseRanges.get(row.phaseId);
                       if (!pr) {
-                        return <div key={row.key} className="absolute left-0 right-0" style={{ top, height: ROW_HEIGHT }} />;
+                        return (
+                          <div
+                            key={row.key}
+                            className="absolute left-0 right-0"
+                            style={{ top, height: ROW_HEIGHT }}
+                          />
+                        );
                       }
 
-                      if (timescale === 'day') {
+                      if (timescale === "day") {
                         const sIdx = indexOfDate(dates, pr.start);
                         const eIdx = indexOfDate(dates, pr.end);
                         const left = Math.max(0, sIdx * dayWidth);
-                        const width = Math.max(dayWidth, (eIdx - sIdx + 1) * dayWidth);
+                        const width = Math.max(
+                          dayWidth,
+                          (eIdx - sIdx + 1) * dayWidth
+                        );
                         return (
-                          <div key={row.key} className="absolute left-0 right-0" style={{ top, height: ROW_HEIGHT }}>
-                            <div
+                          <div
+                            key={row.key}
+                            className="absolute left-0 right-0"
+                            style={{ top, height: ROW_HEIGHT }}>
+                            {/* <div
                               className="absolute rounded-full"
                               style={{
                                 left,
                                 width,
                                 top: (ROW_HEIGHT - 8) / 2,
                                 height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
+                                backgroundColor: phaseColorVar(
+                                  row.phaseId,
+                                  getPhaseColorClass(row.phaseId)
+                                ),
                                 opacity: 0.18,
                               }}
                               title={`Phase period: ${pr.start} → ${pr.end}`}
                               aria-label={`Phase ${row.phaseId} window`}
-                            />
+                            /> */}
                           </div>
                         );
-                      } else if (timescale === 'week') {
+                      } else if (timescale === "week") {
                         const sIdx = weekIndexFromYMD(pr.start, weeks);
                         const eIdx = weekIndexFromYMD(pr.end, weeks);
                         const left = Math.max(0, sIdx * WEEK_WIDTH);
-                        const width = Math.max(WEEK_WIDTH, (eIdx - sIdx + 1) * WEEK_WIDTH);
-                        return (
-                          <div key={row.key} className="absolute left-0 right-0" style={{ top, height: ROW_HEIGHT }}>
-                            <div
-                              className="absolute rounded-full"
-                              style={{
-                                left,
-                                width,
-                                top: (ROW_HEIGHT - 8) / 2,
-                                height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
-                                opacity: 0.18,
-                              }}
-                              title={`Phase period: ${pr.start} → ${pr.end}`}
-                              aria-label={`Phase ${row.phaseId} window`}
-                            />
-                          </div>
+                        const width = Math.max(
+                          WEEK_WIDTH,
+                          (eIdx - sIdx + 1) * WEEK_WIDTH
                         );
+                        // return (
+                        //   <div
+                        //     key={row.key}
+                        //     className="absolute left-0 right-0"
+                        //     style={{ top, height: ROW_HEIGHT }}>
+                        //     <div
+                        //       className="absolute rounded-full"
+                        //       style={{
+                        //         left,
+                        //         width,
+                        //         top: (ROW_HEIGHT - 8) / 2,
+                        //         height: 8,
+                        //         backgroundColor: phaseColorVar(
+                        //           row.phaseId,
+                        //           getPhaseColorClass(row.phaseId)
+                        //         ),
+                        //         opacity: 0.18,
+                        //       }}
+                        //       title={`Phase period: ${pr.start} → ${pr.end}`}
+                        //       aria-label={`Phase ${row.phaseId} window`}
+                        //     />
+                        //   </div>
+                        // );
                       } else {
                         const sIdx = monthIndexFromYMD(pr.start, months);
                         const eIdx = monthIndexFromYMD(pr.end, months);
                         const left = Math.max(0, sIdx * MONTH_WIDTH);
-                        const width = Math.max(MONTH_WIDTH, (eIdx - sIdx + 1) * MONTH_WIDTH);
+                        const width = Math.max(
+                          MONTH_WIDTH,
+                          (eIdx - sIdx + 1) * MONTH_WIDTH
+                        );
                         return (
-                          <div key={row.key} className="absolute left-0 right-0" style={{ top, height: ROW_HEIGHT }}>
-                            <div
+                          <div
+                            key={row.key}
+                            className="absolute left-0 right-0"
+                            style={{ top, height: ROW_HEIGHT }}>
+                            {/* <div
                               className="absolute rounded-full"
                               style={{
                                 left,
                                 width,
                                 top: (ROW_HEIGHT - 8) / 2,
                                 height: 8,
-                                backgroundColor: phaseColorVar(row.phaseId, getPhaseColorClass(row.phaseId)),
+                                backgroundColor: phaseColorVar(
+                                  row.phaseId,
+                                  getPhaseColorClass(row.phaseId)
+                                ),
                                 opacity: 0.18,
                               }}
                               title={`Phase period: ${pr.start} → ${pr.end}`}
                               aria-label={`Phase ${row.phaseId} window`}
-                            />
+                            /> */}
                           </div>
                         );
                       }
                     }
 
                     const t = row.task!;
-                    const hasSpan = t.startDate && t.endDate;
-                    const hasDue = !hasSpan && !!t.dueDate;
+                    const hasSpan = t?.startDate && t?.endDate;
+                    const hasDue = !hasSpan && !!t?.dueDate;
 
                     return (
                       <div
@@ -1191,8 +1635,7 @@ export default function TimelineView({
                         className="absolute left-0 right-0"
                         style={{ top, height: ROW_HEIGHT }}
                         onDoubleClick={() => onEditTask(t)}
-                        title={`${t.title}${formatDatesTooltip(t)}`}
-                      >
+                        title={`${t?.title}${formatDatesTooltip(t)}`}>
                         {hasSpan && (
                           <TaskBar
                             mode={timescale}
@@ -1206,11 +1649,11 @@ export default function TimelineView({
                             monthWidth={monthWidth}
                             onDragStart={(mode, e) =>
                               setDragging({
-                                taskId: t.id,
+                                taskId: t?.id,
                                 mode,
                                 startX: e.clientX,
-                                originalStart: t.startDate,
-                                originalEnd: t.endDate,
+                                originalStart: t?.startDate,
+                                originalEnd: t?.endDate,
                               })
                             }
                           />
@@ -1236,22 +1679,32 @@ export default function TimelineView({
                             dayWidth={dayWidth}
                             weekWidth={WEEK_WIDTH}
                             monthWidth={monthWidth}
-                            onPick={d => {
-                              updateWorkingTasks(prev => {
-                                const idx = prev.findIndex(x => x.id === t.id);
+                            onPick={(d) => {
+                              updateWorkingTasks((prev) => {
+                                const idx = prev.findIndex(
+                                  (x) => x.id === t?.id
+                                );
                                 if (idx === -1) return prev;
                                 const next = [...prev];
-                                next[idx] = { ...prev[idx], startDate: d, endDate: d };
+                                next[idx] = {
+                                  ...prev[idx],
+                                  startDate: d,
+                                  endDate: d,
+                                };
                                 return next;
                               });
                             }}
-                            onDragStart={e =>
+                            onDragStart={(e) =>
                               setDragging({
-                                taskId: t.id,
-                                mode: 'schedule',
+                                taskId: t?.id,
+                                mode: "schedule",
                                 startX: e.clientX,
                                 originalStart:
-                                  timescale === 'day' ? dates[0] : timescale === 'week' ? weeks[0] : `${months[0] ?? '2025-07'}-01`,
+                                  timescale === "day"
+                                    ? dates[0]
+                                    : timescale === "week"
+                                    ? weeks[0]
+                                    : `${months[0] ?? "2025-07"}-01`,
                               })
                             }
                           />
@@ -1292,19 +1745,22 @@ function TaskBar({
   dayWidth: number;
   weekWidth: number;
   monthWidth: number;
-  onDragStart: (mode: 'move' | 'resize-start' | 'resize-end', e: React.MouseEvent) => void;
+  onDragStart: (
+    mode: "move" | "resize-start" | "resize-end",
+    e: React.MouseEvent
+  ) => void;
 }) {
   const listColor = colorFromList(lists, task.listId);
 
   let left = 0;
   let width = 0;
 
-  if (mode === 'day') {
+  if (mode === "day") {
     const startIdx = indexOfDate(dates, task.startDate!);
     const endIdx = indexOfDate(dates, task.endDate!);
     left = startIdx * dayWidth;
     width = Math.max(dayWidth, (endIdx - startIdx + 1) * dayWidth);
-  } else if (mode === 'week') {
+  } else if (mode === "week") {
     const sIdx = weekIndexFromYMD(task.startDate!, weeks);
     const eIdx = weekIndexFromYMD(task.endDate!, weeks);
     left = sIdx * weekWidth;
@@ -1329,40 +1785,52 @@ function TaskBar({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
       whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-    >
+      whileTap={{ scale: 0.98 }}>
       <div className="relative h-full rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 group">
-        <div className={cn('absolute inset-0 rounded-lg opacity-20', listColor)} />
+        <div
+          className={cn(
+            "absolute inset-0 rounded-lg opacity-20 capitalize",
+            listColor
+          )}
+        />
         <div className="absolute inset-0 flex items-center px-3">
-          <span className="text-[12px] font-medium text-gray-800 truncate">{task.title}</span>
+          <span className="text-[12px] font-medium text-gray-800 truncate capitalize">
+            {task.title}
+          </span>
         </div>
-        
+
         {/* Modern resize handles */}
         <div
           className="absolute left-0 top-0 h-full w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-blue-400 rounded-l-lg"
-          onMouseDown={e => onDragStart('resize-start', e)}
+          // onMouseDown={(e) => onDragStart("resize-start", e)}
           title="Resize start"
         />
         <div
           className="absolute right-0 top-0 h-full w-1 cursor-ew-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-blue-400 rounded-r-lg"
-          onMouseDown={e => onDragStart('resize-end', e)}
+          // onMouseDown={(e) => onDragStart("resize-end", e)}
           title="Resize end"
         />
-        
+
         {/* Drag handle */}
-        <div 
-          className="absolute inset-0 cursor-move rounded-lg" 
-          onMouseDown={e => onDragStart('move', e)} 
+        <div
+          className="absolute inset-0 rounded-lg"
+          // onMouseDown={(e) => onDragStart("move", e)}
           title="Drag to move"
         />
-        
+
         {/* Priority indicator */}
-        <div className={cn(
-          "absolute top-1 right-1 w-2 h-2 rounded-full",
-          task.priority === 'high' ? 'bg-red-500' :
-          task.priority === 'medium' ? 'bg-yellow-500' :
-          task.priority === 'low' ? 'bg-green-500' : 'bg-gray-400'
-        )} />
+        <div
+          className={cn(
+            "absolute top-1 right-1 w-2 h-2 rounded-full",
+            task.priority === "high"
+              ? "bg-red-500"
+              : task.priority === "medium"
+              ? "bg-yellow-500"
+              : task.priority === "low"
+              ? "bg-green-500"
+              : "bg-gray-400"
+          )}
+        />
       </div>
     </motion.div>
   );
@@ -1390,13 +1858,19 @@ function DueDiamond({
   const size = 14;
   const top = (ROW_HEIGHT - size) / 2;
 
-  if (mode === 'day') {
+  if (mode === "day") {
     const idx = indexOfDate(dates, task.dueDate!);
     const center = idx * dayWidth + dayWidth / 2;
     return (
       <motion.div
         className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
+        style={{
+          left: center - size / 2,
+          top,
+          width: size,
+          height: size,
+          borderRadius: 3,
+        }}
         title={task.title}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1404,13 +1878,19 @@ function DueDiamond({
         whileHover={{ scale: 1.1 }}
       />
     );
-  } else if (mode === 'week') {
+  } else if (mode === "week") {
     const idx = weekIndexFromYMD(task.dueDate!, weeks);
     const center = idx * weekWidth + weekWidth / 2;
     return (
       <motion.div
         className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
+        style={{
+          left: center - size / 2,
+          top,
+          width: size,
+          height: size,
+          borderRadius: 3,
+        }}
         title={task.title}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1424,7 +1904,13 @@ function DueDiamond({
     return (
       <motion.div
         className="absolute bg-gradient-to-br from-orange-400 to-orange-600 rotate-45 shadow-sm hover:shadow-md transition-shadow duration-200"
-        style={{ left: center - size / 2, top, width: size, height: size, borderRadius: 3 }}
+        style={{
+          left: center - size / 2,
+          top,
+          width: size,
+          height: size,
+          borderRadius: 3,
+        }}
         title={task.title}
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -1459,17 +1945,28 @@ function ScheduleHint({
   return (
     <div
       className="absolute inset-0 cursor-crosshair"
-      onClick={e => {
-        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+      onClick={(e) => {
+        const rect = (
+          e.currentTarget as HTMLDivElement
+        ).getBoundingClientRect();
         const x = e.clientX - rect.left;
-        if (mode === 'day') {
-          const idx = Math.max(0, Math.min(dates.length - 1, Math.floor(x / dayWidth)));
+        if (mode === "day") {
+          const idx = Math.max(
+            0,
+            Math.min(dates.length - 1, Math.floor(x / dayWidth))
+          );
           onPick(dates[idx]);
-        } else if (mode === 'week') {
-          const idx = Math.max(0, Math.min(weeks.length - 1, Math.floor(x / weekWidth)));
+        } else if (mode === "week") {
+          const idx = Math.max(
+            0,
+            Math.min(weeks.length - 1, Math.floor(x / weekWidth))
+          );
           onPick(weeks[idx]);
         } else {
-          const idx = Math.max(0, Math.min(months.length - 1, Math.floor(x / monthWidth)));
+          const idx = Math.max(
+            0,
+            Math.min(months.length - 1, Math.floor(x / monthWidth))
+          );
           const ymd = `${months[idx]}-01`;
           onPick(ymd);
         }
@@ -1490,24 +1987,27 @@ function phaseColorVar(phaseId: string, colorClass?: string) {
       return colorMatch[0];
     }
   }
-  
+
   const colorMap: Record<string, string> = {
-    __unscheduled__: '#9CA3AF',
-    'phase-discovery': '#6B7280',
-    'phase-concept': '#C7654F',
-    'phase-dd': '#9CA3AF',
-    'phase-technical': '#3B82F6',
-    'phase-procurement': '#8B5CF6',
-    'phase-implementation': '#10B981',
-    'e06f2b59-6fac-4b47-b0e1-3a667efe37c0': '#9CA3AF', // Test Phase
+    __unscheduled__: "#9CA3AF",
+    "phase-discovery": "#6B7280",
+    "phase-concept": "#C7654F",
+    "phase-dd": "#9CA3AF",
+    "phase-technical": "#3B82F6",
+    "phase-procurement": "#8B5CF6",
+    "phase-implementation": "#10B981",
+    "e06f2b59-6fac-4b47-b0e1-3a667efe37c0": "#9CA3AF", // Test Phase
   };
-  const fallback = colorMap[phaseId] || '#CF7A5A';
+  const fallback = colorMap[phaseId] || "#CF7A5A";
   return `var(--phase-${phaseId}, ${fallback})`;
 }
 
-function colorFromList(lists: (ListColumn & { id: string; colorClass?: string })[], listId?: string) {
-  const l = lists.find(x => x.id === listId);
-  return l?.colorClass?.replace('text-', 'bg-') || 'bg-stone-700';
+function colorFromList(
+  lists: (ListColumn & { id: string; colorClass?: string })[],
+  listId?: string
+) {
+  const l = lists.find((x) => x.id === listId);
+  return l?.colorClass?.replace("text-", "bg-") || "bg-stone-700";
 }
 
 function enumerateDays(from: Date, to: Date) {
@@ -1521,12 +2021,12 @@ function enumerateDays(from: Date, to: Date) {
 }
 function toYMD(d: Date) {
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
 }
 function toDate(ymd: string) {
-  const [y, m, d] = ymd.split('-').map(Number);
+  const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 function shiftDate(d: Date, delta: number) {
@@ -1563,7 +2063,7 @@ function addMonths(d: Date, n: number) {
   return x;
 }
 function monthKey(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 function monthIndexFromYMD(ymd: string, months: string[]) {
   const key = ymd.slice(0, 7);
@@ -1605,9 +2105,9 @@ function weekIndexFromYMD(ymd: string, weeks: string[]) {
 }
 
 function formatDatesTooltip(t: UITask) {
-  if (t.startDate && t.endDate) return ` — ${t.startDate} → ${t.endDate}`;
-  if (t.dueDate) return ` — due ${t.dueDate}`;
-  return '';
+  if (t?.startDate && t?.endDate) return ` — ${t?.startDate} → ${t?.endDate}`;
+  if (t?.dueDate) return ` — due ${t?.dueDate}`;
+  return "";
 }
 
 /* Inline FilterGroup */
@@ -1622,25 +2122,32 @@ function FilterGroup<T extends string>({
   values: T[];
   onToggle: (id: T) => void;
 }) {
-  const [query, setQuery] = React.useState('');
-  const filtered = items.filter(i => i.label.toLowerCase().includes(query.toLowerCase()));
+  const [query, setQuery] = React.useState("");
+  const filtered = items.filter((i) =>
+    i.label.toLowerCase().includes(query.toLowerCase())
+  );
   return (
     <div className="space-y-3">
       <div className="text-sm font-medium">{title}</div>
       <Input
         placeholder={`Search ${title.toLowerCase()}`}
         value={query}
-        onChange={e => setQuery(e.target.value)}
+        onChange={(e) => setQuery(e.target.value)}
         className="focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--clay-ring)]"
       />
       <div className="space-y-2 max-h-60 overflow-auto pr-1">
-        {filtered.map(i => (
+        {filtered.map((i) => (
           <label key={i.id} className="flex items-center gap-3 text-sm">
-            <Checkbox checked={values.includes(i.id)} onCheckedChange={() => onToggle(i.id)} />
+            <Checkbox
+              checked={values.includes(i.id)}
+              onCheckedChange={() => onToggle(i.id)}
+            />
             <span>{i.label}</span>
           </label>
         ))}
-        {filtered.length === 0 && <div className="text-sm text-muted-foreground">No results</div>}
+        {filtered.length === 0 && (
+          <div className="text-sm text-muted-foreground">No results</div>
+        )}
       </div>
     </div>
   );
