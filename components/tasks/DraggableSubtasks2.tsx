@@ -2,9 +2,6 @@
 import React, { useRef, useCallback, useMemo, useEffect, useState } from 'react';
 import { SortableContainer, SortableElement, SortableHandle, arrayMove } from 'react-sortable-hoc';
 import { GripVertical, CheckSquare, Square, Trash2, Plus } from 'lucide-react';
-import { usePost } from '@/hooks/usePost';
-import { useQueryClient } from '@tanstack/react-query';
-import useDeleteData from '@/hooks/useDelete';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 
@@ -121,7 +118,7 @@ const SortableList = SortableContainer(({ subtasks, onCheck, onEdit, onDelete, i
   </div>
 ));
 
-const DraggableSubtasks2 = React.forwardRef(({ subtasks, setTaskValues, taskId }: any, ref: any) => {
+const DraggableSubtasks2 = React.forwardRef(({ subtasks, setTaskValues, taskId, setMentionSub, teamMembers }: any, ref: any) => {
   const sortedSubtasks = [...(subtasks || [])].sort((a, b) => a.order - b.order);
 
   const inputRefs = useRef({});
