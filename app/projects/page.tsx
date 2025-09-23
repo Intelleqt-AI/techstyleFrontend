@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -88,15 +88,63 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (activeTab == 'all') {
+    const today = new Date();
+
+    if (activeTab === 'all') {
       setProject(data);
-    } else if (activeTab == 'active') {
-      setProject(data?.filter(item => !item.isArchive));
-    } else if (activeTab == 'completed') {
-    } else if (activeTab == 'archived') {
+    } else if (activeTab === 'active') {
+      const activeProjects = data?.filter(item => {
+        if (item.isArchive) return false;
+
+        const progress = calculateProjectProgress(item.id, taskData?.data, isLoading);
+        const dueDatePassed = item?.endDate ? new Date(item.endDate) < today : false;
+
+        return progress < 100 || !dueDatePassed;
+      });
+
+      setProject(activeProjects);
+    } else if (activeTab === 'completed') {
+      const completedProjects = data?.filter(item => {
+        if (item.isArchive) return false;
+
+        const progress = calculateProjectProgress(item.id, taskData?.data, isLoading);
+        const dueDatePassed = item?.endDate ? new Date(item.endDate) < today : false;
+
+        return progress === 100 && dueDatePassed;
+      });
+
+      setProject(completedProjects);
+    } else if (activeTab === 'archived') {
       setProject(data?.filter(item => item.isArchive));
     }
-  }, [data, isLoading, activeTab]);
+  }, [data, isLoading, activeTab, taskData]);
+
+  const completedProject = useMemo(() => {
+    const today = new Date();
+    const completedProjects = data?.filter(item => {
+      if (item.isArchive) return false;
+
+      const progress = calculateProjectProgress(item.id, taskData?.data, isLoading);
+      const dueDatePassed = item?.endDate ? new Date(item.endDate) < today : false;
+
+      return progress === 100 && dueDatePassed;
+    });
+    return completedProjects?.length || 0;
+  }, [data]);
+
+  const activeProject = useMemo(() => {
+    const today = new Date();
+    const activeProjects = data?.filter(item => {
+      if (item.isArchive) return false;
+
+      const progress = calculateProjectProgress(item.id, taskData?.data, isLoading);
+      const dueDatePassed = item?.endDate ? new Date(item.endDate) < today : false;
+
+      return progress < 100 || !dueDatePassed;
+    });
+
+    return activeProjects?.length || 0;
+  }, [data]);
 
   return (
     <div className="flex-1 space-y-6 p-6">
@@ -106,9 +154,10 @@ export default function ProjectsPage() {
           onChange={setActiveTab}
           activeTab={activeTab}
           counts={{
-            active: data?.filter(item => !item.isArchive)?.length,
+            active: activeProject,
             archived: data?.filter(item => item.isArchive)?.length,
             all: data?.length,
+            completed: completedProject,
           }}
         />
 
@@ -347,7 +396,7 @@ export default function ProjectsPage() {
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-ink">{project?.name}</div>
+                            <div className="font-medium capitalize max-w-[150px] truncate text-ink">{project?.name}</div>
                             <div className="text-sm text-ink-muted">{project?.code}</div>
                           </div>
                         </Link>
