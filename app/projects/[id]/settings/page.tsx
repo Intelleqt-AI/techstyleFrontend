@@ -1494,9 +1494,13 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
 function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   const addPhase = () => {
     const newPhase = {
+      id: `phase-${Date.now()}`,
       name: '',
       duration: '',
       description: '',
+      progress: 0,
+      createTask: false,
+      task: [],
     };
     onChange({ phases: [...(value.phases || []), newPhase] });
   };
@@ -1526,7 +1530,7 @@ function PhasesForm({ value, onChange, onSave }: { value: any; onChange: (v: any
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-4">
-          {(value.phases || []).map((phase: any, index: number) => (
+          {(value?.phases || []).map((phase: any, index: number) => (
             <Card key={index} className="border-borderSoft bg-greige-50">
               <CardContent className="p-4">
                 <div className="space-y-3">

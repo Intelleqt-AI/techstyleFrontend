@@ -9,8 +9,6 @@ import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Mic, Calendar, Clock, AlertTriangle, DollarSign, TrendingUp, TrendingDown, ArrowUp, Users } from 'lucide-react';
 import { HomeNav } from '@/components/home-nav';
-import useFetch from '@/hooks/useFetch';
-import useUser from '@/supabase/hook/useUser';
 import useTask from '@/supabase/hook/useTask';
 import { fetchOnlyProject, fetchProjects, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
@@ -19,6 +17,7 @@ import useUsers from '@/hooks/useUsers';
 import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
 import Onboarding from '../_component/Onboarding';
+import { useAdmin } from '@/hooks/useAdmin';
 
 const updatetaskList = data => {
   return [
@@ -311,7 +310,6 @@ function TodaysMeetingsCard({ scope, userRole }) {
 }
 
 export default function DashboardPage() {
-  const { user } = useUser();
   const [myTask, setMyTask] = useState([]);
   const [tasks, setTasks] = useState([]);
   const { data: taskData, isLoading: taskLoading } = useTask();
@@ -319,13 +317,7 @@ export default function DashboardPage() {
   const [userTime, setUserTime] = useState(null);
   const { currency, isLoading: currencyLoading } = useCurrency();
   const { users } = useUsers();
-  const admins = [
-    'david.zeeman@intelleqt.ai',
-    'roxi.zeeman@souqdesign.co.uk',
-    'risalat.shahriar@intelleqt.ai',
-    'dev@intelleqt.ai',
-    'saif@intelleqt.ai',
-  ];
+  const { isAdmin, user, userLoading } = useAdmin();
 
   const {
     data: InvoiceData,
@@ -532,12 +524,6 @@ export default function DashboardPage() {
   }
 
   function TimeTrackedCard({ scope, userRole }) {
-    const teamCapacity = [
-      { name: 'Saif Hasan', hours: 0.9, capacity: 40 },
-      { name: 'David Zameen', hours: 0, capacity: 40 },
-      { name: 'Rishalat Shahriar', hours: 0, capacity: 40 },
-    ];
-
     if (scope === 'studio') {
       return (
         <div className="h-full flex flex-col">
@@ -629,7 +615,7 @@ export default function DashboardPage() {
   const myTaskList = tasks => {
     if (!tasks) return;
     if (!user) return [];
-    if (admins.includes(user?.email)) {
+    if (isAdmin) {
       return tasks;
     }
     return tasks?.filter(task => {
@@ -845,7 +831,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <ScopeToggle scope={scope} onScopeChange={setScope} canSeeStudio={canSeeStudio} />
+          {isAdmin && <ScopeToggle scope={scope} onScopeChange={setScope} canSeeStudio={canSeeStudio} />}
         </section>
 
         {/* Dashboard Cards */}
