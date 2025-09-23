@@ -10,6 +10,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { TopBar } from '@/components/top-bar';
 import { usePathname } from 'next/navigation';
 import { Toaster } from 'sonner';
+import UserbackWidget from '@/components/userBack/UserbackWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${inter.className} bg-white text-gray-900 antialiased`}>
+        <UserbackWidget />
         <Toaster closeButton visibleToasts={3} duration={2000} position="bottom-right" />
         <Providers>
           {isPublic ? (
