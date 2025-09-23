@@ -334,23 +334,33 @@ export const deleteCover = async ({ id, file, path = '' }) => {
 };
 
 // Update upload function to support paths
+
 export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
-  // console.log(file, id, (path = ""), projectID, task);
   if (!file) {
     throw new Error('No file provided.');
   }
-  // const filePath = "6965c765-16d8-4763-b58b-005367294771";
-  const filePath = path ? `${id}/${path}` : `${id}`;
-  console.log(filePath, file);
+
+  // Sanitize filename
+  const safeName = file.name
+    .normalize('NFKD') // normalize Unicode
+    .replace(/[^\x00-\x7F]/g, '') // remove non-ASCII
+    .replace(/\s+/g, '_') // replace spaces with _
+    .replace(/[^a-zA-Z0-9._-]/g, ''); // remove unsafe chars
+
+  const filePath = path ? `${id}/${path}/${safeName}` : `${id}/${safeName}`;
+
   const { data, error } = await supabase.storage.from('Docs').upload(filePath, file);
 
   if (error) {
-    console.log(error);
+    console.error(error);
     throw new Error(error.message);
   }
 
   if (!error && projectID) {
-    const { data: project, error } = await supabase.from('Project').select('*').eq('id', projectID).single();
+    const { data: project, error: projectError } = await supabase.from('Project').select('*').eq('id', projectID).single();
+
+    if (projectError) throw new Error(projectError.message);
+
     const updatedProject = {
       ...project,
       attachments: [
@@ -363,6 +373,7 @@ export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
         },
       ],
     };
+
     modifyProject(updatedProject);
   }
 
@@ -613,6 +624,7 @@ export const deleteFile = async ({ file, id, isFolder }) => {
   } else {
     // For regular files, use the existing method
     const filePath = `${id}/${file}`;
+    console.log(filePath);
     const { data, error } = await supabase.storage.from('Docs').remove([filePath]);
 
     if (error) {

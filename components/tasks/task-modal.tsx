@@ -54,6 +54,7 @@ import { addNewTask, createNotification, fetchOnlyProject, getAllFiles, getUsers
 import { toast } from 'sonner';
 import DraggableSubtasks2 from './DraggableSubtasks2';
 import { AnimatePresence, motion } from 'framer-motion';
+import Attachments from './Attachments';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -96,7 +97,6 @@ type Props = {
 export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave }: Props) {
   // Core form state
   const [taskValues, setTaskValues] = React.useState(taskToEdit ? taskToEdit : initialTask);
-  const [activeTab, setActiveTab] = React.useState(1);
   const [subTaskText, setSubTaskText] = React.useState('');
   const [comment, setComment] = React.useState({
     name: '',
@@ -133,9 +133,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   // set if a user mention another user in subTask
   const [mentionSub, setMentionSub] = React.useState([]);
   const [subNotification, setSubNotification] = React.useState(null);
-  const fileInputRef = React.useRef(null);
   const [file, setFile] = React.useState(null);
-  const [totalDocs, setTotalDocs] = React.useState([]);
 
   React.useEffect(() => {
     if (taskToEdit) {
@@ -296,9 +294,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   // Handle Click Save
   const handleClickSave = () => {
     handleSubmit();
-    setTimeout(() => {
-      // afterCloseModal();
-    }, 1000);
   };
   const handleCommentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Prevent full page reload
@@ -402,34 +397,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     setMention(user);
   };
 
-  const draggableSubtasksRef = React.useRef(null);
-  // create new Subtask
-  const handleCreateSubTask = () => {
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      subtasks: [
-        ...prevTask.subtasks,
-        {
-          order: taskValues.subtasks.length + 1 || 1,
-          id: Date.now(),
-          text: subTaskText,
-        },
-      ],
-    }));
-    // Focus on the last input in the DraggableSubtasks component
-    if (draggableSubtasksRef.current) {
-      draggableSubtasksRef.current.focusLastInput();
-    }
-  };
-
-  const handleModifySubTask = (e, id) => {
-    const newText = e.target.value;
-    setTaskValues(prev => ({
-      ...prev,
-      subtasks: prev.subtasks.map(subtask => (subtask.id === id ? { ...subtask, text: newText } : subtask)),
-    }));
-  };
-
   // const handleEnter = (e, id) => {
   //   if (e.key === 'Enter') {
   //     handleModifySubTask(e, id);
@@ -446,33 +413,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     if (isLoading) return;
     setTeamMembers(users?.data);
   }, [isLoading, users]);
-
-  const handleSubTaskSelect = (id: number) => {
-    const updatedSubTasks = taskValues?.subtasks?.map(item => (item?.id === id ? { ...item, selected: !item.selected } : item));
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      subtasks: updatedSubTasks,
-    }));
-  };
-
-  const handleMemberSelect = member => {
-    setSelectedMembers([...selectedMembers, member]);
-    setTeamMembers(teamMembers.filter(m => m.email !== member.email));
-    setTaskValues(prev => ({
-      ...prev,
-      assigned: prev.assigned ? [...prev.assigned, member] : [member],
-    }));
-    setIsOpen(false);
-  };
-
-  const handleMemberRemove = member => {
-    setSelectedMembers(prev => prev.filter(m => m.email !== member.email));
-    setTeamMembers(prev => [...prev, member]);
-    setTaskValues(prev => ({
-      ...prev,
-      assigned: prev.assigned ? prev.assigned.filter(m => m.email !== member.email) : [],
-    }));
-  };
 
   const updateTask = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -494,14 +434,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
     mutation.mutate({ newTask: taskValues, user: user });
   };
 
-  const handleDeleteSubTask = (e, id) => {
-    e.stopPropagation();
-    setTaskValues(prevTask => ({
-      ...prevTask,
-      subtasks: prevTask.subtasks.filter(subtask => subtask.id !== id),
-    }));
-  };
-
   const [touched, setTouched] = React.useState(false);
   const formRef = React.useRef<HTMLFormElement>(null);
   const titleRef = React.useRef<HTMLInputElement>(null);
@@ -515,6 +447,12 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   }, []);
 
   function toggleAssignee(member: any) {
+    setSelectedMembers(
+      prev =>
+        prev.some((m: any) => m.id === member.id)
+          ? prev.filter((m: any) => m.id !== member.id) // remove
+          : [...prev, member] // add
+    );
     setTaskValues(prev => {
       const alreadyAssigned = prev.assigned.some((a: any) => a.id === member.id);
 
@@ -1133,76 +1071,15 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
               </div>
             </div>
 
-            <Labeled icon={<Paperclip className="h-4 w-4" />} label="Attachment" alignTop>
-              <div className="space-y-2">
-                <Input id="files" type="file" multiple onChange={handleFileChange} className="bg-white h-9 text-sm rounded-xl" />
-                {files?.data?.length > 0 && (
-                  <ul className="text-xs text-gray-600 list-disc pl-5">
-                    {files?.data?.map(a => (
-                      <li key={a.name + a.size}>
-                        {a.name} ({Math.round(a.size / 1024)} KB)
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </Labeled>
-
+            <Attachments projectID={taskValues?.projectID} task={taskToEdit} />
             <Labeled icon={<ListTodo className="h-4 w-4" />} label="Sub Tasks" alignTop>
-              {/* <div className="space-y-2">
-                {subtasks.map((s, idx) => (
-                  <div
-                    key={s.id}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl bg-white/80 border border-gray-200 pl-2 pr-2 h-10',
-                      s?.title?.trim() === '' && idx === subtasks?.length - 1 && 'opacity-80'
-                    )}
-                  >
-                    <Checkbox
-                      checked={s.done}
-                      // onCheckedChange={v => updateSubtask(s.id, { done: Boolean(v) })}
-                      className="mr-1 focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
-                      aria-label="Toggle subtask"
-                    />
-                    <Input
-                      value={s.title}
-                      // onChange={e => updateSubtask(s.id, { title: e.target.value })}
-                      // onKeyDown={e => {
-                      //   if (e.key === 'Enter') {
-                      //     e.preventDefault();
-                      //     if (s?.title?.trim() !== '') addSubtask();
-                      //   }
-                      // }}
-                      placeholder={idx === subtasks?.length - 1 ? 'Subtask…' : ''}
-                      className="flex-1 border-0 shadow-none focus-visible:ring-0 bg-transparent h-9 text-sm"
-                    />
-                    <GripVertical className="h-4 w-4 text-gray-400" aria-hidden="true" />
-                    {s?.title?.trim() !== '' && (
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-gray-700"
-                        // onClick={() => removeSubtask(s.id)}
-                        aria-label="Remove subtask"
-                        title="Remove"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <div className="flex justify-end">
-                  <Button type="button" variant="ghost" size="sm" className="gap-1">
-                    <Plus className="h-4 w-4" /> Add subtask
-                  </Button>
-                </div>
-              </div> */}
               <DraggableSubtasks2
                 member={teamMembers}
                 taskId={taskValues?.id}
                 subtasks={taskValues?.subtasks}
                 setTaskValues={setTaskValues}
+                setMentionSub={setMentionSub}
+                teamMembers={teamMembers}
               />
             </Labeled>
           </div>

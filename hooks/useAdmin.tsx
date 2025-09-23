@@ -5,7 +5,7 @@ export function useAdmin() {
   const { user, isLoading: userLoading } = useUser();
 
   const admins = [
-    // 'david.zeeman@intelleqt.ai',
+    'david.zeeman@intelleqt.ai',
     'roxi.zeeman@souqdesign.co.uk',
     'risalat.shahriar@intelleqt.ai',
     'dev@intelleqt.ai',
