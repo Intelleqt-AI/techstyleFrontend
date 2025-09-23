@@ -882,17 +882,29 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                       <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
                         <SelectValue placeholder="No phase" />
                       </SelectTrigger>
-                      <SelectContent>
-                        {data
-                          ?.find(item => item.id == taskValues?.projectID)
-                          ?.phases?.map(selectItem => (
-                            <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
-                          ))}
+                      {taskValues?.phases ? (
+                        <SelectContent>
+                          {data
+                            ?.find(item => item.id == taskValues?.projectID)
+                            ?.phases?.map(selectItem => (
+                              <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
+                            ))}
 
-                        {data?.find(item => item.id == taskValues?.projectID)?.phases?.length == undefined && (
-                          <SelectItem disabled>No phases</SelectItem>
-                        )}
-                      </SelectContent>
+                          {data?.find(item => item.id == taskValues?.projectID)?.phases?.length == undefined && (
+                            <SelectItem disabled>No phases</SelectItem>
+                          )}
+                        </SelectContent>
+                      ) : (
+                        <SelectContent className="bg-white z-[99]">
+                          <SelectItem value="initial">Design Concepts</SelectItem>
+                          <SelectItem value="design-development">Design & Development</SelectItem>
+                          <SelectItem value="technical-drawings">Technical Drawing</SelectItem>
+                          <SelectItem value="client-review">Client Review</SelectItem>
+                          <SelectItem value="procurement">Procurement</SelectItem>
+                          <SelectItem value="site-implementation">Site Implementation</SelectItem>
+                          <SelectItem value="complete-project">Complete</SelectItem>
+                        </SelectContent>
+                      )}
                     </Select>
                   </Labeled>
                 </motion.div>
