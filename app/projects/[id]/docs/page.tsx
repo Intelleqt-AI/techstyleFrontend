@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import * as React from "react";
-import { useRouter } from "next/navigation";
-import { ProjectNav } from "@/components/project-nav";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from 'next/link';
+import * as React from 'react';
+import { useRouter } from 'next/navigation';
+import { ProjectNav } from '@/components/project-nav';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   FileText,
   ImageIcon,
@@ -22,31 +22,18 @@ import {
   FolderOpen,
   ChevronDown,
   FileIcon,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { NotesFeed } from "@/components/notes-feed";
-import { NotesSidePanel } from "@/components/notes-side-panel";
-import { mockNotes } from "@/components/notes-mocks";
-import type { Note } from "@/components/notes-types";
-import { AIPill } from "@/components/ai-pill";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import Modal from "react-modal";
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
-import {
-  getAllFiles,
-  createFolder,
-  uploadDoc,
-  downloadFolderAsZip,
-  renameFolder,
-  deleteFile,
-  getFolderStats,
-} from "@/supabase/API";
+} from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { NotesFeed } from '@/components/notes-feed';
+import { NotesSidePanel } from '@/components/notes-side-panel';
+import { mockNotes } from '@/components/notes-mocks';
+import type { Note } from '@/components/notes-types';
+import { AIPill } from '@/components/ai-pill';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import Modal from 'react-modal';
+import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
+import { getAllFiles, createFolder, uploadDoc, downloadFolderAsZip, renameFolder, deleteFile, getFolderStats } from '@/supabase/API';
 
 // Derived from storage
 type DerivedFolder = {
@@ -58,10 +45,10 @@ type DerivedFolder = {
 
 const notesFolder = {
   id: 999,
-  name: "Notes",
+  name: 'Notes',
   items: 12,
   needsReview: 3,
-  lastModified: "2024-02-07",
+  lastModified: '2024-02-07',
 };
 
 type DerivedFile = {
@@ -74,19 +61,13 @@ type DerivedFile = {
 
 function getFileIcon(type: string) {
   switch (type) {
-    case "image":
-      return (
-        <ImageIcon className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-      );
-    case "pdf":
-      return (
-        <FileText className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-      );
-    case "spreadsheet":
-      return (
-        <FileText className="h-4 w-4 text-neutral-500" aria-hidden="true" />
-      );
-    case "cad":
+    case 'image':
+      return <ImageIcon className="h-4 w-4 text-neutral-500" aria-hidden="true" />;
+    case 'pdf':
+      return <FileText className="h-4 w-4 text-neutral-500" aria-hidden="true" />;
+    case 'spreadsheet':
+      return <FileText className="h-4 w-4 text-neutral-500" aria-hidden="true" />;
+    case 'cad':
       return <File className="h-4 w-4 text-neutral-500" aria-hidden="true" />;
     default:
       return <File className="h-4 w-4 text-neutral-500" aria-hidden="true" />;
@@ -94,42 +75,32 @@ function getFileIcon(type: string) {
 }
 
 function formatDate(dateString?: string) {
-  if (!dateString) return "-";
+  if (!dateString) return '-';
   const date = new Date(dateString);
   const now = new Date();
-  const diffInHours = Math.floor(
-    (now.getTime() - date.getTime()) / (1000 * 60 * 60)
-  );
-  if (diffInHours < 1) return "Just now";
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  if (diffInHours < 1) return 'Just now';
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  if (diffInHours < 48) return "Yesterday";
-  return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+  if (diffInHours < 48) return 'Yesterday';
+  return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
 }
 
-export default function ProjectDocsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function ProjectDocsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [activePane, setActivePane] = React.useState<"notes" | "files">(
-    "notes"
-  );
+  const [activePane, setActivePane] = React.useState<'notes' | 'files'>('notes');
   const [sideOpen, setSideOpen] = React.useState(false);
-  const [selectedNote, setSelectedNote] = React.useState<Note | undefined>(
-    undefined
-  );
-  const [currentPath] = React.useState("");
+  const [selectedNote, setSelectedNote] = React.useState<Note | undefined>(undefined);
+  const [currentPath] = React.useState('');
   const [modalOpen, setModalOpen] = React.useState(false);
   const [uploadModal, setUploadModal] = React.useState(false);
-  const [newFolderName, setNewFolderName] = React.useState("");
+  const [newFolderName, setNewFolderName] = React.useState('');
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [fileQueue, setFileQueue] = React.useState<File[]>([]);
   const [viewerOpen, setViewerOpen] = React.useState(false);
   const [currentDoc, setCurrentDoc] = React.useState<any>(null);
   const [renameModalOpen, setRenameModalOpen] = React.useState(false);
   const [selectedDoc, setSelectedDoc] = React.useState(null);
-  const [updatedFolderName, setUpdatedFolderName] = React.useState("");
+  const [updatedFolderName, setUpdatedFolderName] = React.useState('');
   const [totalDocs, setTotalDocs] = React.useState([]);
 
   // Fetch files/folders
@@ -138,7 +109,7 @@ export default function ProjectDocsPage({
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["GetAllFiles", params.id, currentPath],
+    queryKey: ['GetAllFiles', params.id, currentPath],
     queryFn: () => getAllFiles(params.id, currentPath),
     enabled: !!params.id,
   });
@@ -177,19 +148,15 @@ export default function ProjectDocsPage({
     const filesOnly = allItems.filter((d: any) => !d.isFolder);
 
     const toType = (mime?: string) => {
-      if (!mime) return "file";
-      if (mime.startsWith("image/")) return "image";
-      if (mime.includes("pdf")) return "pdf";
-      if (mime.includes("sheet") || mime.includes("excel"))
-        return "spreadsheet";
-      return "file";
+      if (!mime) return 'file';
+      if (mime.startsWith('image/')) return 'image';
+      if (mime.includes('pdf')) return 'pdf';
+      if (mime.includes('sheet') || mime.includes('excel')) return 'spreadsheet';
+      return 'file';
     };
 
     return filesOnly
-      .sort(
-        (a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 8)
       .map((f: any) => ({
         id: f.id,
@@ -200,68 +167,74 @@ export default function ProjectDocsPage({
       }));
   }, [allItems]);
 
-  const RenameOpenModal = (doc) => {
+  const RenameOpenModal = doc => {
     setSelectedDoc(doc);
     setRenameModalOpen(true);
   };
   function RenameCloseModal() {
     setRenameModalOpen(false);
-    setUpdatedFolderName("");
+    setUpdatedFolderName('');
   }
 
   // Mutations
   const createFolderMutation = useMutation({
     mutationFn: (vars: any) => createFolder(vars),
-    onMutate: () => toast.loading("Creating folder...", { id: "folder-toast" }),
+    onMutate: () => toast.loading('Creating folder...', { id: 'folder-toast' }),
     onSuccess: () => {
-      toast.dismiss("folder-toast");
-      toast.success("Folder created successfully!");
+      toast.dismiss('folder-toast');
+      toast.success('Folder created successfully!');
       setModalOpen(false);
-      setNewFolderName("");
+      setNewFolderName('');
       refetch();
     },
     onError: () => {
-      toast.dismiss("folder-toast");
-      toast.error("Failed to create folder.");
+      toast.dismiss('folder-toast');
+      toast.error('Failed to create folder.');
     },
   });
 
   const uploadMutation = useMutation({
     mutationFn: (vars: any) => uploadDoc(vars),
-    onMutate: () => toast.loading("Uploading...", { id: "upload-toast" }),
+    onMutate: () => toast.loading('Uploading...', { id: 'upload-toast' }),
     onSuccess: () => {
-      toast.dismiss("upload-toast");
-      toast.success("Uploaded successfully!");
+      toast.dismiss('upload-toast');
+      toast.success('Uploaded successfully!');
       setFileQueue([]);
       setUploadModal(false);
       refetch();
     },
-    onError: () => {
-      toast.dismiss("upload-toast");
-      toast.error("Failed to upload document.");
+    onError: e => {
+      console.log(e);
+      toast.dismiss('upload-toast');
+      toast.error('Failed to upload document.');
     },
   });
+
+  const handleUploadModalClose = () => {
+    setUploadModal(false);
+    setFileQueue([]);
+  };
 
   const downloadFolderMutation = useMutation({
     mutationFn: (vars: any) => downloadFolderAsZip(vars),
     onMutate: () => {
       setIsDownloading(true);
-      toast.loading("Preparing download...", { id: "download-toast" });
+      toast.loading('Preparing download...', { id: 'download-toast' });
     },
     onSuccess: (downloadUrl: any, variables: any) => {
-      toast.dismiss("download-toast");
-      toast.success("Download ready!");
-      const link = document.createElement("a");
+      toast.dismiss('download-toast');
+      toast.success('Download ready!');
+      const link = document.createElement('a');
       link.href = String(downloadUrl);
-      link.setAttribute("download", `${variables.folderName}.zip`);
+      link.setAttribute('download', `${variables.folderName}.zip`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       setIsDownloading(false);
     },
     onError: () => {
-      toast.dismiss("download-toast");
-      toast.error("Failed to download folder.");
+      toast.dismiss('download-toast');
+      toast.error('Failed to download folder.');
       setIsDownloading(false);
     },
   });
@@ -270,17 +243,17 @@ export default function ProjectDocsPage({
   const renameFolderMutation = useMutation({
     mutationFn: renameFolder,
     onMutate: () => {
-      toast.loading("Renaming...", { id: "rename-toast" });
+      toast.loading('Renaming...', { id: 'rename-toast' });
     },
     onSuccess: () => {
       refetch();
       setRenameModalOpen(false);
-      toast.dismiss("rename-toast");
+      toast.dismiss('rename-toast');
       toast.success(`Renamed successfully!`);
     },
     onError: () => {
-      toast.dismiss("rename-toast");
-      toast.error("Failed to rename folder.");
+      toast.dismiss('rename-toast');
+      toast.error('Failed to rename folder.');
     },
   });
 
@@ -288,21 +261,21 @@ export default function ProjectDocsPage({
   const deleteMutation = useMutation({
     mutationFn: deleteFile,
     onMutate: () => {
-      toast.loading("Deleting...", { id: "delete-toast" });
+      toast.loading('Deleting...', { id: 'delete-toast' });
     },
     onSuccess: () => {
       refetch();
-      toast.dismiss("delete-toast");
+      toast.dismiss('delete-toast');
       toast.success(`Deleted successfully!`);
     },
     onError: () => {
-      toast.dismiss("delete-toast");
-      toast.error("Failed to delete file.");
+      toast.dismiss('delete-toast');
+      toast.error('Failed to delete file.');
     },
   });
 
   function formatSize(size?: number) {
-    if (!size && size !== 0) return "-";
+    if (!size && size !== 0) return '-';
     if (size < 1024) return `${size} B`;
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     return `${(size / (1024 * 1024)).toFixed(1)} MB`;
@@ -310,13 +283,13 @@ export default function ProjectDocsPage({
 
   function downloadFile(url: string, fileName: string) {
     fetch(url)
-      .then((r) => {
-        if (!r.ok) throw new Error("Network response was not ok");
+      .then(r => {
+        if (!r.ok) throw new Error('Network response was not ok');
         return r.blob();
       })
-      .then((blob) => {
+      .then(blob => {
         const objectUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = objectUrl;
         a.download = fileName;
         document.body.appendChild(a);
@@ -324,7 +297,7 @@ export default function ProjectDocsPage({
         a.remove();
         window.URL.revokeObjectURL(objectUrl);
       })
-      .catch(() => toast.error("Download failed"));
+      .catch(() => toast.error('Download failed'));
   }
 
   function openViewer(url: string, name: string) {
@@ -334,17 +307,15 @@ export default function ProjectDocsPage({
   }
 
   function fileUrl(name: string) {
-    return `${
-      process.env.NEXT_PUBLIC_SUPABASE_URL
-    }/storage/v1/object/public/docs/${params.id}/${
-      currentPath ? currentPath + "/" : ""
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/docs/${params.id}/${
+      currentPath ? currentPath + '/' : ''
     }${name}`;
   }
 
   function openNote(n: Note) {
     setSelectedNote(n);
     setSideOpen(true);
-    console.log("analytics: open_side_panel", { noteId: n.id });
+    console.log('analytics: open_side_panel', { noteId: n.id });
   }
 
   function RenameAfterCloseModal() {
@@ -360,10 +331,10 @@ export default function ProjectDocsPage({
       newFolderName: updatedFolderName,
     });
 
-    setUpdatedFolderName("");
+    setUpdatedFolderName('');
   };
 
-  const HandleFolderOpen = (folder) => {
+  const HandleFolderOpen = folder => {
     router.push(`/projects/${params.id}/docs/folders/${folder.id}`);
   };
 
@@ -381,13 +352,7 @@ export default function ProjectDocsPage({
   const folderStatsMutation = useMutation({
     mutationFn: getFolderStats,
     onSuccess: (data, variables) => {
-      setTotalDocs((prev) =>
-        prev.map((doc) =>
-          doc.name === variables.folderName
-            ? { ...doc, folderStats: data }
-            : doc
-        )
-      );
+      setTotalDocs(prev => prev.map(doc => (doc.name === variables.folderName ? { ...doc, folderStats: data } : doc)));
     },
   });
 
@@ -396,7 +361,7 @@ export default function ProjectDocsPage({
 
     // Process the data to identify folders and files
     if (filesResp?.data) {
-      const processedDocs = filesResp.data.map((item) => ({
+      const processedDocs = filesResp.data.map(item => ({
         ...item,
         isFolder: !item.metadata,
       }));
@@ -404,12 +369,12 @@ export default function ProjectDocsPage({
 
       // Fetch stats for all folders
       processedDocs
-        .filter((doc) => doc.isFolder)
-        .forEach((folder) => {
+        .filter(doc => doc.isFolder)
+        .forEach(folder => {
           folderStatsMutation.mutate({
             projectId: params.id,
             folderName: folder.name,
-            path: "",
+            path: '',
           });
         });
     }
@@ -428,61 +393,45 @@ export default function ProjectDocsPage({
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
                 aria-hidden="true"
               />
-              <Input
-                placeholder="Search documents & notes…"
-                className="w-72 pl-9"
-              />
+              <Input placeholder="Search documents & notes…" className="w-72 pl-9" />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex bg-transparent">
+            <Button variant="outline" size="sm" className="hidden sm:inline-flex bg-transparent">
               <Filter className="mr-2 h-4 w-4" />
-              {"Filter"}
+              {'Filter'}
             </Button>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModalOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(true)}>
               <FolderOpen className="mr-2 h-4 w-4" />
-              {"New Folder"}
+              {'New Folder'}
             </Button>
-            <Button
-              className="bg-neutral-900 text-white hover:bg-neutral-800"
-              onClick={() => setUploadModal(true)}>
+            <Button className="bg-neutral-900 text-white hover:bg-neutral-800" onClick={() => setUploadModal(true)}>
               <Upload className="mr-2 h-4 w-4" />
-              {"Upload Files"}
+              {'Upload Files'}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="bg-neutral-900 text-white hover:bg-neutral-800">
-                  {"✨ New Note"}
+                  {'✨ New Note'}
                   <ChevronDown className="ml-1 h-4 w-4 opacity-80" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onSelect={() =>
-                    console.log("new_note_from_zoom", { projectId: params.id })
-                  }>
-                  {"From Zoom call (paste link or select past meeting)"}
+                <DropdownMenuItem onSelect={() => console.log('new_note_from_zoom', { projectId: params.id })}>
+                  {'From Zoom call (paste link or select past meeting)'}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() =>
-                    console.log("new_note_from_site_visit", {
+                    console.log('new_note_from_site_visit', {
                       projectId: params.id,
                     })
-                  }>
-                  {"From Site Visit (upload audio/photos)"}
+                  }
+                >
+                  {'From Site Visit (upload audio/photos)'}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() =>
-                    console.log("new_note_blank", { projectId: params.id })
-                  }>
-                  {"Blank note (paste text)"}
+                <DropdownMenuItem onSelect={() => console.log('new_note_blank', { projectId: params.id })}>
+                  {'Blank note (paste text)'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -491,34 +440,26 @@ export default function ProjectDocsPage({
 
         {/* Folders Grid */}
         <div>
-          <h3 className="mb-4 text-sm font-medium text-neutral-900">
-            {"Folders"}
-          </h3>
+          <h3 className="mb-4 text-sm font-medium text-neutral-900">{'Folders'}</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {derivedFolders.map((folder) => {
+            {derivedFolders.map(folder => {
               return (
                 <div
                   key={folder.id}
                   onClick={() => HandleFolderOpen(folder)}
                   className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                  aria-label={`Open ${folder.name}`}>
+                  aria-label={`Open ${folder.name}`}
+                >
                   <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <Folder
-                            className="h-5 w-5 text-neutral-500"
-                            aria-hidden="true"
-                          />
+                          <Folder className="h-5 w-5 text-neutral-500" aria-hidden="true" />
                           <div>
-                            <h4 className="font-medium text-neutral-900">
-                              {folder.name}
-                            </h4>
+                            <h4 className="font-medium text-neutral-900">{folder.name}</h4>
                             <p className="mt-1 text-xs text-neutral-500">
-                              {folder?.folderStats?.fileCount} files • Updated{" "}
-                              {folder?.folderStats?.lastModified
-                                ? formatDate(folder?.folderStats?.lastModified)
-                                : "-"}
+                              {folder?.folderStats?.fileCount} files • Updated{' '}
+                              {folder?.folderStats?.lastModified ? formatDate(folder?.folderStats?.lastModified) : '-'}
                             </p>
                           </div>
                         </div>
@@ -526,40 +467,41 @@ export default function ProjectDocsPage({
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             asChild
-                            onClick={(e) => e.stopPropagation()} // ⬅️ Prevent parent click
+                            onClick={e => e.stopPropagation()} // ⬅️ Prevent parent click
                           >
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                              aria-label="Folder actions">
+                              aria-label="Folder actions"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 HandleFolderOpen(folder);
-                              }}>
-                              {"Open"}
+                              }}
+                            >
+                              {'Open'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 RenameOpenModal(folder);
-                              }}>
-                              {"Rename"}
+                              }}
+                            >
+                              {'Rename'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
-                                handleDeleteTask(
-                                  folder?.name,
-                                  folder?.isFolder
-                                );
-                              }}>
-                              {"Delete"}
+                                handleDeleteTask(folder?.name, folder?.isFolder);
+                              }}
+                            >
+                              {'Delete'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -570,58 +512,51 @@ export default function ProjectDocsPage({
               );
             })}
 
-            {derivedFiles.map((file) => {
+            {derivedFiles.map(file => {
               // Build file URL from Supabase (Next.js style env var)
-              const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/docs/${params.id}/${file.id}`;
+              const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Docs/${params.id}/${file.id}`;
 
               return (
                 <div
                   key={file.id}
                   onClick={() => openViewer(fileUrl, file.name)} // ⬅️ opens modal with DocViewer
                   className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                  aria-label={`Open ${file.name}`}>
+                  aria-label={`Open ${file.name}`}
+                >
                   <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between">
                         {/* File Info */}
                         <div className="flex items-center gap-3">
-                          <FileIcon
-                            className="h-5 w-5 text-blue-500"
-                            aria-hidden="true"
-                          />
+                          <FileIcon className="h-5 w-5 text-blue-500" aria-hidden="true" />
                           <div>
-                            <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
-                              {file.name}
-                            </h4>
+                            <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">{file.name}</h4>
                             <p className="mt-1 text-xs text-neutral-500">
-                              Updated{" "}
-                              {file.lastModified
-                                ? formatDate(file.lastModified)
-                                : "-"}
+                              Updated {file.lastModified ? formatDate(file.lastModified) : '-'}
                             </p>
                           </div>
                         </div>
 
                         {/* File Options */}
                         <DropdownMenu>
-                          <DropdownMenuTrigger
-                            asChild
-                            onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                              aria-label="File actions">
+                              aria-label="File actions"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 openViewer(fileUrl, file.name);
-                              }}>
-                              {"Open"}
+                              }}
+                            >
+                              {'Open'}
                             </DropdownMenuItem>
                             {/* <DropdownMenuItem
                               onClick={(e) => {
@@ -631,18 +566,20 @@ export default function ProjectDocsPage({
                               {"Rename"}
                             </DropdownMenuItem> */}
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 handleDeleteTask(file?.name, file?.isFolder);
-                              }}>
-                              {"Delete"}
+                              }}
+                            >
+                              {'Delete'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={(e) => {
+                              onClick={e => {
                                 e.stopPropagation();
                                 downloadFile(fileUrl, file.name);
-                              }}>
-                              {"Download"}
+                              }}
+                            >
+                              {'Download'}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -658,22 +595,19 @@ export default function ProjectDocsPage({
               className="!h-[250px] !max-w-[500px] !py-7"
               isOpen={renameModalOpen}
               onRequestClose={RenameAfterCloseModal}
-              contentLabel="Rename Folder Modal">
+              contentLabel="Rename Folder Modal"
+            >
               <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <div className="text-sm font-semibold flex items-center gap-2">
-                    {/* <p> {doc?.name}</p> */}
-                  </div>
+                  <div className="text-sm font-semibold flex items-center gap-2">{/* <p> {doc?.name}</p> */}</div>
                 </div>
                 {/* Delete and Close Modal Section */}
                 <div className="buttons flex items-center gap-3 !mt-0 px-2">
                   <button
                     onClick={() => RenameCloseModal()}
-                    className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      viewBox="0 0 24 24">
+                    className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                       <path
                         fill="currentColor"
                         d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -684,11 +618,7 @@ export default function ProjectDocsPage({
               </div>
 
               <div className="py-4 my-7">
-                <Input
-                  placeholder="Folder Name"
-                  value={updatedFolderName}
-                  onChange={(e) => setUpdatedFolderName(e.target.value)}
-                />
+                <Input placeholder="Folder Name" value={updatedFolderName} onChange={e => setUpdatedFolderName(e.target.value)} />
               </div>
               <div className="flex items-center justify-between">
                 <Button variant="outline" onClick={() => RenameCloseModal()}>
@@ -773,67 +703,50 @@ export default function ProjectDocsPage({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <div className="flex items-center rounded-full border border-neutral-300 bg-white p-0.5">
-              {(["notes", "files"] as const).map((tab) => (
+              {(['notes', 'files'] as const).map(tab => (
                 <button
                   key={tab}
                   type="button"
                   onClick={() => {
                     setActivePane(tab);
-                    console.log("analytics: toggle_notes_files", { tab });
+                    console.log('analytics: toggle_notes_files', { tab });
                   }}
                   aria-pressed={activePane === tab}
                   className={[
-                    "rounded-full px-3 py-1 text-xs font-medium",
-                    activePane === tab
-                      ? "bg-neutral-900 text-white"
-                      : "text-neutral-700 hover:bg-neutral-50",
-                  ].join(" ")}>
-                  {tab === "notes" ? "Latest Notes" : "Recent Files"}
+                    'rounded-full px-3 py-1 text-xs font-medium',
+                    activePane === tab ? 'bg-neutral-900 text-white' : 'text-neutral-700 hover:bg-neutral-50',
+                  ].join(' ')}
+                >
+                  {tab === 'notes' ? 'Latest Notes' : 'Recent Files'}
                 </button>
               ))}
             </div>
           </div>
 
-          {activePane === "notes" ? (
-            <NotesFeed
-              notes={[]}
-              onOpen={(n) => openNote(n)}
-              className="border border-neutral-200"
-            />
+          {activePane === 'notes' ? (
+            <NotesFeed notes={[]} onOpen={n => openNote(n)} className="border border-neutral-200" />
           ) : (
             <Card className="rounded-xl border border-neutral-200">
               <CardContent className="p-6">
                 <div className="space-y-3">
-                  {derivedRecentFiles.map((file) => (
+                  {derivedRecentFiles.map(file => (
                     <div
                       key={file.id}
-                      className="flex items-center gap-4 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:bg-neutral-50">
-                      <div className="flex-shrink-0">
-                        {getFileIcon(file.type)}
-                      </div>
+                      className="flex items-center gap-4 rounded-lg border border-neutral-200 bg-white p-3 transition-colors hover:bg-neutral-50"
+                    >
+                      <div className="flex-shrink-0">{getFileIcon(file.type)}</div>
                       <div className="min-w-0 flex-1">
-                        <h4 className="mb-1 truncate font-medium text-neutral-900">
-                          {file.name}
-                        </h4>
+                        <h4 className="mb-1 truncate font-medium text-neutral-900">{file.name}</h4>
                         <div className="flex items-center gap-4 text-xs text-neutral-600">
                           <span>{formatSize(file.sizeBytes)}</span>
                           <div className="flex items-center gap-1">
                             <Avatar className="h-4 w-4">
-                              <AvatarImage
-                                src={`/placeholder.svg?height=16&width=16&query=uploaded-by`}
-                                alt=""
-                              />
-                              <AvatarFallback className="bg-neutral-900 text-[9px] text-white">
-                                {"TS"}
-                              </AvatarFallback>
+                              <AvatarImage src={`/placeholder.svg?height=16&width=16&query=uploaded-by`} alt="" />
+                              <AvatarFallback className="bg-neutral-900 text-[9px] text-white">{'TS'}</AvatarFallback>
                             </Avatar>
-                            {"Team"}
+                            {'Team'}
                           </div>
-                          <div className="flex items-center gap-1">
-                            {file.uploadedAt
-                              ? formatDate(file.uploadedAt)
-                              : "-"}
-                          </div>
+                          <div className="flex items-center gap-1">{file.uploadedAt ? formatDate(file.uploadedAt) : '-'}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -841,24 +754,19 @@ export default function ProjectDocsPage({
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                          onClick={() =>
-                            openViewer(fileUrl(file.name), file.name)
-                          }>
+                          onClick={() => openViewer(fileUrl(file.name), file.name)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                          onClick={() =>
-                            downloadFile(fileUrl(file.name), file.name)
-                          }>
+                          onClick={() => downloadFile(fileUrl(file.name), file.name)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>
@@ -872,18 +780,15 @@ export default function ProjectDocsPage({
       </div>
 
       {/* Side Panel for notes */}
-      <NotesSidePanel
-        open={sideOpen}
-        onOpenChange={setSideOpen}
-        note={selectedNote}
-      />
+      <NotesSidePanel open={sideOpen} onOpenChange={setSideOpen} note={selectedNote} />
 
       {/* Create Folder Modal */}
       <Modal
         className="!h-[250px] !max-w-[500px] !py-7"
         isOpen={modalOpen}
         onRequestClose={() => setModalOpen(false)}
-        contentLabel="Folder Create Modal">
+        contentLabel="Folder Create Modal"
+      >
         <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -893,11 +798,9 @@ export default function ProjectDocsPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={() => setModalOpen(false)}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -907,11 +810,7 @@ export default function ProjectDocsPage({
           </div>
         </div>
         <div className="py-4 my-7">
-          <Input
-            placeholder="Folder Name"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-          />
+          <Input placeholder="Folder Name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} />
         </div>
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => setModalOpen(false)}>
@@ -919,14 +818,14 @@ export default function ProjectDocsPage({
           </Button>
           <Button
             onClick={() => {
-              if (!newFolderName.trim())
-                return toast.error("Folder name cannot be empty");
+              if (!newFolderName.trim()) return toast.error('Folder name cannot be empty');
               createFolderMutation.mutate({
                 projectId: params.id,
                 folderName: newFolderName,
                 path: currentPath,
               });
-            }}>
+            }}
+          >
             Create
           </Button>
         </div>
@@ -936,8 +835,9 @@ export default function ProjectDocsPage({
       <Modal
         className="!h-[600px] !max-w-[700px] !py-7"
         isOpen={uploadModal}
-        onRequestClose={() => setUploadModal(false)}
-        contentLabel="Upload Documents Modal">
+        onRequestClose={handleUploadModalClose}
+        contentLabel="Upload Documents Modal"
+      >
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -946,12 +846,10 @@ export default function ProjectDocsPage({
           </div>
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
-              onClick={() => setUploadModal(false)}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              onClick={handleUploadModalClose}
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -964,15 +862,16 @@ export default function ProjectDocsPage({
         <div className="w-full max-w-lg mx-auto">
           {/* File Drop Area */}
           <div
-            onClick={() => document.getElementById("fileInput")?.click()}
-            className="border-dashed cursor-pointer mt-10 w-full border-2 flex flex-col gap-5 items-center justify-center py-6 rounded-2xl border-gray-300 hover:border-gray-400 transition-colors">
+            onClick={() => document.getElementById('fileInput')?.click()}
+            className="border-dashed cursor-pointer mt-10 w-full border-2 flex flex-col gap-5 items-center justify-center py-6 rounded-2xl border-gray-300 hover:border-gray-400 transition-colors"
+          >
             <div className="flex flex-col items-center gap-3">
               <input
                 id="fileInput"
                 type="file"
                 multiple
                 className="hidden"
-                onChange={(e) => setFileQueue(Array.from(e.target.files || []))}
+                onChange={e => setFileQueue(Array.from(e.target.files || []))}
               />
               <div className="bg-gray-100 w-24 h-24 flex items-center justify-center rounded-full">
                 <svg
@@ -980,7 +879,8 @@ export default function ProjectDocsPage({
                   className="h-6 w-6 text-gray-600"
                   fill="none"
                   viewBox="0 0 24 24"
-                  stroke="currentColor">
+                  stroke="currentColor"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -991,9 +891,7 @@ export default function ProjectDocsPage({
               </div>
               <div className="text-center">
                 <p className="text-lg mb-1 font-medium">Drag & Drop or Click</p>
-                <p className="text-sm text-gray-600">
-                  to upload multiple documents (max: 50MB each)
-                </p>
+                <p className="text-sm text-gray-600">to upload multiple documents (max: 50MB each)</p>
               </div>
             </div>
           </div>
@@ -1002,21 +900,15 @@ export default function ProjectDocsPage({
           {fileQueue.length > 0 && (
             <div className="mt-6 border rounded-2xl p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-medium">
-                  Selected Files ({fileQueue.length})
-                </h3>
-                <button
-                  onClick={() => setFileQueue([])}
-                  className="text-sm hover:text-red-700">
+                <h3 className="font-medium">Selected Files ({fileQueue.length})</h3>
+                <button onClick={() => setFileQueue([])} className="text-sm hover:text-red-700">
                   Remove All
                 </button>
               </div>
 
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {fileQueue.map((f, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
+                  <div key={index} className="bg-gray-50 p-3 rounded-lg flex items-center justify-between">
                     <div className="flex items-center gap-2 overflow-hidden">
                       <div className="p-2 rounded flex-shrink-0">
                         <svg
@@ -1024,21 +916,19 @@ export default function ProjectDocsPage({
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg">
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          ></path>
                         </svg>
                       </div>
                       <span className="truncate flex-1">{f.name}</span>
                     </div>
-                    <button
-                      onClick={() =>
-                        setFileQueue(fileQueue.filter((_, i) => i !== index))
-                      }
-                      className="text-black hover:text-red-700">
+                    <button onClick={() => setFileQueue(fileQueue.filter((_, i) => i !== index))} className="text-black hover:text-red-700">
                       ✕
                     </button>
                   </div>
@@ -1051,8 +941,7 @@ export default function ProjectDocsPage({
                 </Button>
                 <Button
                   onClick={() => {
-                    if (!fileQueue.length)
-                      return toast.error("Select files first");
+                    if (!fileQueue.length) return toast.error('Select files first');
                     if (fileQueue.length === 1) {
                       uploadMutation.mutate({
                         file: fileQueue[0],
@@ -1063,11 +952,11 @@ export default function ProjectDocsPage({
                       });
                     } else {
                       toast.loading(`Uploading ${fileQueue.length} files...`, {
-                        id: "upload-toast",
+                        id: 'upload-toast',
                       });
                       let completed = 0;
                       let failed = 0;
-                      fileQueue.forEach((f) => {
+                      fileQueue.forEach(f => {
                         uploadDoc({
                           file: f,
                           id: params.id,
@@ -1078,10 +967,8 @@ export default function ProjectDocsPage({
                           .then(() => {
                             completed++;
                             if (completed + failed === fileQueue.length) {
-                              toast.dismiss("upload-toast");
-                              toast.success(
-                                `Uploaded ${completed}/${fileQueue.length} files`
-                              );
+                              toast.dismiss('upload-toast');
+                              toast.success(`Uploaded ${completed}/${fileQueue.length} files`);
                               setFileQueue([]);
                               setUploadModal(false);
                               refetch();
@@ -1090,16 +977,16 @@ export default function ProjectDocsPage({
                           .catch(() => {
                             failed++;
                             if (completed + failed === fileQueue.length) {
-                              toast.dismiss("upload-toast");
-                              toast.error("Some uploads failed");
+                              toast.dismiss('upload-toast');
+                              toast.error('Some uploads failed');
                               refetch();
                             }
                           });
                       });
                     }
-                  }}>
-                  Upload {fileQueue.length}{" "}
-                  {fileQueue.length === 1 ? "File" : "Files"}
+                  }}
+                >
+                  Upload {fileQueue.length} {fileQueue.length === 1 ? 'File' : 'Files'}
                 </Button>
               </div>
             </div>
@@ -1112,27 +999,25 @@ export default function ProjectDocsPage({
         className="!h-[90vh] !max-w-[1200px] !py-7"
         isOpen={viewerOpen}
         onRequestClose={() => setViewerOpen(false)}
-        contentLabel="Document Viewer">
+        contentLabel="Document Viewer"
+      >
         <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2" />
           <div className="buttons flex items-center gap-4 !mt-0 px-2">
             {currentDoc && currentDoc[0]?.fileName && (
               <button
-                onClick={() =>
-                  downloadFile(currentDoc[0].uri, currentDoc[0].fileName)
-                }
+                onClick={() => downloadFile(currentDoc[0].uri, currentDoc[0].fileName)}
                 className="text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
-                title="Download with original filename">
+                title="Download with original filename"
+              >
                 <Download className="h-5 w-5" />
               </button>
             )}
             <button
               onClick={() => setViewerOpen(false)}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1141,7 +1026,7 @@ export default function ProjectDocsPage({
             </button>
           </div>
         </div>
-        <div style={{ marginTop: "20px", width: "100%", height: "500px" }}>
+        <div style={{ marginTop: '20px', width: '100%', height: '500px' }}>
           <DocViewer
             pluginRenderers={DocViewerRenderers}
             className="DocViewr"
@@ -1153,7 +1038,7 @@ export default function ProjectDocsPage({
                 retainURLParams: false,
               },
             }}
-            style={{ height: "100%" }}
+            style={{ height: '100%' }}
           />
         </div>
       </Modal>
