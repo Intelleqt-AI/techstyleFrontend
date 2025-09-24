@@ -63,7 +63,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DeleteDialog } from "@/components/DeleteDialog";
 import { useRouter } from "next/navigation";
 
 type FileType =
@@ -169,11 +168,6 @@ export default function ProjectFolderPage({
   const [updatedFolderName, setUpdatedFolderName] = useState("");
   const [updatedFileName, setUpdatedFileName] = useState("");
   const [selectedDoc, setSelectedDoc] = useState<FileItem | null>(null);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{
-    name: string;
-    isFolder: boolean;
-  } | null>(null);
   const [checkedItems, setCheckedItems] = useState<any[]>([]);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -621,17 +615,13 @@ export default function ProjectFolderPage({
   // Modal handlers
   const openModal = () => setModalOpen(true);
   const closeModal = () => setModalOpen(false);
-  const openUploadModal = () => {
-    setUploadModal(true);
-    setFile([]);
-  };
+  const openUploadModal = () => setUploadModal(true);
   const UploadCloseModal = () => setUploadModal(false);
   const LinkOpenModal = () => setLinkModalOpen(true);
   const LinkCloseModal = () => setLinkModalOpen(false);
   const RenameOpenModal = (doc: FileItem) => {
     setSelectedDoc(doc);
     setRenameModalOpen(true);
-    setUpdatedFolderName(doc.name);
   };
   const RenameCloseModal = () => {
     setRenameModalOpen(false);
@@ -950,13 +940,9 @@ export default function ProjectFolderPage({
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuItem
-                                  onClick={() => {
-                                    setDeleteTarget({
-                                      name: doc.name,
-                                      isFolder: doc.isFolder,
-                                    });
-                                    setIsDeleteOpen(true);
-                                  }}>
+                                  onClick={() =>
+                                    handleDeleteTask(doc.name, doc.isFolder)
+                                  }>
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
                                 </DropdownMenuItem>
@@ -1446,25 +1432,6 @@ export default function ProjectFolderPage({
           </div>
         </div>
       </Modal>
-
-      {/* Delete Confirmation Dialog */}
-      <DeleteDialog
-        isOpen={isDeleteOpen}
-        onClose={() => {
-          setIsDeleteOpen(false);
-          setDeleteTarget(null);
-        }}
-        onConfirm={() => {
-          if (deleteTarget) {
-            handleDeleteTask(deleteTarget.name, deleteTarget.isFolder);
-            setDeleteTarget(null);
-          }
-        }}
-        title={deleteTarget?.isFolder ? "Delete Folder" : "Delete File"}
-        description="Are you sure you want to delete this item? This action cannot be undone."
-        itemName={deleteTarget?.name}
-        requireConfirmation={false}
-      />
     </div>
   );
 }
