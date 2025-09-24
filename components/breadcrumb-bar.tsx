@@ -37,6 +37,13 @@ export function BreadcrumbBar() {
     if (segments.length === 0) return [{ label: 'Dashboard', href: '/' }];
 
     const breadcrumbs: { label: string; href: string }[] = [];
+    const decodeSeg = (s: string) => {
+      try {
+        return decodeURIComponent(s);
+      } catch (e) {
+        return s;
+      }
+    };
     const firstSegment = segments[0];
 
     // --- First segment handling ---
@@ -72,35 +79,39 @@ export function BreadcrumbBar() {
         breadcrumbs.push({ label: 'Settings', href: '/settings' });
         break;
       default:
-        breadcrumbs.push({ label: firstSegment, href: `/${firstSegment}` });
+        breadcrumbs.push({ label: decodeSeg(firstSegment), href: `/${firstSegment}` });
     }
 
     // --- Remaining segments ---
     const startIndex = firstSegment === 'projects' ? 2 : 1;
 
     for (let i = startIndex; i < segments.length; i++) {
-      const seg = segments[i];
+      const rawSeg = segments[i];
+      const seg = decodeSeg(rawSeg);
       let label = seg;
 
       // Special case: /reports/productivity/:userID
       if (firstSegment === 'reports' && segments[1] === 'productivity' && i === 2) {
-        const user = users?.data?.find(u => u.id === seg);
+        const user = users?.data?.find(u => u.id === rawSeg);
         label = user ? user.name : 'Loading..';
       }
 
       if (firstSegment === 'finance' && segments[1] === 'purchase-order' && i === 2) {
-        const PoNumber = data?.data?.find(u => u.id === seg);
+        const PoNumber = data?.data?.find(u => u.id === rawSeg);
         label = PoNumber ? PoNumber.poNumber : 'Loading..';
       }
 
       if (firstSegment === 'finance' && segments[1] === 'invoices' && i === 2) {
-        const InNumber = InvoiceData?.data?.find(u => u.id === seg);
+        const InNumber = InvoiceData?.data?.find(u => u.id === rawSeg);
         label = InNumber ? InNumber.inNumber : 'Create Invoice';
       }
 
+      // If the segment is 'folders', link to its parent (e.g., /projects/:id/docs)
+      const href = rawSeg === 'folders' ? '/' + segments.slice(0, i).join('/') : '/' + segments.slice(0, i + 1).join('/');
+
       breadcrumbs.push({
         label,
-        href: '/' + segments.slice(0, i + 1).join('/'),
+        href,
       });
     }
 
