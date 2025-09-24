@@ -88,6 +88,7 @@ export function AppSidebar() {
     return false; // default fallback (SSR safe)
   });
   const { user, isLoading } = useUser();
+
   const router = useRouter();
 
   // const isCollapsed = localStorage.getItem("sidebarCollapsed");
