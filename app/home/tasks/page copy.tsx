@@ -1,5 +1,4 @@
 'use client';
-// @ts-nocheck
 
 import React, { useEffect, useState } from 'react';
 import { HomeNav } from '@/components/home-nav';
@@ -18,7 +17,6 @@ import {
   Clock,
   CircleX,
   Trash2,
-  ChevronDown,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -84,7 +82,7 @@ const updatetaskList = (data: any[]) => {
   ];
 };
 
-const AnimatedClock = ({ running = false, className = '' }: { running?: boolean; className?: string }) => {
+const AnimatedClock = ({ running = false, className }) => {
   return (
     <>
       <svg
@@ -140,177 +138,6 @@ const updatedColName = {
   'in-progress': 'In Progress',
 };
 
-// Memoized Sortable Task Card to avoid unnecessary re-renders
-// compact card to reduce per-item DOM footprint
-const SortableTaskCard = React.memo(function SortableTaskCardInner({
-  task,
-  handleTrackingClick,
-  project,
-  openEditTask,
-  openDeleteModal,
-  getTrackingButtonClass,
-}: any) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    willChange: 'transform',
-  } as React.CSSProperties;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`p-3 h-[105px] flex flex-col justify-between rounded-lg border bg-gray-50 hover:bg-gray-100 transition-all ${
-        isDragging ? 'shadow-xl bg-white opacity-50 cursor-grabbing' : 'border-gray-200'
-      }`}
-      onClick={() => openEditTask(task)}
-    >
-      <div>
-        <div className="flex items-start justify-between mb-2">
-          <h4 className="font-medium capitalize text-sm truncate text-gray-900 leading-tight">{task.name}</h4>
-          <Button
-            onClick={e => handleTrackingClick(e, task.id)}
-            variant="ghost"
-            size="sm"
-            className={`w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2 ${
-              getTrackingButtonClass(task.id) ? 'bg-black text-white' : ''
-            }`}
-          >
-            {/* <Clock className={` w-3 h-3 `} /> */}
-            <AnimatedClock running={getTrackingButtonClass(task.id)} />
-          </Button>
-        </div>
-
-        <div className="text-xs capitalize truncate text-gray-600 mb-2">
-          {(project && project.find((p: any) => p.id === task?.projectID)?.name) || ''}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-gray-500">
-          {task?.subtasks?.filter((subtask: any) => subtask.selected === true).length}/{task?.subtasks?.length}
-        </span>
-        <div className="flex items-center gap-1">
-          <div className="flex items-center gap-1">{task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}</div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={e => {
-                e.stopPropagation();
-                openDeleteModal(task);
-              }}
-              className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-gray-400 hover:text-red-600 transition"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// Droppable Column component (memoized)
-const DroppableColumn = React.memo(function DroppableColumnInner({
-  column,
-  project,
-  openEditTask,
-  handleTrackingClick,
-  openDeleteModal,
-  openNewTask,
-  isDraggingOver,
-  getTrackingButtonClass,
-  visibleCount,
-  onLoadMore,
-}: any) {
-  const { setNodeRef } = useDroppable({ id: column.id });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`bg-white  border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
-        isDraggingOver ? '!border-gray-500  !border-1 border-dashed !bg-[#f9f8f6]' : ''
-      }`}
-    >
-      {/* Column Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <column.icon className={`w-4 h-4 ${column.color}`} />
-          <span className="font-medium text-gray-900">{column.name}</span>
-          <TypeChip label={String(column?.items?.length ?? 0)} />
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            onClick={e => {
-              e.stopPropagation();
-              openNewTask();
-            }}
-            variant="ghost"
-            size="sm"
-            className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600"
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Task Cards */}
-      <div className="space-y-3  h-full  max-h-[600px] overflow-y-auto scrollbar-hide">
-        <SortableContext
-          items={(column.items || []).slice(0, visibleCount).map((item: any) => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {(column.items || []).slice(0, visibleCount).map((task: any) => (
-            <SortableTaskCard
-              handleTrackingClick={handleTrackingClick}
-              key={task.id}
-              task={task}
-              project={project}
-              openEditTask={openEditTask}
-              openDeleteModal={openDeleteModal}
-              getTrackingButtonClass={getTrackingButtonClass}
-            />
-          ))}
-        </SortableContext>
-
-        {/* Load more */}
-        {visibleCount < (column.items?.length || 0) && (
-          <div className="flex items-center mt-1 justify-center">
-            <button
-              className="w-full text-gray-500 py-2 hover:text-black  flex text-xs justify-center items-center gap-1 font-medium"
-              onClick={e => {
-                e.stopPropagation();
-                onLoadMore(column.id);
-              }}
-            >
-              <span>Load More</span>
-              <ChevronDown className="w-4 h-4 " />
-            </button>
-          </div>
-        )}
-
-        {/* Add Task Button */}
-        {/* <Button
-          data-dndkit-disabled-drag-handle
-          onClick={e => {
-            e.stopPropagation();
-            openNewTask();
-          }}
-          variant="ghost"
-          className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
-          size="sm"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Task
-        </Button> */}
-      </div>
-    </div>
-  );
-});
-
 export default function MyTasksPage() {
   const admins = [
     'david.zeeman@intelleqt.ai',
@@ -321,11 +148,142 @@ export default function MyTasksPage() {
   ];
 
   // Sortable Task Card Component
-  // (moved to module scope for memoization)
+  function SortableTaskCard({ task, handleTrackingClick, project, openEditTask, openDeleteModal }: any) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={`p-3 h-[105px] flex flex-col justify-between rounded-lg border bg-gray-50 hover:bg-gray-100 transition-all ${
+          isDragging ? 'shadow-xl bg-white opacity-50 cursor-grabbing' : 'border-gray-200'
+        }`}
+        onClick={() => openEditTask(task)}
+      >
+        <div>
+          <div className="flex items-start justify-between mb-2">
+            <h4 className="font-medium capitalize text-sm truncate text-gray-900 leading-tight">{task.name}</h4>
+            <Button
+              onClick={e => handleTrackingClick(e, task.id)}
+              variant="ghost"
+              size="sm"
+              className={`w-5 h-5 p-0 text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2 ${
+                getTrackingButtonClass(task.id) ? 'bg-black text-white' : ''
+              }`}
+            >
+              {/* <Clock className={` w-3 h-3 `} /> */}
+              <AnimatedClock running={getTrackingButtonClass(task.id)} />
+            </Button>
+          </div>
+
+          <div className="text-xs capitalize truncate text-gray-600 mb-2">
+            {(project && project.find((p: any) => p.id === task?.projectID)?.name) || ''}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-gray-500">
+            {task?.subtasks?.filter((subtask: any) => subtask.selected === true).length}/{task?.subtasks?.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1">
+              {task?.priority && <StatusBadge status={task?.priority} label={task?.priority} />}
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  openDeleteModal(task);
+                }}
+                className="h-6 w-6 rounded-full flex items-center justify-center hover:bg-red-100 text-gray-400 hover:text-red-600 transition"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Droppable Column Component
+  function DroppableColumn({ column, project, openEditTask, handleTrackingClick, openDeleteModal, openNewTask, isDraggingOver }: any) {
+    const { setNodeRef } = useDroppable({
+      id: column.id,
+    });
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`bg-white  border border-gray-200 rounded-xl p-4 shadow-sm transition-all ${
+          isDraggingOver ? '!border-gray-500  !border-1 border-dashed !bg-[#f9f8f6]' : ''
+        }`}
+      >
+        {/* Column Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <column.icon className={`w-4 h-4 ${column.color}`} />
+            <span className="font-medium text-gray-900">{column.name}</span>
+            <TypeChip label={String(column?.items?.length ?? 0)} />
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              onClick={e => {
+                e.stopPropagation();
+                openNewTask();
+              }}
+              variant="ghost"
+              size="sm"
+              className="w-6 h-6 p-0 text-gray-400 hover:text-gray-600"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Task Cards */}
+        <div className="space-y-3 mb-4 h-full  max-h-[600px] overflow-y-auto scrollbar-hide">
+          <SortableContext items={column.items.map((item: any) => item.id)} strategy={verticalListSortingStrategy}>
+            {column.items?.map((task: any) => (
+              <SortableTaskCard
+                handleTrackingClick={handleTrackingClick}
+                key={task.id}
+                task={task}
+                project={project}
+                openEditTask={openEditTask}
+                openDeleteModal={openDeleteModal}
+              />
+            ))}
+          </SortableContext>
+
+          {/* Add Task Button */}
+          <Button
+            data-dndkit-disabled-drag-handle
+            onClick={e => {
+              e.stopPropagation();
+              openNewTask();
+            }}
+            variant="ghost"
+            className="w-full text-gray-500 hover:text-gray-700 hover:bg-gray-50 justify-center"
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const [myTask, setMyTask] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
-  const [visibleCounts, setVisibleCounts] = React.useState<Record<string, number>>({});
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -341,8 +299,8 @@ export default function MyTasksPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        delay: 120, // increase delay to reduce accidental drags and thrash
-        tolerance: 5,
+        delay: 120, // drag starts only after 150ms press
+        tolerance: 5, // or minimum 5px pointer movement
       },
     }),
     useSensor(KeyboardSensor, {
@@ -350,45 +308,20 @@ export default function MyTasksPage() {
     })
   );
 
-  const openNewTask = React.useCallback((listId?: string) => {
+  function openNewTask(listId?: string) {
     setEditing(null);
     setDefaultListId(listId);
     setModalOpen(true);
-  }, []);
+  }
 
   const [searchText, setSearchText] = useState('');
   const [filter, setFilter] = useState<null | 'today' | 'overdue' | 'archive'>(null);
 
-  const openEditTask = React.useCallback((task: any) => {
+  function openEditTask(task: any) {
     setEditing(task);
     setDefaultListId(task.listId);
     setModalOpen(true);
-  }, []);
-
-  // Initialize visible counts per column when tasks change
-  useEffect(() => {
-    if (!tasks || tasks.length === 0) return;
-    setVisibleCounts(prev => {
-      const next: Record<string, number> = { ...prev };
-      tasks.forEach((col: any) => {
-        if (typeof next[col.id] === 'undefined') next[col.id] = 10;
-      });
-      return next;
-    });
-  }, [tasks]);
-
-  const handleLoadMore = React.useCallback(
-    (columnId: string) => {
-      setVisibleCounts(prev => {
-        const current = prev[columnId] || 10;
-        const col = tasks.find((c: any) => c.id === columnId);
-        const total = col?.items?.length || 0;
-        const nextCount = Math.min(current + 10, total);
-        return { ...prev, [columnId]: nextCount };
-      });
-    },
-    [tasks]
-  );
+  }
 
   const handleClose = (e: boolean) => {
     setModalOpen(e);
@@ -634,29 +567,32 @@ export default function MyTasksPage() {
     if (activeContainer === overContainer) return;
 
     setTasks(prev => {
-      const prevClone = prev.map(col => ({ ...col, items: [...col.items] }));
+      const activeItems = prev.find(col => col.id === activeContainer)?.items || [];
+      const overItems = prev.find(col => col.id === overContainer)?.items || [];
 
-      const activeCol = prevClone.find(col => col.id === activeContainer);
-      const overCol = prevClone.find(col => col.id === overContainer);
-      if (!activeCol || !overCol) return prev;
+      const activeIndex = activeItems.findIndex(item => item.id === activeId);
+      const overIndex = overItems.findIndex(item => item.id === overId);
 
-      const activeIndex = activeCol.items.findIndex(item => item.id === activeId);
-      const overIndex = overCol.items.findIndex(item => item.id === overId);
       if (activeIndex === -1) return prev;
 
-      const activeItem = activeCol.items[activeIndex];
-      // remove from activeCol immutably
-      activeCol.items = activeCol.items.filter((_, idx) => idx !== activeIndex);
-
+      const [activeItem] = activeItems.splice(activeIndex, 1);
       const updatedItem = { ...activeItem, status: overContainer };
 
       if (overIndex === -1) {
-        overCol.items = [...overCol.items, updatedItem];
+        overItems.push(updatedItem);
       } else {
-        overCol.items = [...overCol.items.slice(0, overIndex), updatedItem, ...overCol.items.slice(overIndex)];
+        overItems.splice(overIndex, 0, updatedItem);
       }
 
-      return prevClone;
+      return prev.map(col => {
+        if (col.id === activeContainer) {
+          return { ...col, items: activeItems };
+        }
+        if (col.id === overContainer) {
+          return { ...col, items: overItems };
+        }
+        return col;
+      });
     });
   };
 
@@ -838,9 +774,6 @@ export default function MyTasksPage() {
                 openNewTask={openNewTask}
                 isDraggingOver={overID === column.id}
                 handleTrackingClick={handleTrackingClick}
-                getTrackingButtonClass={getTrackingButtonClass}
-                visibleCount={visibleCounts[column.id] || 10}
-                onLoadMore={handleLoadMore}
               />
             ))}
           </div>
