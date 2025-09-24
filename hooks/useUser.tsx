@@ -12,6 +12,7 @@ const useUser = () => {
     const fetchSession = async () => {
       setIsSessionLoading(true);
       const { data } = await supabase.auth.getSession();
+      console.log(data);
       setUserEmail(data?.session?.user?.email || null);
       setIsSessionLoading(false);
     };
@@ -30,8 +31,7 @@ const useUser = () => {
     enabled: userEmail !== null,
   });
 
-  const currentUser = users?.data?.find(user => user.email === userEmail);
-
+  const currentUser = users?.data?.find(user => user.email == userEmail);
   const isLoading = isSessionLoading || isUsersLoading;
 
   return {
