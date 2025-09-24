@@ -70,154 +70,106 @@ const formatTime = ms => {
 // For Today
 function getFormattedTimeForToday(tasks) {
   const today = new Date();
-  const todayStart = new Date(today);
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date(today);
-  todayEnd.setHours(23, 59, 59, 999);
 
-  return tasks
-    .reduce((totalHours, task) => {
-      // 1. Check if task was worked on today
-      const taskDate = new Date(task.timerStart);
-      if (taskDate < todayStart || taskDate > todayEnd) {
-        return totalHours;
+  const totalMs = tasks.reduce((total, task) => {
+    if (!Array.isArray(task.session)) return total;
+
+    const sessionTime = task.session.reduce((sum, session) => {
+      const sessionDate = new Date(session.date);
+      const isToday =
+        sessionDate.getDate() === today.getDate() &&
+        sessionDate.getMonth() === today.getMonth() &&
+        sessionDate.getFullYear() === today.getFullYear();
+
+      if (isToday && typeof session.totalTime === 'number') {
+        return sum + session.totalTime;
       }
 
-      // 2. Calculate time from sessions
-      let sessionTime = 0;
-      if (Array.isArray(task.session)) {
-        sessionTime = task.session.reduce((sum, session) => {
-          const sessionDate = new Date(session.date);
-          if (sessionDate >= todayStart && sessionDate <= todayEnd) {
-            if (session.endTime) {
-              // Completed session - always count
-              return sum + (Number(session.endTime) - Number(session.startTime));
-            } else if (session.startTime && task.isActive && !task.isPaused) {
-              // Active session - count current duration
-              return sum + (Date.now() - Number(session.startTime));
-            }
-          }
-          return sum;
-        }, 0);
-      }
+      return sum;
+    }, 0);
 
-      // 3. Add the base totalWorkTime for paused/completed tasks
-      let additionalTime = 0;
-      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
-        additionalTime = Number(task.totalWorkTime);
-      }
+    return total + sessionTime;
+  }, 0);
 
-      // 4. Convert to hours and add to total
-      const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
-      return totalHours + taskHours;
-    }, 0)
-    .toFixed(1);
+  const totalMinutes = totalMs / (1000 * 60);
+
+  if (totalMinutes < 60) {
+    return `${Math.round(totalMinutes)} Minutes`;
+  } else {
+    const totalHours = totalMinutes / 60;
+    return `${totalHours.toFixed(1)} Hours`;
+  }
 }
 
 // For Week | Monday - fri
 function getFormattedTimeFromMondayToSaturday(tasks) {
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  const dayOfWeek = now.getDay();
 
-  // Get Monday of the current week
   const monday = new Date(now);
   const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   monday.setDate(now.getDate() + diffToMonday);
   monday.setHours(0, 0, 0, 0);
 
-  // Get Friday of the same week
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4); // +4 days = Friday
-  friday.setHours(23, 59, 59, 999);
+  // Get Saturday of this week
+  const saturday = new Date(monday);
+  saturday.setDate(monday.getDate() + 5);
+  saturday.setHours(23, 59, 59, 999);
 
-  return tasks
-    .reduce((totalHours, task) => {
-      // 1. Check if the task was worked on this week (Mon–Fri)
-      const taskDate = new Date(task.timerStart);
-      if (taskDate < monday || taskDate > friday) {
-        return totalHours;
+  const totalMs = tasks.reduce((total, task) => {
+    if (!Array.isArray(task.session)) return total;
+
+    const sessionTime = task.session.reduce((sum, session) => {
+      const sessionDate = new Date(session.date);
+      if (sessionDate >= monday && sessionDate <= saturday && typeof session.totalTime === 'number') {
+        return sum + session.totalTime;
       }
+      return sum;
+    }, 0);
 
-      // 2. Calculate time from sessions
-      let sessionTime = 0;
-      if (Array.isArray(task.session)) {
-        sessionTime = task.session.reduce((sum, session) => {
-          const sessionDate = new Date(session.date);
-          if (sessionDate >= monday && sessionDate <= friday) {
-            if (session.endTime) {
-              // Completed session - always count
-              return sum + (Number(session.endTime) - Number(session.startTime));
-            } else if (session.startTime && task.isActive && !task.isPaused) {
-              // Active session - count current duration
-              return sum + (Date.now() - Number(session.startTime));
-            }
-          }
-          return sum;
-        }, 0);
-      }
+    return total + sessionTime;
+  }, 0);
 
-      // 3. Add saved totalWorkTime for paused/completed tasks
-      let additionalTime = 0;
-      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
-        additionalTime = Number(task.totalWorkTime);
-      }
+  const totalMinutes = totalMs / (1000 * 60);
 
-      // 4. Convert ms → hours and add to total
-      const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
-      return totalHours + taskHours;
-    }, 0)
-    .toFixed(1);
+  if (totalMinutes < 60) {
+    return `${Math.round(totalMinutes)} Minutes`;
+  } else {
+    const totalHours = totalMinutes / 60;
+    return `${totalHours.toFixed(1)} Hours`;
+  }
 }
 
 // For current month
 function getFormattedTimeForCurrentMonth(tasks) {
   const now = new Date();
 
-  // First day of month
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  firstDay.setHours(0, 0, 0, 0);
-
-  // Last day of month
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   lastDay.setHours(23, 59, 59, 999);
 
-  return tasks
-    .reduce((totalHours, task) => {
-      // 1. Check if task was worked on this month
-      const taskDate = new Date(task.timerStart);
-      if (taskDate < firstDay || taskDate > lastDay) {
-        return totalHours;
-      }
+  const totalMs = tasks.reduce((total, task) => {
+    if (!Array.isArray(task.session)) return total;
 
-      // 2. Calculate time from sessions
-      let sessionTime = 0;
-      if (Array.isArray(task.session)) {
-        sessionTime = task.session.reduce((sum, session) => {
-          const sessionDate = new Date(session.date);
-          if (sessionDate >= firstDay && sessionDate <= lastDay) {
-            if (session.endTime) {
-              // Completed session - always count
-              return sum + (Number(session.endTime) - Number(session.startTime));
-            } else if (session.startTime && task.isActive && !task.isPaused) {
-              // Active session - count current duration
-              return sum + (Date.now() - Number(session.startTime));
-            }
-          }
-          return sum;
-        }, 0);
+    const sessionTime = task.session.reduce((sum, session) => {
+      const sessionDate = new Date(session.date);
+      if (sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
+        return sum + session.totalTime;
       }
+      return sum;
+    }, 0);
 
-      // 3. Add the base totalWorkTime for paused/completed tasks
-      let additionalTime = 0;
-      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
-        additionalTime = Number(task.totalWorkTime);
-      }
+    return total + sessionTime;
+  }, 0);
 
-      // 4. Convert to hours and add to total
-      const taskHours = (sessionTime + additionalTime) / (1000 * 60 * 60);
-      return totalHours + taskHours;
-    }, 0)
-    .toFixed(1);
+  const totalMinutes = totalMs / (1000 * 60);
+
+  if (totalMinutes < 60) {
+    return `${Math.round(totalMinutes)} Minutes`;
+  } else {
+    const totalHours = totalMinutes / 60;
+    return `${totalHours.toFixed(1)} Hours`;
+  }
 }
 
 type Day = {
@@ -328,7 +280,7 @@ export default function HomeTimePage() {
       toast('Timer Updated');
       closeModal();
       // Update local state for the specific task
-      setTasks(prev => prev.map(task => (task.id === variables.id ? { ...task, ...variables } : task)));
+      // setTasks(prev => prev.map(task => (task.id === variables.id ? { ...task, ...variables } : task)));
     },
     onError: () => {
       toast('Error! Try again');
@@ -337,8 +289,15 @@ export default function HomeTimePage() {
 
   // Process task data when received
   useEffect(() => {
+    // if (trackingLoading || !trackingData?.data) return;
+    // const processedTasks = trackingData.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
+    // const filterByEmail = processedTasks.filter(item => item.creator == user?.email);
+    // setTasks(filterByEmail);
+
     if (trackingLoading || !trackingData?.data) return;
-    const processedTasks = trackingData.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
+    const processedTasks = trackingData.data
+      .filter(item => item.isActive)
+      .sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
     const filterByEmail = processedTasks.filter(item => item.creator == user?.email);
     setTasks(filterByEmail);
 
@@ -758,17 +717,17 @@ export default function HomeTimePage() {
             <div className="mt-5 space-y-3.5">
               <div className="flex items-baseline justify-between">
                 <span className="text-neutral-600">Today</span>
-                <span className="text-2xl font-bold text-neutral-900 md:text-3xl">{getFormattedTimeForToday(tasks)}h</span>
+                <span className="text-2xl font-bold text-neutral-900 md:text-3xl">{getFormattedTimeForToday(tasks)}</span>
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-neutral-600">This Week</span>
                 <span className="text-xl font-semibold md:text-2xl" style={{ color: oliveDeep }}>
-                  {getFormattedTimeFromMondayToSaturday(tasks)}h
+                  {getFormattedTimeFromMondayToSaturday(tasks)}
                 </span>
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-neutral-600">This Month</span>
-                <span className="text-xl font-semibold text-neutral-700 md:text-2xl">{getFormattedTimeForCurrentMonth(tasks)}h</span>
+                <span className="text-xl font-semibold text-neutral-700 md:text-2xl">{getFormattedTimeForCurrentMonth(tasks)}</span>
               </div>
             </div>
 
