@@ -627,6 +627,7 @@ export default function ProjectTasksPage({
             team={TEAM}
             onEditTask={openEditTask}
             onCreateTask={() => openNewTask(undefined)}
+            project={project}
           />
         )}
       </div>

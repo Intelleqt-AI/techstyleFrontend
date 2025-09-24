@@ -82,14 +82,6 @@ const colorMap: Record<string, string> = {
   // add all colors you use
 };
 
-// add this helper to extract a hex color from Tailwind "text[#hex]" style classes
-function extractHexFromClass(cls?: string) {
-  if (!cls) return undefined;
-  // match #RRGGBB or #RGB
-  const m = cls.match(/#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})/);
-  return m ? m[0] : undefined;
-}
-
 function parseISO(d: ISODate) {
   const [y, m, day] = d.split("-").map((n) => Number.parseInt(n, 10));
   return new Date(y, m - 1, day);
@@ -119,7 +111,6 @@ export default function TimelineView({
   team,
   onEditTask,
   onCreateTask,
-  project,
 }: {
   tasks: any[];
   setTasks?: React.Dispatch<React.SetStateAction<UITask[]>>;
@@ -1259,35 +1250,35 @@ export default function TimelineView({
               {/* Left rail rows */}
               <div className="sticky left-0 z-10 bg-white border-r border-border">
                 <AnimatePresence>
-                  {tasks &&
-                    tasks?.map((row, idx) => {
-                      // const p = ALL_PHASES.find((x) => x.id === row.phaseId)!;
-                      // const count = filteredTasks?.filter((t) => {
-                      //   const pid = t.phaseId ?? "__unscheduled__";
-                      //   const uns = !t.startDate && !t.endDate && !t.dueDate;
-                      //   return row.phaseId === "__unscheduled__"
-                      //     ? uns
-                      //     : pid === row.phaseId;
-                      // }).length;
-                      const isCollapsed = collapsed[row.id];
+                  {rows.map((row, idx) => {
+                    if (row.type === "phase") {
+                      const p = ALL_PHASES.find((x) => x.id === row.phaseId)!;
+                      const count = filteredTasks?.filter((t) => {
+                        const pid = t.phaseId ?? "__unscheduled__";
+                        const uns = !t.startDate && !t.endDate && !t.dueDate;
+                        return row.phaseId === "__unscheduled__"
+                          ? uns
+                          : pid === row.phaseId;
+                      }).length;
+                      const isCollapsed = collapsed[row.phaseId];
                       // console.log(row);
                       return (
                         <motion.div
-                          key={row.id}
+                          key={row.key}
                           className="border-b border-gray-100"
                           initial={{ opacity: 0, y: -10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.2 }}>
                           <div
                             className="flex items-center gap-3 px-5 h-10"
-                            title={`${row?.name} • ${row?.items.length} tasks`}>
+                            title={`${p.name} • ${count} tasks`}>
                             <button
                               className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-gray-200 bg-white"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setCollapsed((c) => ({
                                   ...c,
-                                  [row.id]: !c[row.id],
+                                  [row.phaseId]: !c[row.phaseId],
                                 }));
                               }}
                               aria-label={
@@ -1305,21 +1296,17 @@ export default function TimelineView({
                               className={`h-8 w-1.5 rounded-full ${
                                 colorMap[row?.colorClass || "text-gray-600"]
                               }`}
-                              style={{
-                                backgroundColor: extractHexFromClass(
-                                  row?.colorClass
-                                ),
-                              }}
+                              style={{ backgroundColor: row.colorClass }}
                             />
 
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium text-gray-900 truncate capitalize">
-                                {row?.name}
+                                {p.name}
                               </div>
                               <div className="flex items-center gap-2">
                                 {/* <div className="text-xs text-gray-500">
-                                {count} tasks
-                              </div> */}
+                                  {count} tasks
+                                </div> */}
                                 <div className="text-xs text-gray-500">
                                   {row?.startDate
                                     ? formatShort(row?.startDate)
@@ -1333,47 +1320,69 @@ export default function TimelineView({
                             </div>
 
                             <span className="inline-flex items-center px-2 h-7 rounded-full text-xs bg-gray-100 border border-gray-200 text-gray-700">
-                              {row?.items.length}
+                              {count}
                             </span>
+
+                            {/* <motion.span
+                              className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}>
+                              <Plus
+                                className="h-4 w-4"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCreateTask(row.phaseId);
+                                }}
+                              />
+                            </motion.span> */}
                           </div>
 
                           {!isCollapsed &&
-                            // filteredTasks
-                            //   ?.filter((t) =>
-                            //     row.phaseId === "__unscheduled__"
-                            //       ? !t?.startDate && !t?.endDate && !t?.dueDate
-                            //       : t?.phaseId === row.phaseId
-                            //   )
-                            row?.items?.map((t) => {
-                              return (
-                                <motion.div
-                                  key={t?.id}
-                                  className="pl-14 pr-5 py-3 border-t border-gray-100 hover:bg-gray-50 transition-colors duration-200"
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ duration: 0.2 }}>
-                                  <div className="flex items-center gap-2">
-                                    <div className="text-sm truncate text-gray-700 capitalize">
-                                      {t?.name}
+                            filteredTasks
+                              ?.filter((t) =>
+                                row.phaseId === "__unscheduled__"
+                                  ? !t?.startDate && !t?.endDate && !t?.dueDate
+                                  : t?.phaseId === row.phaseId
+                              )
+                              .map((t) => {
+                                return (
+                                  <motion.div
+                                    key={t?.id}
+                                    className="pl-14 pr-5 py-3 border-t border-gray-100 hover:bg-gray-50 transition-colors duration-200"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ duration: 0.2 }}>
+                                    <div className="flex items-center gap-2">
+                                      <div className="text-sm truncate text-gray-700 capitalize">
+                                        {t?.title}
+                                      </div>
+                                      <div className="text-xs text-gray-500">
+                                        {t?.startDate
+                                          ? formatShort(t?.startDate)
+                                          : "-"}{" "}
+                                        –{" "}
+                                        {t?.endDate
+                                          ? formatShort(t?.endDate)
+                                          : "-"}
+                                      </div>
+                                      {/* <div className="flex items-center justify-end">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8"
+                                        // onClick={() => onDeleteTask(t?.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div> */}
                                     </div>
-                                    <div className="text-xs text-gray-500">
-                                      {t?.startDate
-                                        ? formatShort(t?.startDate)
-                                        : "-"}{" "}
-                                      –{" "}
-                                      {t?.dueDate
-                                        ? formatShort(t?.dueDate)
-                                        : "-"}
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              );
-                            })}
+                                  </motion.div>
+                                );
+                              })}
                         </motion.div>
                       );
-                      // if (row.type === "phase") {
-                      // }
-                    })}
+                    }
+                  })}
                 </AnimatePresence>
               </div>
 
