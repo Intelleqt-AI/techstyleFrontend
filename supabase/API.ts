@@ -356,7 +356,7 @@ export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
     throw new Error(error.message);
   }
 
-  if (!error && projectID) {
+  if (!error && projectID && task) {
     const { data: project, error: projectError } = await supabase.from('Project').select('*').eq('id', projectID).single();
 
     if (projectError) throw new Error(projectError.message);
@@ -368,8 +368,8 @@ export const uploadDoc = async ({ file, id, path = '', projectID, task }) => {
         {
           time: new Date(),
           link: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Docs/${filePath}`,
-          taskID: task.id,
-          taskName: task.name,
+          taskID: task?.id,
+          taskName: task?.name,
         },
       ],
     };
