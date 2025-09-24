@@ -1055,7 +1055,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
               </div>
               <div>
                 <Textarea
-                  placeholder="Add details… use @ to mention teammates. Attach files below."
+                  placeholder="Add details of the project . Attach files below."
                   id="description"
                   name="description"
                   rows={5}
@@ -1114,7 +1114,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                       value={comment.value}
                       onChange={handleCommentChanges}
                       required
-                      placeholder="Add Comment..."
+                      placeholder="Add Comment (@mention to notify)"
                       className="border-none bg-white outline-none focus:ring-0 focus:shadow-none"
                     />
 
