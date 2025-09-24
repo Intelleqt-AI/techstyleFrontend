@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useMemo, useState, useEffect, useRef } from "react";
-import { ProjectNav } from "@/components/project-nav";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import Link from 'next/link';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { ProjectNav } from '@/components/project-nav';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +13,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+} from '@/components/ui/breadcrumb';
 import {
   ArrowLeft,
   ChevronRight,
@@ -38,12 +38,12 @@ import {
   MessageSquareShare,
   Loader2,
   CloudDownload,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import Modal from "react-modal";
-import DocViewer, { DocViewerRenderers } from "@cyntler/react-doc-viewer";
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import Modal from 'react-modal';
+import DocViewer, { DocViewerRenderers } from '@cyntler/react-doc-viewer';
 import {
   getAllFiles,
   createFolder,
@@ -55,23 +55,11 @@ import {
   deleteLink,
   renameFolder,
   renameFile,
-} from "@/supabase/API";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/supabase/API';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-type FileType =
-  | "image"
-  | "pdf"
-  | "spreadsheet"
-  | "document"
-  | "cad"
-  | "design"
-  | "other";
+type FileType = 'image' | 'pdf' | 'spreadsheet' | 'document' | 'cad' | 'design' | 'other';
 
 interface FileItem {
   id: string;
@@ -94,27 +82,27 @@ interface LinkItem {
 }
 
 const FOLDER_INDEX: Record<string, { name: string; id: number }> = {
-  "1": { id: 1, name: "Design Concepts" },
-  "2": { id: 2, name: "Technical Drawings" },
-  "3": { id: 3, name: "Client Communications" },
-  "4": { id: 4, name: "Procurement Documents" },
-  "5": { id: 5, name: "Site Photos" },
-  "6": { id: 6, name: "Contracts & Legal" },
+  '1': { id: 1, name: 'Design Concepts' },
+  '2': { id: 2, name: 'Technical Drawings' },
+  '3': { id: 3, name: 'Client Communications' },
+  '4': { id: 4, name: 'Procurement Documents' },
+  '5': { id: 5, name: 'Site Photos' },
+  '6': { id: 6, name: 'Contracts & Legal' },
 };
 
 const getFileIcon = (type: FileType) => {
   switch (type) {
-    case "image":
+    case 'image':
       return <ImageIcon className="w-4 h-4 text-gray-500" />;
-    case "pdf":
+    case 'pdf':
       return <FileText className="w-4 h-4 text-gray-500" />;
-    case "spreadsheet":
+    case 'spreadsheet':
       return <FileText className="w-4 h-4 text-gray-500" />;
-    case "document":
+    case 'document':
       return <FileText className="w-4 h-4 text-gray-500" />;
-    case "cad":
+    case 'cad':
       return <File className="w-4 h-4 text-gray-500" />;
-    case "design":
+    case 'design':
       return <File className="w-4 h-4 text-gray-500" />;
     default:
       return <File className="w-4 h-4 text-gray-500" />;
@@ -122,11 +110,11 @@ const getFileIcon = (type: FileType) => {
 };
 
 const formatDate = (input: string | Date) => {
-  const date = typeof input === "string" ? new Date(input) : input;
-  return date?.toLocaleDateString("en-GB", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+  const date = typeof input === 'string' ? new Date(input) : input;
+  return date?.toLocaleDateString('en-GB', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 };
 
@@ -141,151 +129,9 @@ interface FileRow {
   starred?: boolean;
 }
 
-// Seed example files per folder to demonstrate the layout
-const seedFilesForFolder = (folderId: number): FileRow[] => {
-  switch (folderId) {
-    case 1:
-      return [
-        {
-          id: "f1",
-          name: "Concept_v1.fig",
-          type: "design",
-          size: "12.3 MB",
-          modifiedAt: "2025-07-31T10:30:00",
-          owner: "Jane Designer",
-        },
-        {
-          id: "f2",
-          name: "Moodboard_July.pdf",
-          type: "pdf",
-          size: "2.1 MB",
-          modifiedAt: "2025-07-28T14:20:00",
-          owner: "Alex Rivera",
-        },
-        {
-          id: "f3",
-          name: "Render_Kitchen.jpg",
-          type: "image",
-          size: "1.2 MB",
-          modifiedAt: "2025-07-25T09:10:00",
-          owner: "Mike Chen",
-        },
-      ];
-    case 2:
-      return [
-        {
-          id: "f4",
-          name: "Electrical_Plans_v2.dwg",
-          type: "cad",
-          size: "3.2 MB",
-          modifiedAt: "2025-07-29T11:00:00",
-          owner: "Tom Wilson",
-        },
-        {
-          id: "f5",
-          name: "Plumbing_Schematic.pdf",
-          type: "pdf",
-          size: "865 KB",
-          modifiedAt: "2025-07-24T16:45:00",
-          owner: "Sarah Johnson",
-        },
-      ];
-    case 3:
-      return [
-        {
-          id: "f6",
-          name: "Client_Feedback_Thread.docx",
-          type: "document",
-          size: "128 KB",
-          modifiedAt: "2025-07-27T15:00:00",
-          owner: "Jane Designer",
-        },
-        {
-          id: "f7",
-          name: "Meeting_Notes_2025-07-15.docx",
-          type: "document",
-          size: "92 KB",
-          modifiedAt: "2025-07-15T12:30:00",
-          owner: "Sarah Johnson",
-        },
-      ];
-    case 4:
-      return [
-        {
-          id: "f8",
-          name: "Vendor_Quote_WestElm.pdf",
-          type: "pdf",
-          size: "945 KB",
-          modifiedAt: "2025-07-22T09:45:00",
-          owner: "Procurement",
-        },
-        {
-          id: "f9",
-          name: "Material_Specs_Q3.xlsx",
-          type: "spreadsheet",
-          size: "856 KB",
-          modifiedAt: "2025-07-20T13:30:00",
-          owner: "Procurement",
-        },
-      ];
-    case 5:
-      return [
-        {
-          id: "f10",
-          name: "Site_2025-07-10_01.jpg",
-          type: "image",
-          size: "2.4 MB",
-          modifiedAt: "2025-07-10T10:00:00",
-          owner: "Mike Chen",
-        },
-        {
-          id: "f11",
-          name: "Site_2025-07-10_02.jpg",
-          type: "image",
-          size: "2.1 MB",
-          modifiedAt: "2025-07-10T10:05:00",
-          owner: "Mike Chen",
-        },
-        {
-          id: "f12",
-          name: "Site_2025-07-10_03.jpg",
-          type: "image",
-          size: "2.6 MB",
-          modifiedAt: "2025-07-10T10:10:00",
-          owner: "Mike Chen",
-        },
-      ];
-    case 6:
-      return [
-        {
-          id: "f13",
-          name: "Contract_Master.pdf",
-          type: "pdf",
-          size: "1.1 MB",
-          modifiedAt: "2025-06-30T08:00:00",
-          owner: "Legal",
-        },
-        {
-          id: "f14",
-          name: "NDA_Client.pdf",
-          type: "pdf",
-          size: "420 KB",
-          modifiedAt: "2025-06-25T09:00:00",
-          owner: "Legal",
-        },
-      ];
-    default:
-      return [];
-  }
-};
-
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-export default function ProjectFolderPage({
-  params,
-}: {
-  params: { id: string; folderId: string };
-}) {
+export default function ProjectFolderPage({ params }: { params: { id: string; folderId: string } }) {
   const folderInfo = FOLDER_INDEX[params.folderId];
   const folderName = folderInfo?.name || decodeURIComponent(params.folderId);
 
@@ -297,12 +143,12 @@ export default function ProjectFolderPage({
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [fileRenameModalOpen, setFileRenameModalOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [link, setLink] = useState("");
-  const [linkName, setLinkName] = useState("");
+  const [newFolderName, setNewFolderName] = useState('');
+  const [link, setLink] = useState('');
+  const [linkName, setLinkName] = useState('');
   const [linkList, setLinkList] = useState<LinkItem[]>([]);
-  const [updatedFolderName, setUpdatedFolderName] = useState("");
-  const [updatedFileName, setUpdatedFileName] = useState("");
+  const [updatedFolderName, setUpdatedFolderName] = useState('');
+  const [updatedFileName, setUpdatedFileName] = useState('');
   const [selectedDoc, setSelectedDoc] = useState<FileItem | null>(null);
   const [checkedItems, setCheckedItems] = useState<any[]>([]);
   const [buttonLoading, setButtonLoading] = useState(false);
@@ -310,14 +156,14 @@ export default function ProjectFolderPage({
   const [showViewer, setShowViewer] = useState(false);
   const [currentDoc, setCurrentDoc] = useState<any>(null);
   const [file, setFile] = useState<File[]>([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [renamingIndex, setRenamingIndex] = useState(-1);
-  const [newFileName, setNewFileName] = useState("");
+  const [newFileName, setNewFileName] = useState('');
 
   // Clean up object URLs when component unmounts
   useEffect(() => {
     return () => {
-      file.forEach((file) => {
+      file.forEach(file => {
         if ((file as any).preview) URL.revokeObjectURL((file as any).preview);
       });
     };
@@ -329,7 +175,7 @@ export default function ProjectFolderPage({
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["GetAllFiles", params.id, currentPath],
+    queryKey: ['GetAllFiles', params.id, currentPath],
     queryFn: () => getAllFiles(params.id, currentPath),
     enabled: !!params.id,
   });
@@ -340,7 +186,7 @@ export default function ProjectFolderPage({
     isLoading: linkLoading,
     refetch: LinkRefetch,
   } = useQuery({
-    queryKey: ["GetLinks", params.id],
+    queryKey: ['GetLinks', params.id],
     queryFn: () => getLinks(params.id),
     enabled: !!params.id,
   });
@@ -367,10 +213,10 @@ export default function ProjectFolderPage({
   const downloadFile = async (fileUrl: string, fileName: string) => {
     try {
       const response = await fetch(fileUrl);
-      if (!response.ok) throw new Error("Network response was not ok");
+      if (!response.ok) throw new Error('Network response was not ok');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
@@ -378,8 +224,8 @@ export default function ProjectFolderPage({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Download failed:", error);
-      toast.error("Download failed");
+      console.error('Download failed:', error);
+      toast.error('Download failed');
     }
   };
 
@@ -389,10 +235,8 @@ export default function ProjectFolderPage({
   };
 
   const fileUrl = (name: string) => {
-    return `${
-      process.env.NEXT_PUBLIC_SUPABASE_URL
-    }/storage/v1/object/public/docs/${params.id}/${
-      currentPath ? currentPath + "/" : ""
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Docs/${params.id}/${
+      currentPath ? currentPath + '/' : ''
     }${name}`;
   };
 
@@ -405,38 +249,38 @@ export default function ProjectFolderPage({
     e.preventDefault();
     if (e.dataTransfer.files) {
       const droppedFiles = Array.from(e.dataTransfer.files);
-      if (droppedFiles.some((file) => file.size > MAX_FILE_SIZE)) {
-        setError("One or more files exceed the 50MB limit");
+      if (droppedFiles.some(file => file.size > MAX_FILE_SIZE)) {
+        setError('One or more files exceed the 50MB limit');
         return;
       }
-      const processedFiles = droppedFiles.map((file) => {
+      const processedFiles = droppedFiles.map(file => {
         return Object.assign(file, {
           preview: URL.createObjectURL(file),
           originalName: file.name,
           id: Math.random().toString(36).substring(2),
         });
       }) as any[];
-      setFile((prev) => [...prev, ...processedFiles]);
-      setError("");
+      setFile(prev => [...prev, ...processedFiles]);
+      setError('');
     }
   };
 
   const handleSelectByClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(event.target.files || []);
-    setFile((prev) => [...prev, ...selectedFiles]);
+    setFile(prev => [...prev, ...selectedFiles]);
   };
 
   const handleStartRenaming = (index: number, file: any) => {
     setRenamingIndex(index);
-    const lastDot = file.name.lastIndexOf(".");
+    const lastDot = file.name.lastIndexOf('.');
     const baseName = lastDot > 0 ? file.name.substring(0, lastDot) : file.name;
     setNewFileName(baseName);
   };
 
   const handleSaveRename = (index: number) => {
     const singleFile = file[index] as any;
-    const lastDot = singleFile?.name?.lastIndexOf(".");
-    const extension = lastDot > 0 ? singleFile.name.substring(lastDot) : "";
+    const lastDot = singleFile?.name?.lastIndexOf('.');
+    const extension = lastDot > 0 ? singleFile.name.substring(lastDot) : '';
     const renamedFile = Object.assign(singleFile, {
       name: newFileName + extension,
     });
@@ -461,47 +305,47 @@ export default function ProjectFolderPage({
   // Mutations
   const uploadMutation = useMutation({
     mutationFn: uploadDoc,
-    onMutate: () => toast.loading("Uploading...", { id: "upload-toast" }),
+    onMutate: () => toast.loading('Uploading...', { id: 'upload-toast' }),
     onSuccess: () => {
       refetch();
-      toast.dismiss("upload-toast");
+      toast.dismiss('upload-toast');
       toast.success(`Uploaded successfully!`);
       setFile([]);
       setUploadModal(false);
     },
     onError: () => {
-      toast.dismiss("upload-toast");
-      toast.error("Failed to upload document.");
+      toast.dismiss('upload-toast');
+      toast.error('Failed to upload document.');
     },
   });
 
   const createFolderMutation = useMutation({
     mutationFn: createFolder,
-    onMutate: () => toast.loading("Creating folder...", { id: "folder-toast" }),
+    onMutate: () => toast.loading('Creating folder...', { id: 'folder-toast' }),
     onSuccess: () => {
       refetch();
       setModalOpen(false);
-      setNewFolderName("");
-      toast.dismiss("folder-toast");
-      toast.success("Folder created successfully!");
+      setNewFolderName('');
+      toast.dismiss('folder-toast');
+      toast.success('Folder created successfully!');
     },
     onError: () => {
-      toast.dismiss("folder-toast");
-      toast.error("Failed to create folder.");
+      toast.dismiss('folder-toast');
+      toast.error('Failed to create folder.');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: deleteFile,
-    onMutate: () => toast.loading("Deleting...", { id: "delete-toast" }),
+    onMutate: () => toast.loading('Deleting...', { id: 'delete-toast' }),
     onSuccess: () => {
       refetch();
-      toast.dismiss("delete-toast");
+      toast.dismiss('delete-toast');
       toast.success(`Deleted successfully!`);
     },
     onError: () => {
-      toast.dismiss("delete-toast");
-      toast.error("Failed to delete file.");
+      toast.dismiss('delete-toast');
+      toast.error('Failed to delete file.');
     },
   });
 
@@ -510,12 +354,12 @@ export default function ProjectFolderPage({
     onSuccess: () => {
       LinkRefetch();
       setLinkModalOpen(false);
-      setLink("");
-      setLinkName("");
-      toast.success("Link added!");
+      setLink('');
+      setLinkName('');
+      toast.success('Link added!');
     },
     onError: () => {
-      toast.error("Failed to add link");
+      toast.error('Failed to add link');
     },
   });
 
@@ -523,41 +367,40 @@ export default function ProjectFolderPage({
     mutationFn: deleteLink,
     onSuccess: () => {
       LinkRefetch();
-      toast.success("Link Deleted!");
+      toast.success('Link Deleted!');
     },
     onError: () => {
-      toast.error("Failed to delete link");
+      toast.error('Failed to delete link');
     },
   });
 
   const renameFolderMutation = useMutation({
     mutationFn: renameFolder,
-    onMutate: () => toast.loading("Renaming...", { id: "rename-toast" }),
+    onMutate: () => toast.loading('Renaming...', { id: 'rename-toast' }),
     onSuccess: () => {
       refetch();
       setRenameModalOpen(false);
-      toast.dismiss("rename-toast");
+      toast.dismiss('rename-toast');
       toast.success(`Renamed successfully!`);
     },
     onError: () => {
-      toast.dismiss("rename-toast");
-      toast.error("Failed to rename folder.");
+      toast.dismiss('rename-toast');
+      toast.error('Failed to rename folder.');
     },
   });
 
   const renameFileMutation = useMutation({
     mutationFn: renameFile,
-    onMutate: () =>
-      toast.loading("Renaming file...", { id: "file-rename-toast" }),
+    onMutate: () => toast.loading('Renaming file...', { id: 'file-rename-toast' }),
     onSuccess: () => {
       refetch();
       setFileRenameModalOpen(false);
-      toast.dismiss("file-rename-toast");
+      toast.dismiss('file-rename-toast');
       toast.success(`File renamed successfully!`);
     },
     onError: () => {
-      toast.dismiss("file-rename-toast");
-      toast.error("Failed to rename file.");
+      toast.dismiss('file-rename-toast');
+      toast.error('Failed to rename file.');
     },
   });
 
@@ -565,14 +408,10 @@ export default function ProjectFolderPage({
   const handleFileChange = (event: any) => {
     const selectedFiles = file;
     if (selectedFiles.length > 0) {
-      const oversizedFiles = selectedFiles.filter(
-        (file) => file.size > MAX_FILE_SIZE
-      );
+      const oversizedFiles = selectedFiles.filter(file => file.size > MAX_FILE_SIZE);
       if (oversizedFiles.length > 0) {
         setFile([]);
-        toast.error(
-          `${oversizedFiles.length} file(s) exceed the 50MB size limit!`
-        );
+        toast.error(`${oversizedFiles.length} file(s) exceed the 50MB size limit!`);
       } else {
         setFile(selectedFiles);
         if (selectedFiles.length === 1) {
@@ -585,11 +424,11 @@ export default function ProjectFolderPage({
           });
         } else {
           toast.loading(`Uploading ${selectedFiles.length} files...`, {
-            id: "upload-toast",
+            id: 'upload-toast',
           });
           let completed = 0;
           let failed = 0;
-          selectedFiles.forEach((file) => {
+          selectedFiles.forEach(file => {
             uploadDoc({
               file,
               id: params.id,
@@ -600,15 +439,11 @@ export default function ProjectFolderPage({
               .then(() => {
                 completed++;
                 if (completed + failed === selectedFiles.length) {
-                  toast.dismiss("upload-toast");
+                  toast.dismiss('upload-toast');
                   if (failed === 0) {
-                    toast.success(
-                      `All ${selectedFiles.length} files uploaded successfully!`
-                    );
+                    toast.success(`All ${selectedFiles.length} files uploaded successfully!`);
                   } else {
-                    toast.warning(
-                      `Uploaded ${completed}/${selectedFiles.length} files successfully.`
-                    );
+                    toast.warning(`Uploaded ${completed}/${selectedFiles.length} files successfully.`);
                   }
                   refetch();
                   setFile([]);
@@ -618,13 +453,11 @@ export default function ProjectFolderPage({
               .catch(() => {
                 failed++;
                 if (completed + failed === selectedFiles.length) {
-                  toast.dismiss("upload-toast");
+                  toast.dismiss('upload-toast');
                   if (failed === selectedFiles.length) {
-                    toast.error("Failed to upload all files.");
+                    toast.error('Failed to upload all files.');
                   } else {
-                    toast.warning(
-                      `Uploaded ${completed}/${selectedFiles.length} files successfully.`
-                    );
+                    toast.warning(`Uploaded ${completed}/${selectedFiles.length} files successfully.`);
                   }
                   refetch();
                 }
@@ -637,7 +470,7 @@ export default function ProjectFolderPage({
 
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
-      toast.error("Folder name cannot be empty");
+      toast.error('Folder name cannot be empty');
       return;
     }
     createFolderMutation.mutate({
@@ -658,18 +491,18 @@ export default function ProjectFolderPage({
 
   const handleSubmitLink = () => {
     if (!link.trim()) {
-      toast.error("Link cannot be empty");
+      toast.error('Link cannot be empty');
       return;
     }
     try {
       const url = new URL(link);
-      if (url.protocol !== "http:" && url.protocol !== "https:") {
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         throw new Error();
       }
       const hostname = url.hostname.toLowerCase();
-      const suspiciousDomains = ["example.com", "test.com", "localhost"];
-      if (suspiciousDomains.some((domain) => hostname.includes(domain))) {
-        toast.error("This URL appears to be a test or example URL");
+      const suspiciousDomains = ['example.com', 'test.com', 'localhost'];
+      if (suspiciousDomains.some(domain => hostname.includes(domain))) {
+        toast.error('This URL appears to be a test or example URL');
         return;
       }
       linkMutation.mutate({
@@ -680,9 +513,7 @@ export default function ProjectFolderPage({
         path: currentPath,
       });
     } catch (error) {
-      toast.error(
-        "Please enter a valid URL (starting with http:// or https://)"
-      );
+      toast.error('Please enter a valid URL (starting with http:// or https://)');
     }
   };
 
@@ -699,7 +530,7 @@ export default function ProjectFolderPage({
       currentFolderName: selectedDoc.name,
       newFolderName: updatedFolderName,
     });
-    setUpdatedFolderName("");
+    setUpdatedFolderName('');
   };
 
   const handleRenameFile = () => {
@@ -710,7 +541,7 @@ export default function ProjectFolderPage({
       currentFileName: selectedDoc.name,
       newFileName: updatedFileName,
     });
-    setUpdatedFileName("");
+    setUpdatedFileName('');
   };
 
   // Modal handlers
@@ -726,7 +557,7 @@ export default function ProjectFolderPage({
   };
   const RenameCloseModal = () => {
     setRenameModalOpen(false);
-    setUpdatedFolderName("");
+    setUpdatedFolderName('');
   };
   const FileRenameOpenModal = (doc: FileItem) => {
     setSelectedDoc(doc);
@@ -735,33 +566,26 @@ export default function ProjectFolderPage({
   };
   const FileRenameCloseModal = () => {
     setFileRenameModalOpen(false);
-    setUpdatedFileName("");
+    setUpdatedFileName('');
   };
   const closeDocModal = () => setShowViewer(false);
 
   const formatFileSize = (sizeInBytes?: number) => {
-    if (!sizeInBytes) return "-";
+    if (!sizeInBytes) return '-';
     if (sizeInBytes < 1024) return `${sizeInBytes} B`;
-    else if (sizeInBytes < 1024 * 1024)
-      return `${(sizeInBytes / 1024).toFixed(1)} KB`;
+    else if (sizeInBytes < 1024 * 1024) return `${(sizeInBytes / 1024).toFixed(1)} KB`;
     else return `${(sizeInBytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const getFileType = (mimetype?: string): FileType => {
-    if (!mimetype) return "other";
-    if (mimetype.startsWith("image/")) return "image";
-    if (mimetype.includes("pdf")) return "pdf";
-    if (mimetype.includes("sheet") || mimetype.includes("excel"))
-      return "spreadsheet";
-    if (mimetype.includes("word") || mimetype.includes("document"))
-      return "document";
-    if (mimetype.includes("dwg") || mimetype.includes("cad")) return "cad";
-    return "other";
+    if (!mimetype) return 'other';
+    if (mimetype.startsWith('image/')) return 'image';
+    if (mimetype.includes('pdf')) return 'pdf';
+    if (mimetype.includes('sheet') || mimetype.includes('excel')) return 'spreadsheet';
+    if (mimetype.includes('word') || mimetype.includes('document')) return 'document';
+    if (mimetype.includes('dwg') || mimetype.includes('cad')) return 'cad';
+    return 'other';
   };
-
-  // useEffect(() => {
-  //   console.log(totalDocs);
-  // }, [totalDocs]);
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -771,27 +595,21 @@ export default function ProjectFolderPage({
         {/* Breadcrumbs and Back */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link
-              href={`/projects/${params.id}/docs`}
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+            <Link href={`/projects/${params.id}/docs`} className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
               <ArrowLeft className="w-4 h-4" />
               Back to Folders
             </Link>
-            <span className="text-gray-300">{"|"}</span>
+            <span className="text-gray-300">{'|'}</span>
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`/projects/${params.id}/docs`}>
-                    Docs
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href={`/projects/${params.id}/docs`}>Docs</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
                 </BreadcrumbSeparator>
                 <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {folderInfo?.name ?? "Folder"}
-                  </BreadcrumbPage>
+                  <BreadcrumbPage>{folderInfo?.name ?? 'Folder'}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -860,40 +678,24 @@ export default function ProjectFolderPage({
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th scope="col" className="w-10 px-4 py-3">
-                      <input
-                        aria-label="Select all"
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
+                      <input aria-label="Select all" type="checkbox" className="h-4 w-4 rounded border-gray-300" />
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                       File
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                       Type
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                       Size
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                       Modified
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-left text-sm font-medium text-gray-600">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-600">
                       Owner
                     </th>
-                    <th
-                      scope="col"
-                      className="px-4 py-3 text-right text-sm font-medium text-gray-600 w-24">
+                    <th scope="col" className="px-4 py-3 text-right text-sm font-medium text-gray-600 w-24">
                       Actions
                     </th>
                   </tr>
@@ -907,12 +709,8 @@ export default function ProjectFolderPage({
                             <Checkbox
                               key={doc.id}
                               value={doc.id}
-                              checked={
-                                !!checkedItems.find(
-                                  (items) => items.id == doc.id
-                                )
-                              }
-                              onCheckedChange={(checked) => {
+                              checked={!!checkedItems.find(items => items.id == doc.id)}
+                              onCheckedChange={checked => {
                                 // Handle checkbox change
                               }}
                             />
@@ -924,40 +722,32 @@ export default function ProjectFolderPage({
                               {doc.isFolder ? (
                                 <FolderIcon className="w-4 h-4 text-gray-500" />
                               ) : (
-                                getFileIcon(
-                                  getFileType(doc?.metadata?.mimetype)
-                                )
+                                getFileIcon(getFileType(doc?.metadata?.mimetype))
                               )}
                             </div>
                             <div className="min-w-0">
                               <div
-                                className="text-sm font-medium text-gray-900 truncate"
-                                title={doc.name}>
+                                onClick={() => {
+                                  if (!doc.isFolder) handleClickDocs(fileUrl(doc.name), doc.name);
+                                }}
+                                className="text-sm cursor-pointer hover:underline font-medium text-gray-900 truncate"
+                                title={doc.name}
+                              >
                                 {doc.name}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {doc.isFolder
-                            ? "Folder"
-                            : getFileType(doc?.metadata?.mimetype)}
+                          {doc.isFolder ? 'Folder' : getFileType(doc?.metadata?.mimetype)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {formatFileSize(doc?.metadata?.size)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {formatDate(doc.created_at)}
-                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{formatFileSize(doc?.metadata?.size)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{formatDate(doc.created_at)}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 text-sm text-gray-700">
                             <Avatar className="w-5 h-5">
-                              <AvatarImage
-                                src={`/placeholder.svg?height=20&width=20&query=owner-avatar`}
-                              />
-                              <AvatarFallback className="bg-gray-900 text-white text-[10px] font-semibold">
-                                TS
-                              </AvatarFallback>
+                              <AvatarImage src={`/placeholder.svg?height=20&width=20&query=owner-avatar`} />
+                              <AvatarFallback className="bg-gray-900 text-white text-[10px] font-semibold">TS</AvatarFallback>
                             </Avatar>
                             <span className="truncate">Team</span>
                           </div>
@@ -970,9 +760,8 @@ export default function ProjectFolderPage({
                                 size="sm"
                                 className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
                                 aria-label="Preview"
-                                onClick={() =>
-                                  handleClickDocs(fileUrl(doc.name), doc.name)
-                                }>
+                                onClick={() => handleClickDocs(fileUrl(doc.name), doc.name)}
+                              >
                                 <Eye className="w-4 h-4" />
                               </Button>
                             )}
@@ -981,9 +770,8 @@ export default function ProjectFolderPage({
                               size="sm"
                               className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
                               aria-label="Download"
-                              onClick={() =>
-                                downloadFile(fileUrl(doc.name), doc.name)
-                              }>
+                              onClick={() => downloadFile(fileUrl(doc.name), doc.name)}
+                            >
                               <Download className="w-4 h-4" />
                             </Button>
                             <DropdownMenu>
@@ -992,28 +780,24 @@ export default function ProjectFolderPage({
                                   variant="ghost"
                                   size="sm"
                                   className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
-                                  aria-label="More">
+                                  aria-label="More"
+                                >
                                   <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 {doc.isFolder ? (
-                                  <DropdownMenuItem
-                                    onClick={() => RenameOpenModal(doc)}>
+                                  <DropdownMenuItem onClick={() => RenameOpenModal(doc)}>
                                     <FolderPen className="w-4 h-4 mr-2" />
                                     Rename
                                   </DropdownMenuItem>
                                 ) : (
-                                  <DropdownMenuItem
-                                    onClick={() => FileRenameOpenModal(doc)}>
+                                  <DropdownMenuItem onClick={() => FileRenameOpenModal(doc)}>
                                     <Edit2 className="w-4 h-4 mr-2" />
                                     Rename
                                   </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handleDeleteTask(doc.name, doc.isFolder)
-                                  }>
+                                <DropdownMenuItem onClick={() => handleDeleteTask(doc.name, doc.isFolder)}>
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
                                 </DropdownMenuItem>
@@ -1025,20 +809,15 @@ export default function ProjectFolderPage({
                     ))}
                   {/* Links */}
                   {!linkLoading &&
-                    linkList.map((item) => {
+                    linkList.map(item => {
                       return item.path == currentPath ? (
                         <tr key={item.create_time}>
                           <td className="px-4 py-3">
                             <Checkbox
                               key={item.create_time}
                               value={item.create_time}
-                              checked={
-                                !!checkedItems.find(
-                                  (items) =>
-                                    items.create_time == item.create_time
-                                )
-                              }
-                              onCheckedChange={(checked) => {
+                              checked={!!checkedItems.find(items => items.create_time == item.create_time)}
+                              onCheckedChange={checked => {
                                 // Handle link checkbox change
                               }}
                             />
@@ -1054,30 +833,21 @@ export default function ProjectFolderPage({
                                   className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
                                   target="_blank"
                                   href={item?.link}
-                                  rel="noopener noreferrer">
+                                  rel="noopener noreferrer"
+                                >
                                   {item?.name ? item.name : item.link}
                                 </a>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
-                            Link
-                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">Link</td>
                           <td className="px-4 py-3 text-sm text-gray-600">-</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">
-                            {formatDate(
-                              new Date(item?.create_time).toISOString()
-                            )}
-                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{formatDate(new Date(item?.create_time).toISOString())}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2 text-sm text-gray-700">
                               <Avatar className="w-5 h-5">
-                                <AvatarImage
-                                  src={`/placeholder.svg?height=20&width=20&query=owner-avatar`}
-                                />
-                                <AvatarFallback className="bg-gray-900 text-white text-[10px] font-semibold">
-                                  TS
-                                </AvatarFallback>
+                                <AvatarImage src={`/placeholder.svg?height=20&width=20&query=owner-avatar`} />
+                                <AvatarFallback className="bg-gray-900 text-white text-[10px] font-semibold">TS</AvatarFallback>
                               </Avatar>
                               <span className="truncate">Team</span>
                             </div>
@@ -1089,9 +859,8 @@ export default function ProjectFolderPage({
                                 size="sm"
                                 className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
                                 aria-label="Delete Link"
-                                onClick={() =>
-                                  handeDeleteLink(item.create_time)
-                                }>
+                                onClick={() => handeDeleteLink(item.create_time)}
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
@@ -1102,9 +871,7 @@ export default function ProjectFolderPage({
                 </tbody>
               </table>
               {!isLoading && totalDocs?.length === 0 && (
-                <div className="p-8 text-center text-sm text-gray-500">
-                  No files in this folder yet. Use Upload to add files.
-                </div>
+                <div className="p-8 text-center text-sm text-gray-500">No files in this folder yet. Use Upload to add files.</div>
               )}
             </div>
           </CardContent>
@@ -1112,11 +879,7 @@ export default function ProjectFolderPage({
       </div>
 
       {/* Create Folder Modal */}
-      <Modal
-        className="!h-[250px] !max-w-[500px] !py-7"
-        isOpen={modalOpen}
-        onRequestClose={closeModal}
-        contentLabel="Folder Create Modal">
+      <Modal className="!h-[250px] !max-w-[500px] !py-7" isOpen={modalOpen} onRequestClose={closeModal} contentLabel="Folder Create Modal">
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -1126,11 +889,9 @@ export default function ProjectFolderPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={closeModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1140,11 +901,7 @@ export default function ProjectFolderPage({
           </div>
         </div>
         <div className="py-4 my-7">
-          <Input
-            placeholder="Folder Name"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-          />
+          <Input placeholder="Folder Name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} />
         </div>
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={closeModal}>
@@ -1159,7 +916,8 @@ export default function ProjectFolderPage({
         className="!h-[600px] !max-w-[700px] !py-7"
         isOpen={uploadModal}
         onRequestClose={UploadCloseModal}
-        contentLabel="Upload Documents Modal">
+        contentLabel="Upload Documents Modal"
+      >
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -1169,11 +927,9 @@ export default function ProjectFolderPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={UploadCloseModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1187,30 +943,19 @@ export default function ProjectFolderPage({
           <div
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            onClick={() => document.getElementById("fileInput")?.click()}
-            className="border-dashed cursor-pointer mt-10 w-full border-2 flex flex-col gap-5 items-center justify-center py-6 rounded-2xl border-gray-300 hover:border-gray-400 transition-colors">
+            onClick={() => document.getElementById('fileInput')?.click()}
+            className="border-dashed cursor-pointer mt-10 w-full border-2 flex flex-col gap-5 items-center justify-center py-6 rounded-2xl border-gray-300 hover:border-gray-400 transition-colors"
+          >
             <div className="flex flex-col items-center gap-3">
-              <input
-                id="fileInput"
-                type="file"
-                multiple
-                onChange={handleSelectByClick}
-                className="hidden"
-              />
+              <input id="fileInput" type="file" multiple onChange={handleSelectByClick} className="hidden" />
               <div className="bg-gray-100 w-24 h-24 flex items-center justify-center rounded-full">
                 <Upload size={23} />
               </div>
               <div className="text-center">
-                <p className="text-lg mb-1 font-medium">
-                  Drag and Drop or Click{" "}
-                </p>
-                <p className="text-sm text-gray-600">
-                  to upload multiple documents (max: 50MB each)
-                </p>
+                <p className="text-lg mb-1 font-medium">Drag and Drop or Click </p>
+                <p className="text-sm text-gray-600">to upload multiple documents (max: 50MB each)</p>
               </div>
-              {error && (
-                <p className="text-red-500 text-sm font-semibold">{error}</p>
-              )}
+              {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
             </div>
           </div>
 
@@ -1221,40 +966,34 @@ export default function ProjectFolderPage({
                 <h3 className="font-medium">Selected Files ({file.length})</h3>
                 <button
                   onClick={() => {
-                    file.forEach((file) => {
-                      if ((file as any).preview)
-                        URL.revokeObjectURL((file as any).preview);
+                    file.forEach(file => {
+                      if ((file as any).preview) URL.revokeObjectURL((file as any).preview);
                     });
                     setFile([]);
                     setRenamingIndex(-1);
                   }}
-                  className="text-sm hover:text-red-700">
+                  className="text-sm hover:text-red-700"
+                >
                   Remove All
                 </button>
               </div>
 
               <div className="space-y-3 max-h-60 overflow-y-auto">
                 {file.map((file, index) => (
-                  <div
-                    key={(file as any).id || index}
-                    className="bg-gray-50 p-3 rounded-lg">
+                  <div key={(file as any).id || index} className="bg-gray-50 p-3 rounded-lg">
                     {renamingIndex === index ? (
                       <div className="flex items-center">
                         <input
                           type="text"
                           value={newFileName}
-                          onChange={(e) => setNewFileName(e.target.value)}
+                          onChange={e => setNewFileName(e.target.value)}
                           className="flex-1 border rounded-l-md p-2 focus:outline-none"
                           autoFocus
                         />
                         <span className="bg-gray-200 px-2 py-[9px] text-gray-700">
-                          {(file as any).name.substring(
-                            (file as any).name.lastIndexOf(".")
-                          )}
+                          {(file as any).name.substring((file as any).name.lastIndexOf('.'))}
                         </span>
-                        <button
-                          onClick={() => handleSaveRename(index)}
-                          className="bg-black text-white px-3 py-3 rounded-r-md">
+                        <button onClick={() => handleSaveRename(index)} className="bg-black text-white px-3 py-3 rounded-r-md">
                           <Check size={18} />
                         </button>
                       </div>
@@ -1267,27 +1006,23 @@ export default function ProjectFolderPage({
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg">
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
                               <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              ></path>
                             </svg>
                           </div>
-                          <span className="truncate flex-1">
-                            {(file as any).name}
-                          </span>
+                          <span className="truncate flex-1">{(file as any).name}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleStartRenaming(index, file)}
-                            className="text-black">
+                          <button onClick={() => handleStartRenaming(index, file)} className="text-black">
                             <Edit2 size={15} />
                           </button>
-                          <button
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-black hover:text-red-700">
+                          <button onClick={() => handleRemoveFile(index)} className="text-black hover:text-red-700">
                             <X size={18} />
                           </button>
                         </div>
@@ -1298,10 +1033,8 @@ export default function ProjectFolderPage({
               </div>
 
               {file.length > 0 && (
-                <button
-                  onClick={handleFileChange}
-                  className="mt-4 w-full bg-black text-white py-2 px-4 rounded-md transition-colors">
-                  Upload {file.length} {file.length === 1 ? "File" : "Files"}
+                <button onClick={handleFileChange} className="mt-4 w-full bg-black text-white py-2 px-4 rounded-md transition-colors">
+                  Upload {file.length} {file.length === 1 ? 'File' : 'Files'}
                 </button>
               )}
             </div>
@@ -1314,7 +1047,8 @@ export default function ProjectFolderPage({
         className="!h-[300px] !max-w-[500px] !py-7"
         isOpen={linkModalOpen}
         onRequestClose={LinkCloseModal}
-        contentLabel="Link Create Modal">
+        contentLabel="Link Create Modal"
+      >
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -1324,11 +1058,9 @@ export default function ProjectFolderPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={LinkCloseModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1339,18 +1071,8 @@ export default function ProjectFolderPage({
         </div>
 
         <div className="py-4 my-7 space-y-4">
-          <Input
-            type="text"
-            placeholder="Link Name"
-            value={linkName}
-            onChange={(e) => setLinkName(e.target.value)}
-          />
-          <Input
-            type="url"
-            placeholder="Enter Link"
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-          />
+          <Input type="text" placeholder="Link Name" value={linkName} onChange={e => setLinkName(e.target.value)} />
+          <Input type="url" placeholder="Enter Link" value={link} onChange={e => setLink(e.target.value)} />
         </div>
         <div className="flex items-center justify-between">
           <Button type="submit" variant="outline" onClick={LinkCloseModal}>
@@ -1365,7 +1087,8 @@ export default function ProjectFolderPage({
         className="!h-[250px] !max-w-[500px] !py-7"
         isOpen={renameModalOpen}
         onRequestClose={RenameCloseModal}
-        contentLabel="Rename Folder Modal">
+        contentLabel="Rename Folder Modal"
+      >
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -1375,11 +1098,9 @@ export default function ProjectFolderPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={RenameCloseModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1390,11 +1111,7 @@ export default function ProjectFolderPage({
         </div>
 
         <div className="py-4 my-7">
-          <Input
-            placeholder="New Folder Name"
-            value={updatedFolderName}
-            onChange={(e) => setUpdatedFolderName(e.target.value)}
-          />
+          <Input placeholder="New Folder Name" value={updatedFolderName} onChange={e => setUpdatedFolderName(e.target.value)} />
         </div>
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={RenameCloseModal}>
@@ -1409,7 +1126,8 @@ export default function ProjectFolderPage({
         className="!h-[250px] !max-w-[500px] !py-7"
         isOpen={fileRenameModalOpen}
         onRequestClose={FileRenameCloseModal}
-        contentLabel="Rename File Modal">
+        contentLabel="Rename File Modal"
+      >
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="text-sm font-semibold flex items-center gap-2">
@@ -1419,11 +1137,9 @@ export default function ProjectFolderPage({
           <div className="buttons flex items-center gap-3 !mt-0 px-2">
             <button
               onClick={FileRenameCloseModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1434,11 +1150,7 @@ export default function ProjectFolderPage({
         </div>
 
         <div className="py-4 my-7">
-          <Input
-            placeholder="New File Name"
-            value={updatedFileName}
-            onChange={(e) => setUpdatedFileName(e.target.value)}
-          />
+          <Input placeholder="New File Name" value={updatedFileName} onChange={e => setUpdatedFileName(e.target.value)} />
         </div>
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={FileRenameCloseModal}>
@@ -1449,34 +1161,24 @@ export default function ProjectFolderPage({
       </Modal>
 
       {/* Document Viewer Modal */}
-      <Modal
-        className="!h-[90vh] !max-w-[1200px] !py-7"
-        isOpen={showViewer}
-        onRequestClose={closeDocModal}
-        contentLabel="Document Viewer">
+      <Modal className="!h-[90vh] !max-w-[1200px] !py-7" isOpen={showViewer} onRequestClose={closeDocModal} contentLabel="Document Viewer">
         <div className="navbar flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2" />
           <div className="buttons flex items-center gap-4 !mt-0 px-2">
             {currentDoc && (currentDoc as any)[0]?.fileName && (
               <button
-                onClick={() =>
-                  downloadFile(
-                    (currentDoc as any)[0].uri,
-                    (currentDoc as any)[0].fileName
-                  )
-                }
+                onClick={() => downloadFile((currentDoc as any)[0].uri, (currentDoc as any)[0].fileName)}
                 className="text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
-                title="Download with original filename">
+                title="Download with original filename"
+              >
                 <CloudDownload size={20} />
               </button>
             )}
             <button
               onClick={closeDocModal}
-              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                viewBox="0 0 24 24">
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
                   d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
@@ -1486,7 +1188,7 @@ export default function ProjectFolderPage({
           </div>
         </div>
         <div>
-          <div style={{ marginTop: "20px", width: "100%", height: "500px" }}>
+          <div style={{ marginTop: '20px', width: '100%', height: '500px' }}>
             <DocViewer
               pluginRenderers={DocViewerRenderers}
               className="DocViewr"
@@ -1498,7 +1200,7 @@ export default function ProjectFolderPage({
                   retainURLParams: false,
                 },
               }}
-              style={{ height: "100%" }}
+              style={{ height: '100%' }}
             />
           </div>
         </div>
