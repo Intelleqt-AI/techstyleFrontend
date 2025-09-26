@@ -524,7 +524,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     groupedItems.type.forEach(item => {
       if (item && Array.isArray(item.product)) {
         item.product.forEach(singleItem => {
-          if (singleItem.sendToClient && singleItem.status == 'review') {
+          if (singleItem.sendToClient && singleItem.status == 'pending') {
             totalCount++;
           }
         });
@@ -552,15 +552,16 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     });
     return totalCount;
   };
-
-  const totalCost = () => {
+  const totalCost = useMemo(() => {
     if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
+
     let cost = 0;
+
     groupedItems.type.forEach(typeObj => {
       if (!typeObj || !Array.isArray(typeObj.product)) return;
 
       typeObj.product.forEach(product => {
-        if (product?.status == 'rejected') return;
+        if (product?.status === 'rejected') return;
 
         const quantity = Number(product.qty) < 1 ? 1 : Number(product.qty);
         const matched = product.matchedProduct;
@@ -574,13 +575,13 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           return;
         }
 
-        const priceValue = Number(parseFloat(priceString.replace(/[^\d.]/g, '')));
+        const priceValue = parseFloat(priceString.replace(/[^\d.]/g, '')) || 0;
         cost += priceValue * quantity;
       });
     });
 
     return cost;
-  };
+  }, [groupedItems]);
 
   const approvedCost = () => {
     if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
@@ -631,7 +632,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   };
 
   const totalItemsCount = totalItem();
-  const totalCostCount = totalCost();
+  const totalCostCount = totalCost;
   const totalApprovedCost = approvedCost();
   const totalQuantity = totalQty();
   const totalPendingCount = totalPendingItem();
