@@ -48,6 +48,7 @@ import {
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useRouter } from 'next/navigation';
 
 type UITask = any; // keep your own type here if you have one
 
@@ -332,6 +333,7 @@ export default function MyTasksPage() {
   const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const router = useRouter();
 
   const [activeID, setActiveId] = useState<string | null>(null);
   const [overID, setOverId] = useState<string | null>(null);
@@ -505,21 +507,25 @@ export default function MyTasksPage() {
   // Handle Task button click
   const handleTrackingClick = (e: React.MouseEvent, taskId: string | number) => {
     e.stopPropagation();
-    const trackingItems = trackingData?.data || [];
-    const runningItems = trackingItems.filter(item => item.isActive && !item.isPaused);
 
-    const clickedTask = trackingItems.find(item => item.task_id === taskId);
-    const isClickedRunning = clickedTask && clickedTask.isActive && !clickedTask.isPaused;
+    router.push(`/home/time`);
+    return;
 
-    console.log(clickedTask);
+    // const trackingItems = trackingData?.data || [];
+    // const runningItems = trackingItems.filter(item => item.isActive && !item.isPaused);
 
-    if (isClickedRunning) {
-      handlePauseTracking(clickedTask);
-    } else if (runningItems.length > 0) {
-      toast.warning('Another task is already running. Please pause it before starting a new one.');
-    } else {
-      // handleStartTracking(taskId);
-    }
+    // const clickedTask = trackingItems.find(item => item.task_id === taskId);
+    // const isClickedRunning = clickedTask && clickedTask.isActive && !clickedTask.isPaused;
+
+    // console.log(clickedTask);
+
+    // if (isClickedRunning) {
+    //   handlePauseTracking(clickedTask);
+    // } else if (runningItems.length > 0) {
+    //   toast.warning('Another task is already running. Please pause it before starting a new one.');
+    // } else {
+    //   // handleStartTracking(taskId);
+    // }
   };
 
   const showArchiveTask = tasks => {

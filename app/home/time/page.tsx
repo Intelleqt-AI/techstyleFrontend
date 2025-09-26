@@ -17,6 +17,55 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from 'recharts';
 import { Input } from '@/components/ui/input';
 
+const AnimatedClock = ({ running = false, className = '' }: { running?: boolean; className?: string }) => {
+  return (
+    <>
+      <svg
+        className={className}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* Clock circle */}
+        <circle cx="12" cy="12" r="10" />
+
+        {/* Hour hand */}
+        <line x1="12" y1="12" x2="12" y2="7" className={running ? 'hour-hand' : ''} />
+
+        {/* Minute hand */}
+        <line x1="12" y1="12" x2="16" y2="12" className={running ? 'minute-hand' : ''} />
+      </svg>
+
+      <style jsx>{`
+        .hour-hand {
+          transform-origin: 12px 12px;
+          animation: spinHour 6s linear infinite;
+        }
+
+        .minute-hand {
+          transform-origin: 12px 12px;
+          animation: spinMinute 1s linear infinite;
+        }
+
+        @keyframes spinHour {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes spinMinute {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
+    </>
+  );
+};
+
 type Day = { day: string; hours: number };
 
 const daily: Day[] = [
@@ -273,6 +322,13 @@ export default function HomeTimePage() {
   //   },
   // });
 
+  const getTrackingButtonClass = (taskId: string | number) => {
+    if (trackingLoading) return 'text-gray-900 bg-white';
+    const trackingItems = trackingData?.data?.filter(item => item.task_id === taskId);
+    const hasRunning = trackingItems?.some(item => item.isActive && !item.isPaused);
+    return hasRunning;
+  };
+
   const mutation = useMutation({
     mutationFn: ModifyTimeTracker,
     onSuccess: (data, variables) => {
@@ -295,9 +351,7 @@ export default function HomeTimePage() {
     // setTasks(filterByEmail);
 
     if (trackingLoading || !trackingData?.data) return;
-    const processedTasks = trackingData.data
-      .filter(item => item.isActive)
-      .sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
+    const processedTasks = trackingData.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
     const filterByEmail = processedTasks.filter(item => item.creator == user?.email);
     setTasks(filterByEmail);
 
@@ -773,25 +827,32 @@ export default function HomeTimePage() {
             <ul className="mt-5 space-y-3">
               {filterTask.map(task => (
                 <li key={task.id} className="flex items-center justify-between rounded-xl border bg-white px-4 py-4">
-                  <div className="flex items-start gap-3.5">
+                  <div className="flex w-1/2 items-start gap-3.5">
                     <div
                       className={
                         task?.isActive && !task?.isPaused
-                          ? 'flex min-h-10 min-w-10 items-center justify-center rounded-full border bg-green-100'
+                          ? 'flex min-h-10 min-w-10 items-center justify-center rounded-full border border-[#efeae2] bg-neutral-50'
                           : 'flex min-h-10 min-w-10 items-center justify-center rounded-full border bg-neutral-50'
                       }
                     >
-                      <Clock className="h-4 w-4 text-neutral-500" />
+                      {task?.isActive && !task?.isPaused ? (
+                        <AnimatedClock running={true} />
+                      ) : (
+                        <Clock className="h-4 w-4 text-neutral-500" />
+                      )}
                     </div>
-                    <div>
-                      <div className="text-sm md:text-base font-semibold text-neutral-900">{task?.task?.name || 'Studio Management'}</div>
-                      <div className="text-xs md:text-sm text-neutral-500">
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm md:text-base capitalize font-semibold text-neutral-900 truncate">
+                        {task?.task?.name || 'Studio Management'}
+                      </p>
+                      <p className="text-xs md:text-sm text-neutral-500 truncate">
                         {(!isLoading && project.find(p => p.id === task?.task?.projectID)?.name) || 'Studio Task'}
-                      </div>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                  <div className="flex w-1/2 items-center justify-end gap-4">
                     <div className="text-sm md:text-base font-semibold text-neutral-900">{formatTime(task?.totalWorkTime)}</div>
                     <div className="text-xs md:text-sm text-neutral-500">
                       {new Date(task?.timerStart).toLocaleDateString('en-US', {
@@ -800,19 +861,29 @@ export default function HomeTimePage() {
                       })}
                     </div>
 
-                    {/* <Badge className="rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-[11px] font-medium text-neutral-800">
-                      {task.isPaused ? "Paused" : "Active"}
-                    </Badge> */}
+                    {task.isActive && task.isPaused && (
+                      <Button
+                        disabled={isTimerActive}
+                        className={`rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:text-white ${
+                          isTimerActive ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        onClick={() => openTaskModal(task)}
+                      >
+                        Continue
+                      </Button>
+                    )}
 
-                    <Button
-                      disabled={isTimerActive}
-                      className={`rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:text-white ${
-                        isTimerActive ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                      onClick={() => openTaskModal(task)}
-                    >
-                      {task.isActive && task.isPaused ? 'Continue' : 'Pause'}
-                    </Button>
+                    {!task.isActive && !task.isPaused && (
+                      <Button
+                        disabled={isTimerActive}
+                        className={`rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:text-white ${
+                          isTimerActive ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        // onClick={() => openTaskModal(task)}
+                      >
+                        Ended
+                      </Button>
+                    )}
                   </div>
                 </li>
               ))}
