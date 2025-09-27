@@ -247,7 +247,7 @@ const DroppableColumn = React.memo(function DroppableColumnInner({
           <Button
             onClick={e => {
               e.stopPropagation();
-              openNewTask();
+              openNewTask(column.id);
             }}
             variant="ghost"
             size="sm"
@@ -330,7 +330,7 @@ export default function MyTasksPage() {
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const { data: taskData, isLoading: taskLoading } = useTask();
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
+  const [defaultStatus, setDefaultStatus] = React.useState<string | undefined>(undefined);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const router = useRouter();
@@ -352,9 +352,9 @@ export default function MyTasksPage() {
     })
   );
 
-  const openNewTask = React.useCallback((listId?: string) => {
+  const openNewTask = React.useCallback((status?: string) => {
+    setDefaultStatus(status);
     setEditing(null);
-    setDefaultListId(listId);
     setModalOpen(true);
   }, []);
 
@@ -363,7 +363,6 @@ export default function MyTasksPage() {
 
   const openEditTask = React.useCallback((task: any) => {
     setEditing(task);
-    setDefaultListId(task.listId);
     setModalOpen(true);
   }, []);
 
@@ -888,11 +887,11 @@ export default function MyTasksPage() {
         onOpenChange={handleClose}
         projectId={null}
         team={null}
-        defaultListId={defaultListId}
         taskToEdit={editing}
         onSave={handleSave}
         setEditing={setEditing}
         openDeleteModal={openDeleteModal}
+        status={defaultStatus}
       />
 
       <DeleteDialog

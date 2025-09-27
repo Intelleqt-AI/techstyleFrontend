@@ -94,7 +94,7 @@ type Props = {
   onSave: (payload: Omit<Task, 'id'> & { id?: string }) => void;
 };
 
-export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave }: Props) {
+export function TaskModal({ open, onOpenChange, projectId, projectName, team, phase, taskToEdit, onSave, status }: Props) {
   // Core form state
   const [taskValues, setTaskValues] = React.useState(taskToEdit ? taskToEdit : initialTask);
   const [subTaskText, setSubTaskText] = React.useState('');
@@ -146,19 +146,13 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
 
   React.useEffect(() => {
     if (!open) return;
-    if (projectId && phase) {
-      setTaskValues(prevValues => ({
-        ...prevValues,
-        projectID: projectId,
-        phase,
-      }));
-    } else if (projectId) {
-      setTaskValues(prevValues => ({
-        ...prevValues,
-        projectID: projectId,
-      }));
-    }
-  }, [open, projectId, phase]);
+    setTaskValues(prev => ({
+      ...prev,
+      ...(projectId ? { projectID: projectId } : {}),
+      ...(phase ? { phase } : {}),
+      status: status ?? 'todo',
+    }));
+  }, [open, projectId, phase, status]);
 
   const [subtasks, setSubtasks] = React.useState<Subtask[]>(
     taskToEdit?.subtasks?.length ? taskToEdit.subtasks : [{ id: crypto.randomUUID(), title: '', done: false }]
@@ -690,8 +684,6 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   // const handleButtonClick = () => {
   //   fileInputRef.current.click();
   // };
-
-  console.log(taskValues);
 
   return (
     <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
