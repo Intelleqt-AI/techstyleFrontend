@@ -691,6 +691,8 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   //   fileInputRef.current.click();
   // };
 
+  console.log(taskValues);
+
   return (
     <Sheet open={open} onOpenChange={e => handleCloseModal(e)}>
       {/* Single rounded grey surface with balanced padding (28px top/side) */}
@@ -807,42 +809,82 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                   <Labeled icon={<GitBranch className="h-4 w-4" />} label="Phase">
                     <Select
                       value={taskValues?.phase || ''}
-                      onValueChange={value => {
-                        const e = {
+                      onValueChange={value =>
+                        updateTask({
                           target: {
                             name: 'phase',
                             value,
                           },
-                        };
-                        updateTask(e);
-                      }}
+                        })
+                      }
                     >
                       <SelectTrigger className="w-full bg-white h-9 text-sm rounded-xl">
-                        <SelectValue placeholder="No phase" />
-                      </SelectTrigger>
-                      {taskValues?.phases ? (
-                        <SelectContent>
-                          {data
-                            ?.find(item => item.id == taskValues?.projectID)
-                            ?.phases?.map(selectItem => (
-                              <SelectItem value={selectItem?.id}>{selectItem?.name}</SelectItem>
-                            ))}
+                        <SelectValue
+                          placeholder="No phase"
+                          aria-label={(() => {
+                            const project = data?.find(item => item.id === taskValues?.projectID);
+                            const allPhases = project?.phases?.length
+                              ? project.phases
+                              : [
+                                  { id: 'initial', name: 'Design Concepts' },
+                                  { id: 'design-development', name: 'Design & Development' },
+                                  { id: 'technical-drawings', name: 'Technical Drawing' },
+                                  { id: 'client-review', name: 'Client Review' },
+                                  { id: 'procurement', name: 'Procurement' },
+                                  { id: 'site-implementation', name: 'Site Implementation' },
+                                  { id: 'complete-project', name: 'Complete' },
+                                ];
 
-                          {data?.find(item => item.id == taskValues?.projectID)?.phases?.length == undefined && (
-                            <SelectItem disabled>No phases</SelectItem>
-                          )}
-                        </SelectContent>
-                      ) : (
-                        <SelectContent className="bg-white z-[99]">
-                          <SelectItem value="initial">Design Concepts</SelectItem>
-                          <SelectItem value="design-development">Design & Development</SelectItem>
-                          <SelectItem value="technical-drawings">Technical Drawing</SelectItem>
-                          <SelectItem value="client-review">Client Review</SelectItem>
-                          <SelectItem value="procurement">Procurement</SelectItem>
-                          <SelectItem value="site-implementation">Site Implementation</SelectItem>
-                          <SelectItem value="complete-project">Complete</SelectItem>
-                        </SelectContent>
-                      )}
+                            const selected = allPhases?.find(p => p.id === taskValues?.phase);
+                            return selected?.name;
+                          })()}
+                        >
+                          {(() => {
+                            const project = data?.find(item => item.id === taskValues?.projectID);
+                            const allPhases = project?.phases?.length
+                              ? project.phases
+                              : [
+                                  { id: 'initial', name: 'Design Concepts' },
+                                  { id: 'design-development', name: 'Design & Development' },
+                                  { id: 'technical-drawings', name: 'Technical Drawing' },
+                                  { id: 'client-review', name: 'Client Review' },
+                                  { id: 'procurement', name: 'Procurement' },
+                                  { id: 'site-implementation', name: 'Site Implementation' },
+                                  { id: 'complete-project', name: 'Complete' },
+                                ];
+
+                            const selected = allPhases?.find(p => p.id === taskValues?.phase);
+                            return selected?.name || 'No phase';
+                          })()}
+                        </SelectValue>
+                      </SelectTrigger>
+
+                      <SelectContent className="bg-white z-[99]">
+                        {(() => {
+                          const project = data?.find(item => item.id === taskValues?.projectID);
+                          const projectPhases = project?.phases ?? [];
+
+                          if (projectPhases.length > 0) {
+                            return projectPhases.map(phase => (
+                              <SelectItem key={phase.id} value={phase.id}>
+                                {phase.name}
+                              </SelectItem>
+                            ));
+                          }
+
+                          return (
+                            <>
+                              <SelectItem value="initial">Design Concepts</SelectItem>
+                              <SelectItem value="design-development">Design & Development</SelectItem>
+                              <SelectItem value="technical-drawings">Technical Drawing</SelectItem>
+                              <SelectItem value="client-review">Client Review</SelectItem>
+                              <SelectItem value="procurement">Procurement</SelectItem>
+                              <SelectItem value="site-implementation">Site Implementation</SelectItem>
+                              <SelectItem value="complete-project">Complete</SelectItem>
+                            </>
+                          );
+                        })()}
+                      </SelectContent>
                     </Select>
                   </Labeled>
                 </motion.div>
