@@ -34,6 +34,7 @@ const updateTaskListFromPhases = (data, phases) => {
 const updatetaskList = data => {
   return [
     {
+      id: 'initial',
       name: 'Design Concepts',
       items: data?.filter(item => item.phase == 'initial'),
       status: 'Initial Design Concepts',
@@ -41,6 +42,7 @@ const updatetaskList = data => {
       colorClass: '#9333ea', // purple-600
     },
     {
+      id: 'design-development',
       name: 'Design Development',
       items: data?.filter(item => item.phase == 'design-development'),
       status: 'Initial Design Concepts',
@@ -48,6 +50,7 @@ const updatetaskList = data => {
       colorClass: '#d97706', // amber-600
     },
     {
+      id: 'technical-drawings',
       name: 'Technical Drawings',
       items: data?.filter(item => item.phase == 'technical-drawings'),
       status: 'Initial Design Concepts',
@@ -55,6 +58,7 @@ const updatetaskList = data => {
       colorClass: '#ea580c', // orange-600
     },
     {
+      id: 'client-review',
       name: 'Client Review',
       items: data?.filter(item => item.phase == 'client-review'),
       status: 'Initial Design Concepts',
@@ -62,6 +66,7 @@ const updatetaskList = data => {
       colorClass: '#e11d48', // rose-600
     },
     {
+      id: 'procurement',
       name: 'Procurement',
       items: data?.filter(item => item.phase == 'procurement'),
       status: 'Procurement',
@@ -69,6 +74,7 @@ const updatetaskList = data => {
       colorClass: '#059669', // emerald-600
     },
     {
+      id: 'site-implementation',
       name: 'Site / Implementation',
       items: data?.filter(item => item.phase == 'site-implementation'),
       status: 'Site / Implementation',
@@ -76,6 +82,7 @@ const updatetaskList = data => {
       colorClass: '#475569', // slate-600
     },
     {
+      id: 'complete-project',
       name: 'Complete',
       items: data?.filter(item => item.phase == 'complete-project'),
       status: 'Complete',
@@ -174,7 +181,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   const projectId = params.id;
   const [tasks, setTasks] = React.useState<UITask[]>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [defaultListId, setDefaultListId] = React.useState<string | undefined>(undefined);
+  const [defaultPhase, setDefaultPhase] = React.useState<string | undefined>(undefined);
   const [editing, setEditing] = React.useState<UITask | null>(null);
   const [activeTab, setActiveTab] = React.useState<'board' | 'list' | 'timeline'>('board');
 
@@ -190,7 +197,6 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   };
 
   const queryClient = useQueryClient();
-  const [columnName, setColumsName] = React.useState(null);
   // Task
   const {
     data: taskData,
@@ -228,8 +234,8 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   }, [taskData, projectId, project]);
 
   function openNewTask(phase?: string) {
-    setColumsName(phase);
-    // setColumsName(getPhaseName(phase));
+    console.log(phase);
+    setDefaultPhase(phase);
     setEditing(null);
     setModalOpen(true);
   }
@@ -516,7 +522,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
                               variant="ghost"
                               className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-100 justify-center border-2 border-dashed border-gray-200 hover:border-gray-300 py-8"
                               size="sm"
-                              onClick={() => openNewTask(project?.phases ? col?.id : col?.name)}
+                              onClick={() => openNewTask(col?.id)}
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Add Task
@@ -556,8 +562,7 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
         onOpenChange={handleModalClose}
         projectId={projectId}
         team={TEAM}
-        defaultListId={defaultListId}
-        phase={columnName}
+        phase={defaultPhase}
         taskToEdit={editing}
         onSave={handleSave}
       />
