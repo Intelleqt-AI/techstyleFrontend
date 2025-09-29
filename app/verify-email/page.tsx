@@ -13,49 +13,29 @@ export default function VerifyEmailPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const router = useRouter();
 
-  // Check if user came from registration
+  // ✅ SAFER authorization check
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const checkAuthorization = () => {
-      // Check if there's registration data in browser state
-      const registrationData = window.history.state?.fromRegister;
-      const sessionEmail = window.history.state?.email;
+      try {
+        const tempRegisterSession = sessionStorage.getItem('pendingEmailVerification');
+        const tempEmail = sessionStorage.getItem('pendingVerificationEmail');
 
-      // Check if user navigated here from register page via referrer
-      const referrer = document.referrer;
-      const isFromRegisterReferrer = referrer.includes('/register');
-
-      // Check for a temporary session marker (would be set by register page)
-      const tempRegisterSession = sessionStorage.getItem('pendingEmailVerification');
-      const tempEmail = sessionStorage.getItem('pendingVerificationEmail');
-
-      // User is authorized if ANY of these conditions are met:
-      // 1. They have proper history state from register page
-      // 2. They came from register page (referrer check)
-      // 3. They have a temporary session marker (for demo)
-      const hasValidState = registrationData && sessionEmail;
-      const hasValidSession = tempRegisterSession && tempEmail;
-
-      if (hasValidState) {
-        setIsAuthorized(true);
-        setEmail(sessionEmail);
-        setIsCheckingAuth(false);
-      } else if (isFromRegisterReferrer && hasValidSession) {
-        setIsAuthorized(true);
-        setEmail(tempEmail);
-        setIsCheckingAuth(false);
-      } else if (hasValidSession) {
-        // Allow access if there's a pending verification session
-        setIsAuthorized(true);
-        setEmail(tempEmail);
-        setIsCheckingAuth(false);
-      } else {
-        // No valid authorization - deny access
+        if (tempRegisterSession && tempEmail) {
+          setIsAuthorized(true);
+          setEmail(tempEmail);
+        } else {
+          // Not authorized, cleanup
+          sessionStorage.removeItem('pendingEmailVerification');
+          sessionStorage.removeItem('pendingVerificationEmail');
+          setIsAuthorized(false);
+        }
+      } catch (err) {
+        console.error('Error checking authorization:', err);
         setIsAuthorized(false);
+      } finally {
         setIsCheckingAuth(false);
-
-        // Clear any invalid session data
-        sessionStorage.removeItem('pendingEmailVerification');
-        sessionStorage.removeItem('pendingVerificationEmail');
       }
     };
 
@@ -65,7 +45,7 @@ export default function VerifyEmailPage() {
   // Countdown timer for resend
   useEffect(() => {
     if (timeLeft > 0 && !canResend) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      const timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000);
       return () => clearTimeout(timer);
     } else if (timeLeft === 0) {
       setCanResend(true);
@@ -88,28 +68,21 @@ export default function VerifyEmailPage() {
   };
 
   const handleBackToRegister = () => {
-    // Clear any session data
     sessionStorage.removeItem('pendingEmailVerification');
     sessionStorage.removeItem('pendingVerificationEmail');
-
-    // In a real app, this would use router.push('/register')
-    window.location.href = '/register';
+    router.push('/register');
   };
 
   const handleVerify = async () => {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000));
     setIsVerified(true);
-
-    // Clear session data after successful verification
     sessionStorage.removeItem('pendingEmailVerification');
     sessionStorage.removeItem('pendingVerificationEmail');
-
     setIsLoading(false);
   };
 
-  // Show loading while checking authorization
+  // ⏳ Loading screen
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
@@ -123,7 +96,7 @@ export default function VerifyEmailPage() {
     );
   }
 
-  // Show unauthorized access page
+  // 🚫 Unauthorized view
   if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
@@ -139,7 +112,7 @@ export default function VerifyEmailPage() {
 
             <button
               onClick={handleBackToRegister}
-              className="w-full bg-black text-white font-medium py-2 px-5 rounded-md transform  transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+              className="w-full bg-black text-white font-medium py-2 px-5 rounded-md transform transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Go to Registration</span>
@@ -160,6 +133,7 @@ export default function VerifyEmailPage() {
     );
   }
 
+  // ✅ Verified view
   if (isVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
@@ -187,6 +161,7 @@ export default function VerifyEmailPage() {
     );
   }
 
+  // 📧 Default "verify email" view
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
@@ -205,7 +180,7 @@ export default function VerifyEmailPage() {
             <div className="w-20 h-20 bg-gradient-to-r from-gray-500 to-gray-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
               <Mail className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-3xl font-semibold bg-black  bg-clip-text text-transparent mb-2">Verify Your Email</h1>
+            <h1 className="text-3xl font-semibold bg-black bg-clip-text text-transparent mb-2">Verify Your Email</h1>
             <p className="text-gray-600">We've sent a verification link to</p>
             <p className="font-semibold text-gray-800 break-all">{email}</p>
           </div>
@@ -215,64 +190,18 @@ export default function VerifyEmailPage() {
             <div className="bg-gray-100 border border-gray-200 rounded-xl p-4 mb-6">
               <div className="flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm ">
+                <div className="text-sm">
                   <p className="font-medium mb-1">Check your email</p>
                   <p>Click the verification link in the email we just sent you. If you don't see it, check your spam folder.</p>
                 </div>
               </div>
             </div>
-
-            {/* Mock verify button for demo */}
-            {/* <button
-              onClick={handleVerify}
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <span>Click here to simulate verification</span>
-              )}
-            </button> */}
           </div>
-
-          {/* Resend section */}
-          {/* <div className="border-t border-gray-200 pt-6">
-            <p className="text-center text-gray-600 mb-4">Didn't receive the email?</p>
-
-            {!canResend ? (
-              <div className="text-center">
-                <p className="text-sm text-gray-500 mb-2">You can request a new email in</p>
-                <div className="text-2xl font-mono font-bold text-blue-600">{formatTime(timeLeft)}</div>
-              </div>
-            ) : (
-              <button
-                onClick={handleResend}
-                disabled={isLoading}
-                className="w-full bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
-              >
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Sending...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    <span>Resend verification email</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div> */}
 
           {/* Help section */}
           <div className="mt-6 pt-6 border-t border-gray-200 text-center">
             <p className="text-sm text-gray-500 mb-2">Having trouble?</p>
-            <button className=" font-medium text-sm transition-colors duration-200">Contact support</button>
+            <button className="font-medium text-sm transition-colors duration-200">Contact support</button>
           </div>
         </div>
 
