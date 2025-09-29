@@ -273,7 +273,7 @@ export default function ResetPassword() {
             <div className="text-center">
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => route.push('/login')}
                 className="text-sm text-blue-600 hover:text-blue-800 underline bg-transparent border-none cursor-pointer"
               >
                 Back to Login
