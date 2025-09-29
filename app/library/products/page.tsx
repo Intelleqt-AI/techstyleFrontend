@@ -476,22 +476,24 @@ export default function ProductsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="max-w-[300px] max-h-[300px] overflow-scroll bg-white">
                             {!projectsLoading &&
-                              projectsData?.map(project => (
-                                <DropdownMenuItem
-                                  key={project?.id}
-                                  onClick={() => {
-                                    setSelectedProductId(product?.id);
-                                    if (Array.isArray(project?.type) && project.type.length > 0) {
-                                      handleOpenTypeModal(project);
-                                    } else {
-                                      handleAddToProject(project?.id);
-                                    }
-                                  }}
-                                  className="cursor-pointer"
-                                >
-                                  {project.name}
-                                </DropdownMenuItem>
-                              ))}
+                              projectsData
+                                ?.filter(project => project?.isArchive === false)
+                                .map(project => (
+                                  <DropdownMenuItem
+                                    key={project?.id}
+                                    onClick={() => {
+                                      setSelectedProductId(product?.id);
+                                      if (Array.isArray(project?.type) && project.type.length > 0) {
+                                        handleOpenTypeModal(project);
+                                      } else {
+                                        handleAddToProject(project?.id);
+                                      }
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    {project.name}
+                                  </DropdownMenuItem>
+                                ))}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -519,8 +521,8 @@ export default function ProductsPage() {
                       types?.type.length > 0 &&
                       types?.type.map(type => (
                         <div key={type?.id} className="flex items-center space-x-2 mb-2">
-                          <RadioGroupItem value={type?.id} id={type?.id} className="w-5 h-5" />
-                          <label htmlFor={type?.id} className="text-[18px] font-normal cursor-pointer">
+                          <RadioGroupItem value={type?.id} id={type?.id} className="w-4 h-4" />
+                          <label htmlFor={type?.id} className="text-[15px] font-normal cursor-pointer">
                             {type?.text}
                           </label>
                         </div>
@@ -531,7 +533,7 @@ export default function ProductsPage() {
     ${selectedType ? 'opacity-100 translate-y-0 max-h-40 py-2' : 'opacity-0 -translate-y-2 max-h-0'}`}
                     aria-hidden={!selectedType}
                   >
-                    <p className="mb-2">Quantity</p>
+                    <p className="mb-2 text-[15px]">Quantity</p>
                     <Input
                       className="outline-none ring-0 focus:ring-0"
                       type="number"
