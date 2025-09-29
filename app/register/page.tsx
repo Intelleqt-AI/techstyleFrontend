@@ -101,7 +101,7 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     toast.warning('Registration disabled . Contact administrator for details');
-    return;
+    // return;
     e.preventDefault();
     // Mark all fields as touched
     setTouched({ email: true, password: true, confirmPassword: true });
