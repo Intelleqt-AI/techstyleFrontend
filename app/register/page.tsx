@@ -4,10 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, Mail } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import supabase from '@/supabase/supabaseClient';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface FormData {
   email: string;
@@ -30,7 +30,6 @@ export default function Register() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const { toast } = useToast();
   const router = useRouter();
 
   // Email validation
@@ -101,6 +100,8 @@ export default function Register() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+    toast.warning('Registration disabled . Contact administrator for details');
+    return;
     e.preventDefault();
     // Mark all fields as touched
     setTouched({ email: true, password: true, confirmPassword: true });
@@ -119,10 +120,10 @@ export default function Register() {
     try {
       // Register user with Supabase
       const { data, error } = await supabase.auth.signUp({
-        emails: formData.email,
-        passwords: formData.password,
-        optionss: {
-          emailRedirectTo: `http://app.techstyles.ai/?onboarding=true`,
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `https://techstyle-frontend-7hvj.vercel.app/?onboarding=true`,
         },
       });
 

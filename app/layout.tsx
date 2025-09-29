@@ -14,7 +14,7 @@ import UserbackWidget from '@/components/userBack/UserbackWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
-const PUBLIC_ROUTES = ['/login', '/register', '/verify-email'];
+const PUBLIC_ROUTES = ['/login', '/register', '/verify-email', '/reset-password'];
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
