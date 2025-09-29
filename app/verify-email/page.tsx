@@ -175,8 +175,11 @@ export default function VerifyEmailPage() {
               <p className="text-gray-600">Your email has been successfully verified. You can now access all features.</p>
             </div>
 
-            <button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-200 shadow-lg">
-              Continue to Dashboard
+            <button
+              onClick={() => router.push('/home/dashboard?onboarding=true')}
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-xl hover:from-emerald-600 hover:to-teal-600 transform hover:scale-105 transition-all duration-200 shadow-lg"
+            >
+              Continue to Onboarding
             </button>
           </div>
         </div>

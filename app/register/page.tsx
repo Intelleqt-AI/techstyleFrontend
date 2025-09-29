@@ -123,7 +123,7 @@ export default function Register() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `https://techstyle-frontend-7hvj.vercel.app/?onboarding=true`,
+          emailRedirectTo: `https://techstyle-frontend-7hvj.vercel.app/verify-email`,
         },
       });
 
