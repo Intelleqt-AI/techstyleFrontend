@@ -132,11 +132,7 @@ export default function Register() {
       }
 
       if (data.user) {
-        toast({
-          title: 'Registration successful!',
-          description: 'Please check your email to verify your account.',
-          variant: 'default',
-        });
+        toast.success('Please check your email to verify your account.');
 
         // Set session data for email verification authorization
         sessionStorage.setItem('pendingEmailVerification', 'true');
@@ -171,11 +167,7 @@ export default function Register() {
         }
       }
 
-      toast({
-        title: 'Registration failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
