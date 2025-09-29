@@ -20,7 +20,7 @@ export const fetchSession = async () => {
 // Reset Password
 export const resetPassword = async email => {
   return await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://tech-style2.vercel.app/reset-password', // Your reset password page URL
+    redirectTo: 'https://techstyle-frontend-7hvj.vercel.app/reset-password', // Your reset password page URL
   });
 };
 
