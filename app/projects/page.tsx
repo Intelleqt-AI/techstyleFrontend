@@ -65,7 +65,7 @@ export default function ProjectsPage() {
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [project, setProject] = useState([]);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('active');
 
   // Projects
   const { data, isLoading, error, refetch } = useQuery({
