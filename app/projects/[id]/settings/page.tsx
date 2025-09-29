@@ -1335,29 +1335,8 @@ function AutomationForm({ onSave }: { onSave: (p: any) => void }) {
 
 function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v: any) => void; onSave: (p: any) => void }) {
   const [openPop, setOpenPop] = React.useState(false);
-  const selected = value?.assigned || [];
-  const addTeamMember = () => {
-    const newMember = {
-      id: Date.now().toString(),
-      name: '',
-      role: '',
-      avatar: '',
-    };
-    onChange({ assigned: [...(value.assigned || []), newMember] });
-  };
-
-  const updateTeamMember = (index: number, updates: any) => {
-    const updatedTeam = [...(value.assigned || [])];
-    updatedTeam[index] = { ...updatedTeam[index], ...updates };
-    onChange({ assigned: updatedTeam });
-  };
-
-  const removeTeamMember = (index: number) => {
-    const updatedTeam = [...(value.assigned || [])];
-    updatedTeam.splice(index, 1);
-    onChange({ assigned: updatedTeam });
-  };
-
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedTeamMember, setSelectedTeamMember] = useState(null);
   function toggleAssignee(member: any) {
     const alreadyAssigned = value.assigned.some((a: any) => a.id === member.id);
 
@@ -1370,63 +1349,38 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
 
     onChange(updatedValue);
   }
+  // Get initials for avatar fallback
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase();
+  };
+
+  const openDeleteModal = member => {
+    setIsDeleteOpen(true);
+    setSelectedTeamMember(member);
+
+    // setSelectedTeammates(updatedTeammates);
+  };
+
+  const handleDelete = id => {
+    toggleAssignee(id);
+  };
 
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Team Members</CardTitle>
-          <Button onClick={addTeamMember} size="sm" className="bg-clay-600 hover:bg-clay-700 text-white">
+          <CardTitle className="text-base mb-5">Team Members</CardTitle>
+          {/* <Button onClick={addTeamMember} size="sm" className="bg-clay-600 hover:bg-clay-700 text-white">
             <Plus className="w-4 h-4 mr-1" />
             Add Member
-          </Button>
+          </Button> */}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          {(value?.assigned || []).map((member: any, index: number) => (
-            <div key={member.id || index} className="flex items-center gap-4 p-4 border rounded-lg">
-              <div className="w-10 h-10 bg-clay-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-clay-600">
-                  {member.name
-                    ? member.name
-                        .split(' ')
-                        .map((n: string) => n[0])
-                        .join('')
-                        .toUpperCase()
-                    : 'TM'}
-                </span>
-              </div>
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <Input
-                  readOnly
-                  placeholder="Full name"
-                  value={member.name}
-                  onChange={e => updateTeamMember(index, { name: e.target.value })}
-                />
-                <Input
-                  placeholder="Role (e.g., Lead Designer)"
-                  value={member.role}
-                  onChange={e => updateTeamMember(index, { role: e.target.value })}
-                />
-              </div>
-
-              <Button
-                variant={'destructive'}
-                className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
-                onClick={() => toggleAssignee(member)}
-              >
-                <Trash className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
-          {(!value?.assigned || value?.assigned.length === 0) && (
-            <div className="text-center py-8 text-muted-foreground">No team members assigned yet. Click "Add Member" to get started.</div>
-          )}
-        </div>
-
         {/* Add Member option */}
-        <div>
+        <div className="mt-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Popover open={openPop} onOpenChange={setOpenPop}>
@@ -1441,28 +1395,8 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
                     <span className="flex items-center gap-2 overflow-hidden">
                       <span className="flex items-center gap-2 text-gray-500">
                         <Search className="h-4 w-4" />
-                        Search teammates…
+                        Enter name...
                       </span>
-                      {/* {selected?.length > 0 ? (
-                        <>
-                          <div className="flex -space-x-2">
-                            {selected.slice(0, 4).map(m => (
-                              <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
-                                <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
-                                <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
-                              </Avatar>
-                            ))}
-                          </div>
-                          <span className="truncate text-sm text-gray-600">
-                            {selected.length} selected{selected.length > 4 ? ' +' + (selected.length - 4) : ''}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="flex items-center gap-2 text-gray-500">
-                          <Search className="h-4 w-4" />
-                          Search teammates…
-                        </span>
-                      )} */}
                     </span>
                   </Button>
                 </PopoverTrigger>
@@ -1498,33 +1432,35 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
                   </Command>
                 </PopoverContent>
               </Popover>
-              {/* {selected?.length > 0 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    onChange({
-                      ...value,
-                      assigned: [],
-                    })
-                  }
-                >
-                  Clear
-                </Button>
-              )} */}
             </div>
-
-            {/* {value?.assigned?.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {value?.assigned?.map(m => (
-                  <span onClick={() => toggleAssignee(m)}>
-                    <TypeChip key={m.id} label={m.name} className="cursor-pointer" />
-                  </span>
-                ))}
-              </div>
-            )} */}
           </div>
+        </div>
+      </CardHeader>
+      <CardContent className="">
+        <div className=" divide-y divide-gray-200 border rounded-lg">
+          {(value?.assigned || []).map((member: any, index: number) => (
+            <div key={member.id || index} className="flex items-center  gap-4 px-4 py-4 justify-between ">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">{getInitials(member.name)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{member.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">{member.email}</div>
+                </div>
+              </div>
+              <Button
+                variant={'destructive'}
+                className={`justify-start bg-red-50 text-red-700 hover:bg-red-100 border-red-200`}
+                onClick={() => openDeleteModal(member)}
+              >
+                <Trash className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          {(!value?.assigned || value?.assigned.length === 0) && (
+            <div className="text-center py-8 text-muted-foreground">No team members assigned yet. Click "Add Member" to get started.</div>
+          )}
         </div>
 
         <div className="flex pt-3 items-center justify-end">
@@ -1534,6 +1470,17 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
           </Button>
         </div>
       </CardContent>
+
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={() => handleDelete(selectedTeamMember)}
+        title="Remove Member"
+        confirmText="Remove"
+        description={`Are you sure you want to remove ${selectedTeamMember?.name} from this studio? Removing this member will revoke their access to all projects and tasks associated with this studio.`}
+        itemName={selectedTeamMember?.name}
+        requireConfirmation={true} // 👈 disables the typing step
+      />
     </Card>
   );
 }
