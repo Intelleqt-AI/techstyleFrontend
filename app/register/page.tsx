@@ -100,8 +100,6 @@ export default function Register() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    toast.warning('Registration disabled . Contact administrator for details');
-    // return;
     e.preventDefault();
     // Mark all fields as touched
     setTouched({ email: true, password: true, confirmPassword: true });
@@ -132,16 +130,10 @@ export default function Register() {
       }
 
       if (data.user) {
-        toast({
-          title: 'Registration successful!',
-          description: 'Please check your email to verify your account.',
-          variant: 'default',
-        });
-
+        toast.success('Please check your email to verify your account.');
         // Set session data for email verification authorization
         sessionStorage.setItem('pendingEmailVerification', 'true');
         sessionStorage.setItem('pendingVerificationEmail', formData.email);
-
         // Simulate successful registration and navigate to verify-email
         const state = {
           fromRegister: true,
@@ -149,7 +141,6 @@ export default function Register() {
         };
 
         window.history.pushState(state, '', '/verify-email');
-
         // Navigate to a confirmation page or login
         router.push('/verify-email');
       }
@@ -171,11 +162,7 @@ export default function Register() {
         }
       }
 
-      toast({
-        title: 'Registration failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

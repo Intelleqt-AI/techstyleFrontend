@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, Clock, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import supabase from '@/supabase/supabaseClient';
 
 export default function VerifyEmailPage() {
   const [isVerified, setIsVerified] = useState(false);
@@ -14,32 +15,48 @@ export default function VerifyEmailPage() {
   const router = useRouter();
 
   // ✅ SAFER authorization check
+  // useEffect(() => {
+  //   if (typeof window === 'undefined') return;
+
+  //   const checkAuthorization = () => {
+  //     try {
+  //       const tempRegisterSession = sessionStorage.getItem('pendingEmailVerification');
+  //       const tempEmail = sessionStorage.getItem('pendingVerificationEmail');
+
+  //       if (tempRegisterSession && tempEmail) {
+  //         setIsAuthorized(true);
+  //         setEmail(tempEmail);
+  //       } else {
+  //         // Not authorized, cleanup
+  //         sessionStorage.removeItem('pendingEmailVerification');
+  //         sessionStorage.removeItem('pendingVerificationEmail');
+  //         setIsAuthorized(false);
+  //       }
+  //     } catch (err) {
+  //       console.error('Error checking authorization:', err);
+  //       setIsAuthorized(false);
+  //     } finally {
+  //       setIsCheckingAuth(false);
+  //     }
+  //   };
+
+  //   checkAuthorization();
+  // }, []);
+
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const checkAuthorization = () => {
-      try {
-        const tempRegisterSession = sessionStorage.getItem('pendingEmailVerification');
-        const tempEmail = sessionStorage.getItem('pendingVerificationEmail');
-
-        if (tempRegisterSession && tempEmail) {
-          setIsAuthorized(true);
-          setEmail(tempEmail);
-        } else {
-          // Not authorized, cleanup
-          sessionStorage.removeItem('pendingEmailVerification');
-          sessionStorage.removeItem('pendingVerificationEmail');
-          setIsAuthorized(false);
-        }
-      } catch (err) {
-        console.error('Error checking authorization:', err);
+    const checkAuth = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        setIsAuthorized(true);
+        setEmail(session.user.email);
+      } else {
         setIsAuthorized(false);
-      } finally {
-        setIsCheckingAuth(false);
       }
+      setIsCheckingAuth(false);
     };
-
-    checkAuthorization();
+    checkAuth();
   }, []);
 
   // Countdown timer for resend
@@ -134,7 +151,7 @@ export default function VerifyEmailPage() {
   }
 
   // ✅ Verified view
-  if (isVerified) {
+  if (isAuthorized) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full">
