@@ -44,6 +44,15 @@ import {
 const mockUser = { permissions: ['product.write'] };
 const hasPerm = (permission: string) => mockUser.permissions.includes(permission);
 
+const parsePrice = value => {
+  if (!value) return 0;
+  return (
+    parseFloat(
+      String(value).replace(/[^0-9.]/g, '') // strip out everything except numbers + dot
+    ) || 0
+  );
+};
+
 // Format prices with currency symbol
 const formatPrice = (price: string) => {
   if (!price) return 'Not Available';
@@ -457,9 +466,10 @@ export default function ProductsPage() {
                         <div className="flex  items-center justify-between">
                           <span className="tabular-nums text-sm font-semibold text-gray-900">
                             {product?.priceRegular && !currencyLoading && (currency?.symbol || '£')}
-                            {formatPrice(
+                            {/* {formatPrice(
                               String(product?.priceRegular).replace(/\D/g, '') || String(product?.priceMember).replace(/\D/g, '') || 0
-                            )}
+                            )} */}
+                            {formatPrice(parsePrice(product?.priceMember) || parsePrice(product?.priceRegular) || 0)}
                           </span>
                           {product?.type && <TypeChip label={product.type} />}
                         </div>

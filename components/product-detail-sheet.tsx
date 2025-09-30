@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ExternalLink, LinkIcon, Plus, Share2 } from 'lucide-react';
+import { ExternalLink, Globe, LinkIcon, Plus, Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Slider from 'react-slick';
 import { toast } from 'sonner';
@@ -127,6 +127,15 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
     return null;
   }
 
+  const parsePrice = value => {
+    if (!value) return 0;
+    return (
+      parseFloat(
+        String(value).replace(/[^0-9.]/g, '') // strip out everything except numbers + dot
+      ) || 0
+    );
+  };
+
   // Format prices with currency symbol
   const formatPrice = (price: string) => {
     if (!price) return 'Not Available';
@@ -239,14 +248,14 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 border-greige-500/30 bg-white"
                   >
-                    <Share2 className="mr-2 h-4 w-4" />
-                    Shere
+                    <Globe className="mr-2 h-4 w-4" />
+                    Website
                   </Link>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <StatCard label="Retail Price" value={formatPrice(String(data?.priceRegular).replace(/\D/g, ''))} />
-                  <StatCard label="Trade Price" value={formatPrice(String(data?.priceMember).replace(/\D/g, ''))} />
+                  <StatCard label="Retail Price" value={formatPrice(parsePrice(data?.priceRegular))} />
+                  <StatCard label="Trade Price" value={formatPrice(parsePrice(data?.priceMember))} />
                   <StatCard label="Supplier" value={data?.supplier} />
                   <StatCard label="Product Type" value={data?.type} />
                   <StatCard label="Materials" value={data?.materials} />
