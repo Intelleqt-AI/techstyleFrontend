@@ -702,7 +702,14 @@ export default function MyTasksPage() {
     error: deleteError2,
   } = useMutation({
     mutationFn: deleteTask,
-    onSuccess: () => {
+    onSuccess: e => {
+      if (e.error) {
+        console.log(e.error);
+        if (e.error?.code === '23503') {
+          toast.error('Task cant be delete . Tracker was enabled from this task');
+        }
+        return;
+      }
       queryClient.invalidateQueries(['tasks']);
       toast.success('Task Deleted', {
         duration: 1000,
