@@ -89,10 +89,6 @@ export default function ContactsPage() {
     }
   }, [taskLoading, contactData]);
 
-  // useEffect(() => {
-  //   console.log(contactData);
-  // }, [contactData]);
-
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
