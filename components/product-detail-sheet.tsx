@@ -361,22 +361,24 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="max-w-[300px] max-h-[300px] overflow-scroll bg-white">
                     {!projectsLoading &&
-                      projectsData?.map(project => (
-                        <DropdownMenuItem
-                          key={project?.id}
-                          onClick={() => {
-                            setSelectedProductId(product?.id);
-                            if (Array.isArray(project?.type) && project.type.length > 0) {
-                              handleOpenTypeModal(project);
-                            } else {
-                              handleAddToProject(project?.id);
-                            }
-                          }}
-                          className="cursor-pointer"
-                        >
-                          {project.name}
-                        </DropdownMenuItem>
-                      ))}
+                      projectsData
+                        ?.filter(project => project?.isArchive === false)
+                        .map(project => (
+                          <DropdownMenuItem
+                            key={project?.id}
+                            onClick={() => {
+                              setSelectedProductId(product?.id);
+                              if (Array.isArray(project?.type) && project.type.length > 0) {
+                                handleOpenTypeModal(project);
+                              } else {
+                                handleAddToProject(project?.id);
+                              }
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {project.name}
+                          </DropdownMenuItem>
+                        ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -401,7 +403,7 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                   types?.type.map(type => (
                     <div key={type?.id} className="flex items-center space-x-2 mb-2">
                       <RadioGroupItem value={type?.id} id={type?.id} className="w-5 h-5" />
-                      <label htmlFor={type?.id} className="text-[18px] font-normal cursor-pointer">
+                      <label htmlFor={type?.id} className="text-[15px] font-normal cursor-pointer">
                         {type?.text}
                       </label>
                     </div>

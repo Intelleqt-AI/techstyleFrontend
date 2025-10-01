@@ -444,7 +444,7 @@ const ProcurementTable = ({
                         <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
                           {item?.leadTime ? item.leadTime + ' Weeks' : 'None'}
                         </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item?.qty}</td>
+                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item?.qty || 1}</td>
                         <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item?.price}>
                           <p>
                             <span className=" ">
@@ -453,7 +453,8 @@ const ProcurementTable = ({
                               {(() => {
                                 const memberPrice = parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, '') || '0');
                                 const regularPrice = parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, '') || '0');
-                                const priceToUse = memberPrice > 0 ? memberPrice : regularPrice;
+                                let priceToUse = memberPrice > 0 ? memberPrice : regularPrice;
+                                priceToUse = priceToUse * (item?.qty || 1);
 
                                 return priceToUse.toLocaleString('en-GB', {
                                   maximumFractionDigits: 2,
