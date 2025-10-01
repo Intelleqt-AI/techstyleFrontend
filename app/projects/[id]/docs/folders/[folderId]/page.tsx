@@ -55,6 +55,7 @@ import {
   deleteLink,
   renameFolder,
   renameFile,
+  updateProjectClientDocs,
 } from "@/supabase/API";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -633,6 +634,7 @@ export default function ProjectFolderPage({
     setRenameModalOpen(true);
     setUpdatedFolderName(doc.name);
   };
+
   const RenameCloseModal = () => {
     setRenameModalOpen(false);
     setUpdatedFolderName("");
@@ -666,6 +668,68 @@ export default function ProjectFolderPage({
       return "document";
     if (mimetype.includes("dwg") || mimetype.includes("cad")) return "cad";
     return "other";
+  };
+
+  const handleChange = (e) => {
+    const { value, checked } = e.target;
+
+    setCheckedItems((prev) => {
+      let updatedItems = [...prev];
+      if (checked && value) {
+        if (value.link) {
+          const exists = updatedItems.some((item) => item.link === value.link);
+          if (!exists) {
+            updatedItems.push(value);
+          }
+        }
+        if (value.metadata && value.metadata.mimetype) {
+          const itemWithUrl = {
+            ...value,
+            url: `${
+              process.env.NEXT_PUBLIC_SUPABASE_URL
+            }/storage/v1/object/public/Docs/${params.id}/${
+              currentPath ? currentPath + "/" : ""
+            }${value.name}`,
+          };
+
+          const exists = updatedItems.some(
+            (item) => item.id === itemWithUrl.id
+          );
+          if (!exists) {
+            updatedItems.push(itemWithUrl);
+          }
+        }
+      } else {
+        updatedItems = updatedItems.filter(
+          (item) =>
+            item.create_time !== value.create_time || item.id !== value.id
+        );
+      }
+
+      return updatedItems;
+    });
+  };
+
+  // Update Product
+  const sendDoctoClient = useMutation({
+    mutationFn: updateProjectClientDocs,
+    onSuccess: () => {
+      toast.success("Document Sent to Client");
+      setButtonLoading(false);
+      setCheckedItems([]);
+    },
+    onError: () => {
+      toast("Error! Try again");
+    },
+  });
+
+  const handleClick = async () => {
+    setButtonLoading(true);
+    const updatedDocs = checkedItems.map((item) => ({
+      ...item,
+      path: currentPath,
+    }));
+    sendDoctoClient.mutate({ projectID: params.id, newDocs: updatedDocs });
   };
 
   return (
@@ -754,6 +818,23 @@ export default function ProjectFolderPage({
               <LinkIcon className="w-4 h-4 mr-2" />
               Add Link
             </Button> */}
+            <Button
+              disabled={checkedItems.length === 0 || buttonLoading}
+              variant="ghost"
+              className={`border w-[170px]`}
+              onClick={handleClick}>
+              {buttonLoading ? (
+                <>
+                  Sending...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                </>
+              ) : (
+                <>
+                  <span>Send to Client</span>
+                  <MessageSquareShare className="ml-2" />
+                </>
+              )}
+            </Button>
             {/* <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="bg-gray-900 text-white hover:bg-gray-800">
@@ -787,11 +868,11 @@ export default function ProjectFolderPage({
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th scope="col" className="w-10 px-4 py-3">
-                      <input
+                      {/* <input
                         aria-label="Select all"
                         type="checkbox"
                         className="h-4 w-4 rounded border-gray-300"
-                      />
+                      /> */}
                     </th>
                     <th
                       scope="col"
@@ -839,9 +920,11 @@ export default function ProjectFolderPage({
                                   (items) => items.id == doc.id
                                 )
                               }
-                              onCheckedChange={(checked) => {
-                                // Handle checkbox change
-                              }}
+                              onCheckedChange={(checked) =>
+                                handleChange({
+                                  target: { value: doc, checked },
+                                })
+                              }
                             />
                           )}
                         </td>
