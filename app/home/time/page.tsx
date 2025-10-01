@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Pause, Square, ChevronDown, Calendar, ChartBar, DollarSign, Filter } from 'lucide-react';
+import { Clock, Pause, Square, ChevronDown, Calendar, ChartBar, DollarSign, Filter, ClockAlert, Info, MoreHorizontal } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HomeNav } from '@/components/home-nav';
@@ -10,12 +10,23 @@ import { getTimeTracking, ModifyTimeTracker } from '@/supabase/API';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useUser from '@/hooks/useUser';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import useProjects from '@/supabase/hook/useProject';
 import Modal from 'react-modal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from 'recharts';
 import { Input } from '@/components/ui/input';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { debounce } from 'lodash';
+import { DeleteDialog } from '@/components/DeleteDialog';
 
 const AnimatedClock = ({ running = false, className = '' }: { running?: boolean; className?: string }) => {
   return (
@@ -68,32 +79,9 @@ const AnimatedClock = ({ running = false, className = '' }: { running?: boolean;
 
 type Day = { day: string; hours: number };
 
-const daily: Day[] = [
-  { day: 'Mon', hours: 6.5 },
-  { day: 'Tue', hours: 8 },
-  { day: 'Wed', hours: 7.5 },
-  { day: 'Thu', hours: 5.5 },
-  { day: 'Fri', hours: 6 },
-  { day: 'Sat', hours: 2 },
-  { day: 'Sun', hours: 0 },
-];
-
 // earthy accent for bars
 const olive = '#6c7f57';
 const oliveDeep = '#4b5d39';
-
-// const formatTime = (ms) => {
-//   const hours = Math.floor(ms / (1000 * 60 * 60))
-//     .toString()
-//     .padStart(2, "0");
-//   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60))
-//     .toString()
-//     .padStart(2, "0");
-//   const seconds = Math.floor((ms % (1000 * 60)) / 1000)
-//     .toString()
-//     .padStart(2, "0");
-//   return `${hours}:${minutes}:${seconds}`;
-// };
 
 // Also update the formatTime function to handle NaN/undefined cases:
 const formatTime = ms => {
@@ -115,6 +103,10 @@ const formatTime = ms => {
 
   return `${hours}:${minutes}:${seconds}`;
 };
+
+function msToMinutes(ms) {
+  return (ms / 1000 / 60).toFixed(2);
+}
 
 // For Today
 function getFormattedTimeForToday(tasks) {
@@ -301,6 +293,9 @@ export default function HomeTimePage() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
+  const [value, setValue] = useState([0]);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
 
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -335,6 +330,7 @@ export default function HomeTimePage() {
       queryClient.invalidateQueries(['Time Tracking']);
       toast('Timer Updated');
       closeModal();
+      setValue([0]);
       // Update local state for the specific task
       // setTasks(prev => prev.map(task => (task.id === variables.id ? { ...task, ...variables } : task)));
     },
@@ -342,6 +338,19 @@ export default function HomeTimePage() {
       toast('Error! Try again');
     },
   });
+
+  // Create debounced mutate function
+  const debouncedMutate = useMemo(
+    () =>
+      debounce((updatedSessions, totalWorkTime) => {
+        mutation.mutate({
+          id: selectedTask?.id,
+          session: updatedSessions,
+          totalWorkTime,
+        });
+      }, 1000), // 500ms delay
+    [mutation, value, selectedTask]
+  );
 
   // Process task data when received
   useEffect(() => {
@@ -542,8 +551,6 @@ export default function HomeTimePage() {
       })),
       currentSession: null,
     };
-    // console.log(activeTask);
-    // console.log(updatedTask);
     mutation.mutate(updatedTask);
   }, [activeTask, mutation]);
 
@@ -677,6 +684,53 @@ export default function HomeTimePage() {
   }, [selectedTask]);
 
   const dynamicDaily = getDailyBreakdown(tasks);
+
+  // Modify individula Session
+  const modifySession = (id: number) => {
+    if (!selectedTask?.session) return;
+    const updatedSessions = selectedTask.session.map(s => {
+      if (s.startTime === id) {
+        const deduction = value[0] * 60 * 1000;
+        return {
+          ...s,
+          totalTime: Math.max(0, s.totalTime - deduction),
+        };
+      }
+      return s;
+    });
+    setSelectedTask(prev => ({
+      ...prev,
+      session: updatedSessions,
+    }));
+    const deduction = value[0] * 60 * 1000;
+    const totalWorkTime = selectedTask?.totalWorkTime - deduction;
+    debouncedMutate(updatedSessions, totalWorkTime);
+  };
+
+  const deleteSession = (id: number) => {
+    if (!selectedTask?.session) return;
+    const updatedSessions = selectedTask.session.filter(s => s.startTime !== id);
+
+    const totalWorkTime = updatedSessions.reduce((acc, s) => acc + (s.totalTime || 0), 0);
+
+    // Update UI
+    setSelectedTask(prev => ({
+      ...prev,
+      session: updatedSessions,
+      totalWorkTime,
+    }));
+
+    mutation.mutate({
+      id: selectedTask?.id,
+      session: updatedSessions,
+      totalWorkTime,
+    });
+  };
+
+  const openDeleteModal = session => {
+    setIsDeleteOpen(true);
+    setSelectedSession(session);
+  };
 
   return (
     <main className="space-y-6 p-6">
@@ -894,7 +948,7 @@ export default function HomeTimePage() {
 
       {/* Task Modal */}
       <Modal
-        className="!max-w-[500px] flex flex-col !h-[90vh] py-6"
+        className="!max-w-[700px] flex flex-col !h-[90vh] py-6"
         isOpen={modalOpen}
         onRequestClose={closeModal}
         contentLabel="Time Tracker Modal"
@@ -931,7 +985,7 @@ export default function HomeTimePage() {
                         {formatTime(elapsedTime)}
                       </p>
                     </div>
-                    <p className="text-[#525866] text-[16px] font-medium">Current Session</p>
+                    <p className="text-[#525866] text-[16px] font-medium">Total Time</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     {selectedTask.isActive && (
@@ -952,7 +1006,7 @@ export default function HomeTimePage() {
                   </div>
                 </div>
 
-                <div className="border-b-[5px] pb-[30px]">
+                <div className="border-b-[5px] flex items-center justify-between pb-[30px]">
                   <button onClick={handleResetTracking} className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="19" height="18" viewBox="0 0 19 18" fill="none">
                       <path
@@ -965,7 +1019,122 @@ export default function HomeTimePage() {
                     </svg>
                     <span className="text-[#17181B] text-sm font-medium">Reset</span>
                   </button>
+                  {/* <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
+                        <ClockAlert size={19} />
+                        <span className="text-[#17181B] text-sm font-medium">Deduct Time</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="right" align="center" className="w-56 z-[99]">
+                      <p className="text-xs flex items-center gap-2 mb-4">
+                        <Info size={14} />
+                        <span>Warning : This can't be undo</span>
+                      </p>
+                      <Slider
+                        defaultValue={[0]}
+                        value={value}
+                        onValueChange={val => setValue(val)}
+                        onValueCommit={handleValueChange} // call API once when sliding ends
+                        max={msToMinutes(elapsedTime)}
+                        step={1}
+                        className="w-full"
+                      />
+                      <p className="text-sm mt-2 text-center">- {value[0]} Minutes</p>
+                    </PopoverContent>
+                  </Popover> */}
                 </div>
+
+                {/* --- Session History Section --- */}
+                {selectedTask.session && selectedTask.session.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-md font-semibold mb-3">Session History</h3>
+                    <div className="overflow-x-auto rounded-lg">
+                      <table className="w-full border  text-left border-collapse">
+                        <thead className="bg-gray-50  border-b border-gray-200 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Date</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Start Time</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">End Time</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Total Time</th>
+                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 text-sm">
+                          {selectedTask.session.map((s, idx) => {
+                            const start = new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const end = new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const totalMins = Math.floor(s.totalTime / 60000); // total minutes
+                            const totalSecs = Math.floor((s.totalTime % 60000) / 1000); // remaining seconds
+                            const sessionDate = new Date(s.date).toLocaleDateString();
+
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50 text-xs">
+                                <td className="px-4 py-2 border-b">{sessionDate}</td>
+                                <td className="px-4 py-2 border-b">{start}</td>
+                                <td className="px-4 py-2 border-b">{end}</td>
+                                <td className="px-4 py-2 border-b">
+                                  {totalMins}m {totalSecs}s
+                                </td>
+                                <td className="px-4 py-2 border-b">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600">
+                                        <MoreHorizontal className="w-4 h-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="z-[99]" align="end">
+                                      <DropdownMenuItem asChild>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <button className="text-xs p-2 w-full rounded-sm hover:bg-gray-100 flex items-center gap-2">
+                                              {/* <ClockAlert size={16} /> */}
+                                              <span className="text-[#17181B] text-sm font-medium">Deduct Time</span>
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent side="right" align="center" className="w-60 z-[99]">
+                                            <p className="text-xs flex items-center gap-2 mb-4">
+                                              <Info size={14} />
+                                              <span>Warning : This can't be undone</span>
+                                            </p>
+                                            <Slider
+                                              defaultValue={[0]}
+                                              max={totalMins}
+                                              step={1}
+                                              value={value}
+                                              onValueChange={val => setValue(val)}
+                                              onValueCommit={() => modifySession(s.startTime)}
+                                              className="w-full"
+                                            />
+                                            <p className="text-sm mt-2 text-center">- {value[0]} Minutes</p>
+                                          </PopoverContent>
+                                        </Popover>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => openDeleteModal(s)} className="text-red-600 cursor-pointer">
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <DeleteDialog
+                  isOpen={isDeleteOpen}
+                  onClose={() => setIsDeleteOpen(false)}
+                  onConfirm={() => deleteSession(selectedSession?.startTime)}
+                  title="Delete Session"
+                  description="Are you sure you want to delete this session? This action cannot be undone."
+                  // itemName={selected?.name}
+                  requireConfirmation={false}
+                />
 
                 <div className="mt-6">
                   <div className="space-y-2 col-span-2">

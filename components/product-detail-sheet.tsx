@@ -100,8 +100,6 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
   const [selectedProductId, setSelectedProductId] = React.useState(null);
   const { currency, isLoading: currencyLoading } = useCurrency();
 
-  console.log(product);
-
   const typeMutation = useMutation({
     mutationFn: modifyProjectForTypeProduct,
     onSuccess: () => {

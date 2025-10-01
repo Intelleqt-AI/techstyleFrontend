@@ -49,7 +49,7 @@ export const DeleteDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg z-[99]">
         <DialogHeader className="flex flex-row items-center gap-3">
           <div
             className={`flex-shrink-0 w-10 h-10 ${isArchive ? 'bg-gray-100' : 'bg-red-100'}  rounded-full flex items-center justify-center`}
