@@ -148,12 +148,9 @@ export const modifyTask = async ({ newTask, user }) => {
 
 // Delete Task
 export const deleteTask = async taskId => {
-  if (!taskId) throw new Error('Task ID is required');
+  if (!taskId) return { data: null, error: new Error('Task ID is required') };
   const { data, error } = await supabase.from('Task').delete().eq('id', taskId);
-  if (error) {
-    throw new Error(error.message);
-  }
-  return { data };
+  return { data, error };
 };
 
 // Delte task by projct ID
