@@ -418,12 +418,15 @@ export default function DashboardPage() {
 
     const totalMinutes = totalMs / (1000 * 60);
 
-    if (totalMinutes < 60) {
-      return onlyTime ? `${Math.round(totalMinutes)}` : `${Math.round(totalMinutes)} Minutes`;
-    } else {
-      const totalHours = totalMinutes / 60;
-      return onlyTime ? `${totalHours.toFixed(1)}` : `${totalHours.toFixed(1)} Hours`;
-    }
+    const totalHours = totalMinutes / 60;
+    return onlyTime ? `${totalHours.toFixed(1)}` : `${totalHours.toFixed(1)} Hours`;
+
+    // if (totalMinutes < 60) {
+    //   return onlyTime ? `${Math.round(totalMinutes)}` : `${Math.round(totalMinutes)} Minutes`;
+    // } else {
+    //   const totalHours = totalMinutes / 60;
+    //   return onlyTime ? `${totalHours.toFixed(1)}` : `${totalHours.toFixed(1)} Hours`;
+    // }
   }
   function getTrackingByUser(email) {
     if (trackingLoading || !trackingData?.data) return [];
@@ -436,7 +439,7 @@ export default function DashboardPage() {
   function enrichUsersWithProjectCount(users) {
     if (!users) return [];
     return users.map(user => {
-      const totalTime = getFormattedTimeFromMondayToSaturday(getTrackingByUser(user.email));
+      const totalTime = getFormattedTimeFromMondayToSaturday(getTrackingByUser(user.email), true);
 
       return {
         name: user.name,
