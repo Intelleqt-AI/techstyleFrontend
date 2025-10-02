@@ -4,7 +4,6 @@ import { Clock, Pause, Square, ChevronDown, Calendar, ChartBar, DollarSign, Filt
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HomeNav } from '@/components/home-nav';
-import { Badge } from '@/components/ui/badge';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getTimeTracking, ModifyTimeTracker } from '@/supabase/API';
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -22,7 +21,6 @@ import Modal from 'react-modal';
 import { Switch } from '@/components/ui/switch';
 import { Label } from 'recharts';
 import { Input } from '@/components/ui/input';
-import { AnimatePresence, motion } from 'framer-motion';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { debounce } from 'lodash';
@@ -294,6 +292,7 @@ export default function HomeTimePage() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [value, setValue] = useState([0]);
+  const [addValue, setAddValue] = useState([0]);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
 
@@ -305,17 +304,6 @@ export default function HomeTimePage() {
     queryKey: ['Time Tracking'],
     queryFn: getTimeTracking,
   });
-
-  // const mutation = useMutation({
-  //   mutationFn: ModifyTimeTracker,
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries(["Time Tracking"]);
-  //     toast("Timer Updated");
-  //   },
-  //   onError: () => {
-  //     toast("Error! Try again");
-  //   },
-  // });
 
   const getTrackingButtonClass = (taskId: string | number) => {
     if (trackingLoading) return 'text-gray-900 bg-white';
@@ -707,6 +695,29 @@ export default function HomeTimePage() {
     debouncedMutate(updatedSessions, totalWorkTime);
   };
 
+  // Add session time
+
+  const addSession = (id: number) => {
+    if (!selectedTask?.session) return;
+    const updatedSessions = selectedTask.session.map(s => {
+      if (s.startTime === id) {
+        const deduction = addValue[0] * 60 * 1000;
+        return {
+          ...s,
+          totalTime: Math.max(0, s.totalTime + deduction),
+        };
+      }
+      return s;
+    });
+    setSelectedTask(prev => ({
+      ...prev,
+      session: updatedSessions,
+    }));
+    const deduction = addValue[0] * 60 * 1000;
+    const totalWorkTime = selectedTask?.totalWorkTime + deduction;
+    debouncedMutate(updatedSessions, totalWorkTime);
+  };
+
   const deleteSession = (id: number) => {
     if (!selectedTask?.session) return;
     const updatedSessions = selectedTask.session.filter(s => s.startTime !== id);
@@ -1093,10 +1104,10 @@ export default function HomeTimePage() {
                                             </button>
                                           </PopoverTrigger>
                                           <PopoverContent side="right" align="center" className="w-60 z-[99]">
-                                            <p className="text-xs flex items-center gap-2 mb-4">
+                                            {/* <p className="text-xs flex items-center gap-2 mb-4">
                                               <Info size={14} />
                                               <span>Warning : This can't be undone</span>
-                                            </p>
+                                            </p> */}
                                             <Slider
                                               defaultValue={[0]}
                                               max={totalMins}
@@ -1106,7 +1117,33 @@ export default function HomeTimePage() {
                                               onValueCommit={() => modifySession(s.startTime)}
                                               className="w-full"
                                             />
-                                            <p className="text-sm mt-2 text-center">- {value[0]} Minutes</p>
+                                            <p className="text-xs mt-2 text-center">- {value[0]} Minutes</p>
+                                          </PopoverContent>
+                                        </Popover>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem asChild>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <button className="text-xs p-2 w-full rounded-sm hover:bg-gray-100 flex items-center gap-2">
+                                              {/* <ClockAlert size={16} /> */}
+                                              <span className="text-[#17181B] text-sm font-medium">Add Time</span>
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent side="right" align="center" className="w-60 z-[99]">
+                                            {/* <p className="text-xs flex items-center gap-2 mb-4">
+                                              <Info size={14} />
+                                              <span>Warning : This can't be undone</span>
+                                            </p> */}
+                                            <Slider
+                                              defaultValue={[0]}
+                                              max={60}
+                                              step={1}
+                                              value={addValue}
+                                              onValueChange={val => setAddValue(val)}
+                                              onValueCommit={() => addSession(s.startTime)}
+                                              className="w-full"
+                                            />
+                                            <p className="text-xs mt-2 text-center"> + {addValue[0]} Minutes</p>
                                           </PopoverContent>
                                         </Popover>
                                       </DropdownMenuItem>
