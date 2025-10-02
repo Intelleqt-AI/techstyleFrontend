@@ -466,7 +466,7 @@ export default function FinancePage() {
   invoices.forEach(item => {
     const temp =
       item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
+        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
         return total + amount * product.QTY;
       }, 0) || 0;
 
@@ -485,8 +485,8 @@ export default function FinancePage() {
   purchaseOrder.forEach(item => {
     const temp =
       item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product.amount.replace(/[^0-9.-]+/g, ''));
-        return total + amount * product.QTY;
+        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
+        return total + amount * product?.QTY;
       }, 0) || 0;
 
     totalPurchaseOrder += temp;
@@ -736,7 +736,7 @@ export default function FinancePage() {
                           {!currencyLoading && (currency?.symbol || '£')}
                           {(
                             po?.products?.reduce((total, product) => {
-                              return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                              return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
                             }, 0) || 0
                           ).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -816,7 +816,7 @@ export default function FinancePage() {
                           {Number(
                             (
                               (inv?.products?.reduce((total, product) => {
-                                return total + parseFloat(product.amount.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                                return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
                               }, 0) || 0) + Number(inv.delivery_charge)
                             ).toFixed(2)
                           ).toLocaleString('en-US', {
