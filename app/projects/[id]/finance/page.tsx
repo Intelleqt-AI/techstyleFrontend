@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/chip';
 import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
-import { fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
+import { addNewChat, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
@@ -18,6 +18,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteDialog } from '@/components/DeleteDialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -37,6 +40,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedPo, setSelectedPo] = useState(null);
   const [isPo, setIsPo] = useState(null);
+  const [openSendInvoice, setOpenSendInvoice] = useState(false);
+  const [currentInvoice, setCurrentInvoice] = useState(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
 
   const id = params.id;
 
@@ -70,6 +77,36 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     queryKey: ['invoices'],
     queryFn: getInvoices,
   });
+
+  // Create Thread
+  const threadMutation = useMutation({
+    mutationFn: addNewChat,
+    onError: () => {
+      toast.error('Error! Try again');
+    },
+    onSuccess: () => {
+      toast.success('Sent as threads');
+      setTitle('');
+      setDescription('');
+      setOpenSendInvoice(false);
+      setCurrentInvoice(null);
+    },
+  });
+
+  const handleSendToClient = invoice => {
+    setCurrentInvoice(invoice);
+    setOpenSendInvoice(true);
+  };
+
+  const handleSubmit = () => {
+    threadMutation.mutate({
+      topic: `Invoice : ${title}`,
+      description: description,
+      projectID: id,
+      invoices: [currentInvoice?.id],
+    });
+    // call your API or Supabase function here
+  };
 
   useEffect(() => {
     if (isLoading) return;
@@ -575,8 +612,8 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                     Download PDF
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem>Send Email</DropdownMenuItem>
-                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSendToClient(inv)}>Send As Thread</DropdownMenuItem>
+                                {/* <DropdownMenuItem>Mark as Paid</DropdownMenuItem> */}
                                 <DropdownMenuItem>
                                   <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
                                     Edit
@@ -660,6 +697,62 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={openSendInvoice} onOpenChange={setOpenSendInvoice}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send Invoice as Thread</DialogTitle>
+          </DialogHeader>
+
+          {currentInvoice && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="recipient">
+                  Thread Title <span className="text-red-500">*</span>{' '}
+                </Label>
+                <Input id="recipient" placeholder="eg.This need urgent approval" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Thread Details <span className="text-gray-400">(Optional)</span>{' '}
+                </Label>
+                <Textarea id="description" placeholder="" value={description} onChange={e => setDescription(e.target.value)} />
+              </div>
+              <div className="bg-gray-50 p-3 rounded-md border">
+                <p className="text-sm text-gray-800 font-medium">Invoice: {currentInvoice.inNumber}</p>
+                <p className="text-sm text-gray-600">
+                  Issue Date: {new Date(currentInvoice.issueDate || currentInvoice.created_at).toLocaleDateString('en-GB')}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Due Date: {currentInvoice.dueDate ? new Date(currentInvoice.dueDate).toLocaleDateString('en-GB') : '-'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Total: {project?.currency?.symbol || '£'}
+                  {Number(
+                    (
+                      (currentInvoice?.products?.reduce((total, product) => {
+                        return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                      }, 0) || 0) + Number(currentInvoice.delivery_charge)
+                    ).toFixed(2)
+                  ).toLocaleString('en-US', {
+                    maximumFractionDigits: 2,
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setOpenSendInvoice(false)}>
+              Cancel
+            </Button>
+            <Button disabled={title.trim().length < 1} onClick={handleSubmit}>
+              Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <DeleteDialog
         isOpen={isDeleteOpen}
