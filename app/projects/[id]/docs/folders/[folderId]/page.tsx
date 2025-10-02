@@ -56,6 +56,7 @@ import {
   renameFolder,
   renameFile,
   updateProjectClientDocs,
+  addNewChat, // <-- added
 } from "@/supabase/API";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -66,6 +67,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/DeleteDialog";
 import { useRouter } from "next/navigation";
+import { SentToClientDialog } from "@/components/SentToClientDialog";
 
 type FileType =
   | "image"
@@ -184,6 +186,8 @@ export default function ProjectFolderPage({
   const [error, setError] = useState("");
   const [renamingIndex, setRenamingIndex] = useState(-1);
   const [newFileName, setNewFileName] = useState("");
+  const [sentDialogOpen, setSentDialogOpen] = useState(false);
+  const [selectedForSend, setSelectedForSend] = useState<any>(null);
 
   // keep currentPath in sync with the route param (so navigation works via router.push)
   useEffect(() => {
@@ -723,14 +727,89 @@ export default function ProjectFolderPage({
     },
   });
 
+  // Create Chat
+  const mutation = useMutation({
+    mutationFn: addNewChat,
+    onSuccess: () => {
+      refetch();
+      toast("Chat Created");
+    },
+    onError: () => {
+      toast("Error! Try again");
+    },
+  });
+
   const handleClick = async () => {
     setButtonLoading(true);
     const updatedDocs = checkedItems.map((item) => ({
       ...item,
       path: currentPath,
     }));
+    // console.log(updatedDocs);
     sendDoctoClient.mutate({ projectID: params.id, newDocs: updatedDocs });
   };
+
+  const handleCreateChat = (topic: string, document: string) => {
+    if (!topic?.trim()) return;
+    mutation.mutate({ topic: topic.trim(), document, projectID: params.id });
+  };
+
+  // NEW: normalize items and send (single or multiple), then optionally create chat
+  const handleSendConfirmed = async (message?: string) => {
+    setButtonLoading(true);
+    try {
+      // choose items: single selectedForSend (when opened per-file) or checkedItems (bulk)
+      const itemsToSend = selectedForSend ? [selectedForSend] : checkedItems;
+      if (!itemsToSend || itemsToSend.length === 0) {
+        toast.error("No documents selected to send");
+        return;
+      }
+
+      const updatedDocs = itemsToSend.map((item: any) => {
+        // if it's a storage file without URL, build the public URL
+        if (item.metadata?.mimetype) {
+          return {
+            ...item,
+            url: `${
+              process.env.NEXT_PUBLIC_SUPABASE_URL
+            }/storage/v1/object/public/Docs/${params.id}/${
+              currentPath ? currentPath + "/" : ""
+            }${item.name}`,
+            path: currentPath,
+          };
+        }
+        // for links or already-augmented items, just set path
+        return { ...item, path: currentPath };
+      });
+
+      // send documents
+      await sendDoctoClient.mutateAsync({
+        projectID: params.id,
+        newDocs: updatedDocs,
+      });
+
+      // create chat if message provided (use document names or ids)
+      if (message && message.trim()) {
+        const docIdentifier =
+          updatedDocs.length === 1
+            ? updatedDocs[0].name || updatedDocs[0].id || ""
+            : updatedDocs.map((d) => d.name || d.id).join(", ");
+        handleCreateChat(message, docIdentifier);
+      }
+
+      // success cleanup
+      setCheckedItems([]);
+      setSelectedForSend(null);
+      setSentDialogOpen(false);
+    } catch (err) {
+      console.error("Send failed:", err);
+      // errors handled via mutation toasts as well
+    } finally {
+      setButtonLoading(false);
+    }
+  };
+
+  // ...existing code...
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -814,15 +893,16 @@ export default function ProjectFolderPage({
               <Upload className="w-4 h-4 mr-2" />
               Upload
             </Button>
-            {/* <Button variant="outline" size="sm" onClick={LinkOpenModal}>
-              <LinkIcon className="w-4 h-4 mr-2" />
-              Add Link
-            </Button> */}
+
+            {/* Open dialog for bulk send (clears any previous single selection) */}
             <Button
               disabled={checkedItems.length === 0 || buttonLoading}
               variant="ghost"
               className={`border w-[170px]`}
-              onClick={handleClick}>
+              onClick={() => {
+                setSelectedForSend(null);
+                setSentDialogOpen(true);
+              }}>
               {buttonLoading ? (
                 <>
                   Sending...
@@ -835,28 +915,6 @@ export default function ProjectFolderPage({
                 </>
               )}
             </Button>
-            {/* <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="bg-gray-900 text-white hover:bg-gray-800">
-                  <MoreHorizontal className="w-4 h-4 mr-2" />
-                  More
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() =>
-                    RenameOpenModal({
-                      id: "folder",
-                      name: folderName,
-                      isFolder: true,
-                      created_at: new Date().toISOString(),
-                    })
-                  }>
-                  <FolderPen className="w-4 h-4 mr-2" />
-                  Rename Folder
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
           </div>
         </div>
 
@@ -1032,6 +1090,19 @@ export default function ProjectFolderPage({
                                     Rename
                                   </DropdownMenuItem>
                                 )}
+
+                                {/* NEW: Send to Client for single file */}
+                                {!doc.isFolder && (
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setSelectedForSend(doc);
+                                      setSentDialogOpen(true);
+                                    }}>
+                                    <MessageSquareShare className="w-4 h-4 mr-2" />
+                                    Send to Client
+                                  </DropdownMenuItem>
+                                )}
+
                                 <DropdownMenuItem
                                   onClick={() => {
                                     setDeleteTarget({
@@ -1529,6 +1600,29 @@ export default function ProjectFolderPage({
           </div>
         </div>
       </Modal>
+
+      {/* Sent to Client Dialog */}
+      <SentToClientDialog
+        open={sentDialogOpen}
+        onOpenChange={(v) => {
+          setSentDialogOpen(v);
+          if (!v) {
+            setSelectedForSend(null);
+          }
+        }}
+        itemName={
+          selectedForSend
+            ? selectedForSend?.name
+            : checkedItems.length === 1
+            ? checkedItems[0].name || checkedItems[0].id
+            : checkedItems.length > 1
+            ? `${checkedItems.length} items`
+            : ""
+        }
+        onConfirm={async (message: string) => {
+          await handleSendConfirmed(message);
+        }}
+      />
 
       {/* Delete Confirmation Dialog */}
       <DeleteDialog
