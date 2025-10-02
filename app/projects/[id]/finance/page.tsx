@@ -20,6 +20,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteDialog } from '@/components/DeleteDialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
@@ -42,6 +43,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const [openSendInvoice, setOpenSendInvoice] = useState(false);
   const [currentInvoice, setCurrentInvoice] = useState(null);
   const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
 
   const id = params.id;
 
@@ -85,6 +87,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     onSuccess: () => {
       toast.success('Sent as threads');
       setTitle('');
+      setDescription('');
       setOpenSendInvoice(false);
       setCurrentInvoice(null);
     },
@@ -98,8 +101,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const handleSubmit = () => {
     threadMutation.mutate({
       topic: `Invoice : ${title}`,
-      // description:
-      //   'Please review the listed procurement products for approval at your earliest convenience. Let me know if any adjustments are needed. Looking forward to your confirmation. Best regards,',
+      description: description,
       projectID: id,
       invoices: [currentInvoice?.id],
     });
@@ -709,6 +711,12 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                   Thread Title <span className="text-red-500">*</span>{' '}
                 </Label>
                 <Input id="recipient" placeholder="eg.This need urgent approval" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Thread Details <span className="text-gray-400">(Optional)</span>{' '}
+                </Label>
+                <Textarea id="description" placeholder="" value={description} onChange={e => setDescription(e.target.value)} />
               </div>
               <div className="bg-gray-50 p-3 rounded-md border">
                 <p className="text-sm text-gray-800 font-medium">Invoice: {currentInvoice.inNumber}</p>
