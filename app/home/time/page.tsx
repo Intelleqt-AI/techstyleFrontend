@@ -340,6 +340,10 @@ export default function HomeTimePage() {
     [mutation, value, selectedTask]
   );
 
+  useEffect(() => {
+    document.title = 'Time Tracker | TechStyles';
+  }, []);
+
   // Process task data when received
   useEffect(() => {
     // if (trackingLoading || !trackingData?.data) return;

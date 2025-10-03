@@ -67,6 +67,10 @@ export default function ProjectsPage() {
   const [project, setProject] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
 
+  useEffect(() => {
+    document.title = 'Projects | TechStyles';
+  }, []);
+
   // Projects
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['projects'],

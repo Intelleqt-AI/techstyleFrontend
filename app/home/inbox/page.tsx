@@ -325,6 +325,10 @@ export default function InboxPage() {
     enabled: !!accessToken,
   });
 
+  useEffect(() => {
+    document.title = 'My Inbox | TechStyles';
+  }, []);
+
   // Fetch Sent Emails
   const { data: sentEmails, isLoading: sentEmailLoading } = useQuery({
     queryKey: ['sentEmails', accessToken],

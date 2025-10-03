@@ -24,7 +24,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 
 export default function NewPurchaseOrderForm({ params }) {
   const [defaultValue, setDefaultValue] = useState<any>(null);
-  const id = params?.id;
+  const id = params?.poId;
   const form2 = useForm({});
   const form = useForm({});
   const router = useRouter();

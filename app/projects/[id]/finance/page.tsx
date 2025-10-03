@@ -13,18 +13,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
 import { toast } from 'sonner';
-// import { useNavigate } from 'react-router-dom'
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteDialog } from '@/components/DeleteDialog';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import useClient from '@/hooks/useClient';
 
 const gbp = new Intl.NumberFormat('en-GB', {
   style: 'currency',
   currency: 'GBP',
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 2,
 });
 
 function parseGBP(amount: string): number {
@@ -44,19 +46,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   const [currentInvoice, setCurrentInvoice] = useState(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-
+  const pathname = usePathname();
+  const [myXeroInvoice, setMyXeroInvoice] = useState([]);
+  const { data: clientData, isLoading: clientLoading } = useClient();
   const id = params.id;
-
-  const { data: project } = useQuery({
-    queryKey: [`project ${id}`],
-    queryFn: () => fetchOnlyProject({ projectID: id }),
-    enabled: !!id,
-  });
-
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['pruchaseOrder'],
-    queryFn: getPurchaseOrder,
-  });
 
   const {
     data: xeroInvoices,
@@ -67,6 +60,31 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   } = useQuery({
     queryKey: ['xeroInvoices'],
     queryFn: fetchInvoices,
+  });
+
+  const { data: project, isLoading: projectLoading } = useQuery({
+    queryKey: [`project ${id}`],
+    queryFn: () => fetchOnlyProject({ projectID: id }),
+    enabled: !!id,
+  });
+
+  useEffect(() => {
+    if (clientLoading || projectLoading || XeroLoading) return;
+    const client = clientData?.data?.find(c => c.id === project?.client);
+    if (!client) return;
+
+    // filter invoices by client.name or client.surname
+    const filteredInvoices = xeroInvoices.filter(inv => {
+      const contactName = inv.Contact?.Name?.toLowerCase() || '';
+      return contactName.includes(client.name?.toLowerCase() || '') || contactName.includes(client.surname?.toLowerCase() || '');
+    });
+
+    setMyXeroInvoice(filteredInvoices);
+  }, [clientData, project, xeroInvoices, clientLoading, projectLoading, XeroLoading]);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
   });
 
   const {
@@ -284,12 +302,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
 
   const xeroTotal = useMemo(() => {
     let totalInvoiceOrder = 0;
-    xeroInvoices?.forEach(item => {
+    myXeroInvoice?.forEach(item => {
       const temp = item?.Total || 0;
       totalInvoiceOrder += temp;
     });
     return totalInvoiceOrder;
-  }, [xeroInvoices]);
+  }, [myXeroInvoice]);
+  
+  console.log(project);
 
   const financeStats = [
     {
@@ -300,10 +320,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
             maximumFractionDigits: 2,
             minimumFractionDigits: 2,
           })
-        : gbp.format(totalInvoiceOrder),
-      subtitle: `${(invoices?.length ?? 0) + (xeroInvoices?.length ?? 0)} ${
-        (invoices?.length ?? 0) + (xeroInvoices?.length ?? 0) === 1 ? 'Invoice' : 'Invoices'
-      }${xeroInvoices?.length ? ` (${xeroInvoices.length} from Xero)` : ''}`,
+        : gbp.format(totalInvoiceOrder + xeroTotal),
+      subtitle: `${(invoices?.length ?? 0) + (myXeroInvoice?.length ?? 0)} ${
+        (invoices?.length ?? 0) + (myXeroInvoice?.length ?? 0) === 1 ? 'Invoice' : 'Invoices'
+      }${myXeroInvoice?.length ? ` (${myXeroInvoice.length} from Xero)` : ''}`,
 
       icon: FileText,
     },
@@ -483,7 +503,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             />
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            <Link className="hover:underline" href={`/finance/purchase-order/${po.id}`}>
+                            <Link className="hover:underline" href={`${pathname}/purchase-order/${po.id}`}>
                               {po.poNumber}
                             </Link>
                           </td>
@@ -525,7 +545,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
+                                  <Link className="w-full" href={`${pathname}/purchase-order/${po.id}`}>
                                     View Details
                                   </Link>
                                 </DropdownMenuItem>
@@ -559,7 +579,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
+                            <Link className="hover:underline" href={`${pathname}/invoices/${inv.id}`}>
                               {inv.inNumber}
                             </Link>
                           </td>
@@ -603,7 +623,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
+                                  <Link className="w-full" href={`${pathname}/invoices/${inv.id}`}>
                                     View Details
                                   </Link>
                                 </DropdownMenuItem>
@@ -627,14 +647,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
 
                     {!customLoading &&
                       !XeroLoading &&
-                      xeroInvoices?.length > 0 &&
-                      xeroInvoices.map(inv => (
+                      myXeroInvoice?.length > 0 &&
+                      myXeroInvoice.map(inv => (
                         <tr key={inv.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <Checkbox disabled aria-label={`Select ${inv.InvoiceNumber}`} />
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            <button onClick={() => viewInvoicePDF(item.InvoiceID)} className="hover:underline">
+                            <button onClick={() => viewInvoicePDF(inv.InvoiceID)} className="hover:underline">
                               {inv.InvoiceNumber}
                             </button>
                           </td>
@@ -648,7 +668,11 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             {inv?.DueDateString ? new Date(inv.DueDateString).toLocaleDateString('en-GB') : '-'}
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            {inv?.CurrencyCode} {inv?.Total}
+                            {inv?.CurrencyCode}{' '}
+                            {Number(inv?.Total).toLocaleString('en-GB', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge status={inv.Status} label={inv.Status} className={getStatusStyle(inv.Status)} />

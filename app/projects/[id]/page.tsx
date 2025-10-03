@@ -156,6 +156,10 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
   });
 
   useEffect(() => {
+    document.title = `${selectedProject?.name || 'Project Overview'} | TechStyles`;
+  }, [selectedProject]);
+
+  useEffect(() => {
     if (isLoading) return;
     setPurchaseOrder(data?.data.filter(item => item.projectID == params?.id));
   }, [isLoading, data?.data, params?.id]);
@@ -350,8 +354,6 @@ export default function ProjectOverviewPage({ params }: { params: { id: string }
 
     return taskData.data.filter(task => task.projectID === selectedProject.id && task.dueDate === today && task.status !== 'done').length;
   }, [taskData?.data, selectedProject?.id, today]);
-
-  console.log(overDueItems, selectedProject);
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">

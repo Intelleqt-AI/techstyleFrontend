@@ -95,6 +95,10 @@ export default function CalendarStudioPage() {
     });
   }, []);
 
+  useEffect(() => {
+    document.title = 'Studio Calendar | TechStyles';
+  }, []);
+
   const admins = [
     'david.zeeman@intelleqt.ai',
     'roxi.zeeman@souqdesign.co.uk',

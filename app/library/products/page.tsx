@@ -80,6 +80,10 @@ export default function ProductsPage() {
   const [editModal, setEditModal] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
+  useEffect(() => {
+    document.title = 'Products | TechStyles';
+  }, []);
+
   const { data: projectsData, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
   const { currency, isLoading: currencyLoading } = useCurrency();
 
