@@ -515,6 +515,10 @@ export default function FinancePage() {
     },
   ];
 
+  useEffect(() => {
+    document.title = 'Finance | TechStyles';
+  }, []);
+
   const getStatusStyle = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'paid':
@@ -821,6 +825,7 @@ export default function FinancePage() {
                             ).toFixed(2)
                           ).toLocaleString('en-US', {
                             maximumFractionDigits: 2,
+                            minimumFractionDigits: 2,
                           })}
                         </td>
                         <td className="px-4 py-3">
@@ -924,7 +929,11 @@ export default function FinancePage() {
                           {inv?.DueDateString ? new Date(inv.DueDateString).toLocaleDateString('en-GB') : '-'}
                         </td>
                         <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {currency?.symbol || '£'} {inv?.Total}
+                          {currency?.symbol || '£'}{' '}
+                          {Number(inv?.Total).toLocaleString('en-GB', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </td>
                         <td className="px-4 py-3 capitalize">
                           <StatusBadge status={inv.Status} label={inv.Status} className={getStatusStyle(inv.Status)} />

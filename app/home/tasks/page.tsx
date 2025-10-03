@@ -696,6 +696,10 @@ export default function MyTasksPage() {
     return column?.id;
   };
 
+  useEffect(() => {
+    document.title = 'My Task | TechStyles';
+  }, []);
+
   const {
     mutate: removeTask,
     isLoading: isDeleting,

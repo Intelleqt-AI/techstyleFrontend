@@ -74,7 +74,7 @@ const parseEmail = str => {
 export const fetchInboxEmails = async ({ token }) => {
   // 1. Fetch inbox message IDs
   const res = await fetch(
-    `https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=in:inbox&key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
+    `https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=150&q=in:inbox&key=${process.env.NEXT_PUBLIC_GMAIL_API_KEY}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -8,7 +9,11 @@ import useUsers from '@/hooks/useUsers';
 
 export function BreadcrumbBar() {
   const pathname = usePathname();
-  const segments = pathname.split('/').filter(Boolean);
+  const [currentPath, setCurrentPath] = React.useState(pathname);
+  React.useEffect(() => {
+    setCurrentPath(pathname);
+  }, [pathname]);
+  const segments = currentPath.split('/').filter(Boolean);
   const { users } = useUsers();
 
   // Project ID only if first segment is "projects"
@@ -96,13 +101,40 @@ export function BreadcrumbBar() {
         label = user ? user.name : 'Loading..';
       }
 
-      if (firstSegment === 'finance' && segments[1] === 'purchase-order' && i === 2) {
-        const PoNumber = data?.data?.find(u => u.id === rawSeg);
+      // Handle project-scoped purchase orders: /projects/:projectId/finance/purchase-order/:poId
+      if (firstSegment === 'projects' && segments[2] === 'finance' && segments[3] === 'purchase-order' && i === 4) {
+        const PoNumber = data?.data?.find(u => String(u.id) === String(rawSeg));
         label = PoNumber ? PoNumber.poNumber : 'Loading..';
       }
 
+      // Handle project-scoped invoices: /projects/:projectId/finance/invoices/:invId
+      if (firstSegment === 'projects' && segments[2] === 'finance' && segments[3] === 'invoices' && i === 4) {
+        const InNumber = InvoiceData?.data?.find(u => String(u.id) === String(rawSeg));
+        label = InNumber ? InNumber.inNumber : 'Loading..';
+      }
+
+      // Special case: finance/purchase-order links to /finance
+      if (segments[i] === 'purchase-order') {
+        const baseUrl = segments[0] === 'projects' ? `/projects/${segments[1]}/finance` : '/finance';
+        breadcrumbs.push({
+          label: 'Purchase Order',
+          href: baseUrl,
+        });
+        continue;
+      }
+
+      // Special case: finance/invoices links to /finance (or project finance when project-scoped)
+      if (segments[i] === 'invoices') {
+        const baseUrl = segments[0] === 'projects' ? `/projects/${segments[1]}/finance` : '/finance';
+        breadcrumbs.push({
+          label: 'Invoices',
+          href: baseUrl,
+        });
+        continue;
+      }
+
       if (firstSegment === 'finance' && segments[1] === 'invoices' && i === 2) {
-        const InNumber = InvoiceData?.data?.find(u => u.id === rawSeg);
+        const InNumber = InvoiceData?.data?.find(u => String(u.id) === String(rawSeg));
         label = InNumber ? InNumber.inNumber : 'Create Invoice';
       }
 
@@ -115,13 +147,45 @@ export function BreadcrumbBar() {
       });
     }
 
+    // Final pass: if URL ends with purchase-order/:id, replace the last breadcrumb label with PO number when available
+    try {
+      const poMatch = currentPath.match(/purchase-order\/([^/]+)\/?$/);
+      if (poMatch) {
+        const poId = poMatch[1];
+        const found = data?.data?.find((u: any) => String(u.id) === String(poId));
+        if (found) {
+          // Replace the last breadcrumb label with the poNumber
+          if (breadcrumbs.length > 0) {
+            breadcrumbs[breadcrumbs.length - 1].label = found.poNumber || breadcrumbs[breadcrumbs.length - 1].label;
+          }
+          // Ensure the 'Purchase Order' crumb (if present) links to project finance
+          const poCrumbIndex = breadcrumbs.findIndex(b => String(b.label).toLowerCase() === 'purchase order');
+          if (poCrumbIndex !== -1) {
+            const baseUrl = segments[0] === 'projects' ? `/projects/${segments[1]}/finance` : '/finance';
+            breadcrumbs[poCrumbIndex].href = baseUrl;
+          }
+        }
+      }
+      // Final pass for invoices
+      const invMatch = currentPath.match(/invoices\/([^/]+)\/?$/);
+      if (invMatch) {
+        const invId = invMatch[1];
+        const foundInv = InvoiceData?.data?.find((u: any) => String(u.id) === String(invId));
+        if (foundInv && breadcrumbs.length > 0) {
+          breadcrumbs[breadcrumbs.length - 1].label = foundInv.inNumber || breadcrumbs[breadcrumbs.length - 1].label;
+        }
+      }
+    } catch (e) {
+      // non-fatal
+    }
+
     return breadcrumbs;
   };
 
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <nav className="flex items-center space-x-2 text-sm text-gray-600">
+    <nav key={currentPath} className="flex items-center space-x-2 text-sm text-gray-600">
       {breadcrumbs.map((crumb, index) => (
         <div key={crumb.href} className="flex items-center space-x-2">
           {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400" />}

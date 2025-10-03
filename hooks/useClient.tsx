@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { getClient } from "@/supabase/API";
+import { useQuery } from '@tanstack/react-query';
+import { getClient } from '@/supabase/API';
 
 const useClient = () => {
   const {
@@ -8,7 +8,7 @@ const useClient = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["client"],
+    queryKey: ['client'],
     queryFn: getClient,
   });
 

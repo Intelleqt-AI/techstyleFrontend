@@ -33,43 +33,13 @@ import useUser from '@/hooks/useUser';
 import { TaskModal } from '@/components/tasks/task-modal';
 import { HomeNav } from '@/components/home-nav';
 
-const todayEvents = [
-  {
-    id: 1,
-    title: 'Client Meeting - Penthouse Review',
-    time: '10:00 AM',
-    duration: '1h',
-    location: 'Office Conference Room',
-    type: 'meeting',
-    project: 'Luxury Penthouse',
-    projectTextHex: '#6E7A58',
-    projectBorderHex: '#8FA58F',
-    attendees: 3,
-    hasConflict: false,
-    canJoin: true,
-    color: 'bg-[#E07A57] border-[#CE6B4E]',
-  },
-  {
-    id: 2,
-    title: 'Site Visit - Office Space Progress',
-    time: '2:30 PM',
-    duration: '2h',
-    location: 'Downtown Construction Site',
-    type: 'site-visit',
-    project: 'Modern Office',
-    projectTextHex: '#6E7A58',
-    projectBorderHex: '#8FA58F',
-    attendees: 5,
-    hasConflict: true,
-    canJoin: false,
-    color: 'bg-[#8FA58F] border-[#6E7A58]',
-  },
-];
-
 export default function CalendarStudioPage() {
   const [mode, setMode] = useState<'calendar' | 'timeline'>('calendar');
   const [activeView, setActiveView] = useState('month');
   const { user, isLoading: userLoading } = useUser();
+  useEffect(() => {
+    document.title = 'My Calendar | TechStyles';
+  }, []);
   const [currentPeriod, setCurrentPeriod] = useState(() => {
     const today = new Date();
     return {
