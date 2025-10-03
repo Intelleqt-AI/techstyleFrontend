@@ -1,43 +1,31 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { CurrencySelector } from "./ui/CurrencySelector";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addNewContact, updateContact } from "@/supabase/API";
-import { toast } from "sonner";
-import useProjects from "@/supabase/hook/useProject";
+import * as React from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { CurrencySelector } from './ui/CurrencySelector';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { addNewContact, updateContact } from '@/supabase/API';
+import { toast } from 'sonner';
+import useProjects from '@/supabase/hook/useProject';
 
 const initialValue = {
-  name: "",
-  company: "",
-  email: "",
-  type: "",
-  connection: "",
-  find: "",
+  name: '',
+  company: '',
+  email: '',
+  type: '',
+  connection: '',
+  find: '',
   budget: 0,
-  project: "",
-  status: "",
-  phone: "",
-  surname: "",
-  address: "",
+  project: '',
+  status: '',
+  phone: '',
+  surname: '',
+  address: '',
   currency: {},
 };
 
@@ -48,78 +36,58 @@ interface ContactFormModalProps {
   projects: any[];
 }
 
-export function ContactFormModal({
-  open,
-  onOpenChange,
-  contact,
-  setSelected,
-}: ContactFormModalProps) {
-  const [formValues, setFormValues] = React.useState(
-    contact ? contact : initialValue
-  );
-  const [isClient, setIsClient] = React.useState(
-    contact?.type === "Client" ? true : false
-  );
+export function ContactFormModal({ open, onOpenChange, contact, setSelected }: ContactFormModalProps) {
+  const [formValues, setFormValues] = React.useState(contact ? contact : initialValue);
+  const [isClient, setIsClient] = React.useState(contact?.type === 'Client' ? true : false);
   const queryClient = useQueryClient();
 
   // Update form values when contact prop changes
   React.useEffect(() => {
     if (contact) {
       setFormValues(contact);
-      setIsClient(contact.type === "Client");
+      setIsClient(contact.type === 'Client');
     } else {
       setFormValues(initialValue);
       setIsClient(false);
     }
   }, [contact]);
 
-  const {
-    data: projects,
-    isLoading: projectsLoading,
-    error: projectsError,
-    refetch,
-  } = useProjects();
+  const { data: projects, isLoading: projectsLoading, error: projectsError, refetch } = useProjects();
 
   const mutation = useMutation({
     mutationFn: contact ? updateContact : addNewContact,
     onSuccess: () => {
-      queryClient.refetchQueries(["contacts"]);
-      toast(
-        contact
-          ? "Contact updated successfully!"
-          : "Contact created successfully!"
-      );
+      queryClient.refetchQueries(['contacts']);
+      toast(contact ? 'Contact updated successfully!' : 'Contact created successfully!');
       handleClose(false);
     },
     onError: () => {
-      toast("Error! Try again");
+      toast('Error! Try again');
     },
   });
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormValues((prev) => ({
+    setFormValues(prev => ({
       ...prev,
       [name]: value,
     }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormValues((prev) => ({
+    setFormValues(prev => ({
       ...prev,
       [name]: value,
     }));
 
-    if (name === "type") {
-      setIsClient(value === "Client");
+    if (name === 'type') {
+      setIsClient(value === 'Client');
     }
   };
 
   // New handler for currency changes
   const handleCurrencyChange = (currencyData: { currency: any }) => {
-    setFormValues((prev) => ({
+    setFormValues(prev => ({
       ...prev,
       currency: currencyData.currency,
     }));
@@ -130,7 +98,7 @@ export function ContactFormModal({
     mutation.mutate(formValues);
   };
 
-  const handleClose = (e) => {
+  const handleClose = e => {
     onOpenChange(e);
     setFormValues(contact ? contact : initialValue);
     setSelected(null);
@@ -140,26 +108,20 @@ export function ContactFormModal({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
-            {contact ? "Edit Contact" : "Add New Contact"}
-          </DialogTitle>
+          <DialogTitle>{contact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
           <DialogDescription>
-            {contact
-              ? "Update the contact information below."
-              : "Fill in the details to create a new contact."}
+            {contact ? 'Update the contact information below.' : 'Fill in the details to create a new contact.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
           <div className="space-y-2">
             <Label htmlFor="type">Contact Type</Label>
-            <Select
-              onValueChange={(value) => handleSelectChange("type", value)}
-              value={formValues.type || ""}>
+            <Select onValueChange={value => handleSelectChange('type', value)} value={formValues.type || ''}>
               <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                 <SelectValue placeholder="Select Type" />
               </SelectTrigger>
-              <SelectContent className="bg-white">
+              <SelectContent className="bg-white z-[999]">
                 <SelectItem value="Client">Client</SelectItem>
                 <SelectItem value="Supplier">Supplier</SelectItem>
                 <SelectItem value="Contractor">Contractor</SelectItem>
@@ -169,10 +131,7 @@ export function ContactFormModal({
 
           <div className="space-y-2">
             <Label htmlFor="company">
-              Company{" "}
-              {(isClient || contact?.type === "Client") && (
-                <span className="text-xs text-gray-500">(optional)</span>
-              )}
+              Company {(isClient || contact?.type === 'Client') && <span className="text-xs text-gray-500">(optional)</span>}
             </Label>
             <Input
               onChange={handleInputChange}
@@ -181,7 +140,7 @@ export function ContactFormModal({
               id="company"
               name="company"
               placeholder="Company Name"
-              required={isClient || contact?.type === "Client" ? false : true}
+              required={isClient || contact?.type === 'Client' ? false : true}
             />
           </div>
 
@@ -239,7 +198,7 @@ export function ContactFormModal({
             </div>
           </div>
 
-          {(isClient || contact?.type === "Client") && (
+          {(isClient || contact?.type === 'Client') && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="connection">Connection</Label>
@@ -268,7 +227,7 @@ export function ContactFormModal({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            {(isClient || contact?.type === "Client") && (
+            {(isClient || contact?.type === 'Client') && (
               <div className="space-y-2">
                 <Label htmlFor="budget">Budget</Label>
                 <Input
@@ -286,9 +245,7 @@ export function ContactFormModal({
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select
-                onValueChange={(value) => handleSelectChange("status", value)}
-                value={formValues.status || ""}>
+              <Select onValueChange={value => handleSelectChange('status', value)} value={formValues.status || ''}>
                 <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
@@ -302,17 +259,15 @@ export function ContactFormModal({
             </div>
           </div>
 
-          {(isClient || contact?.type === "Client") && (
+          {(isClient || contact?.type === 'Client') && (
             <div className="space-y-2">
               <Label htmlFor="project">Project</Label>
-              <Select
-                onValueChange={(value) => handleSelectChange("project", value)}
-                value={formValues.project || ""}>
+              <Select onValueChange={value => handleSelectChange('project', value)} value={formValues.project || ''}>
                 <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                   <SelectValue placeholder="Select Project" />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  {projects.map((item) => (
+                  {projects.map(item => (
                     <SelectItem key={item.id} value={item.id}>
                       {item.name}
                     </SelectItem>
@@ -322,14 +277,10 @@ export function ContactFormModal({
             </div>
           )}
 
-          {formValues.type === "Supplier" && (
+          {formValues.type === 'Supplier' && (
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <CurrencySelector
-                value={formValues.currency}
-                onChange={handleCurrencyChange}
-                data={formValues}
-              />
+              <CurrencySelector value={formValues.currency} onChange={handleCurrencyChange} data={formValues} />
             </div>
           )}
 
@@ -347,22 +298,11 @@ export function ContactFormModal({
           </div>
 
           <div className="flex justify-end space-x-4 pt-4">
-            <Button
-              className="bg-white min-w-[150px] rounded-[10px]"
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}>
+            <Button className="bg-white min-w-[150px] rounded-[10px]" type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button
-              className="min-w-[150px] rounded-[10px]"
-              type="submit"
-              disabled={mutation.isLoading}>
-              {mutation.isLoading
-                ? "Processing..."
-                : contact
-                ? "Update Contact"
-                : "Create Contact"}
+            <Button className="min-w-[150px] rounded-[10px]" type="submit" disabled={mutation.isLoading}>
+              {mutation.isLoading ? 'Processing...' : contact ? 'Update Contact' : 'Create Contact'}
             </Button>
           </div>
         </form>
