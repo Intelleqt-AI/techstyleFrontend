@@ -249,7 +249,7 @@ export function ContactFormModal({ open, onOpenChange, contact, setSelected }: C
                 <SelectTrigger className="bg-white rounded-[10px] w-full px-3 py-[10px] border">
                   <SelectValue placeholder="Select Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent className="bg-white z-[999]">
                   <SelectItem value="New">New</SelectItem>
                   <SelectItem value="Active">Active</SelectItem>
                   <SelectItem value="Qualified">Qualified</SelectItem>
