@@ -84,6 +84,10 @@ export default function ContactsPage() {
   };
 
   useEffect(() => {
+    document.title = 'Contacts | TechStyles';
+  }, []);
+
+  useEffect(() => {
     if (!taskLoading && contactData) {
       setContacts(contactData.data);
     }

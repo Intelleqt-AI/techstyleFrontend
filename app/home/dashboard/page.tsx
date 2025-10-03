@@ -319,6 +319,10 @@ export default function DashboardPage() {
   const { users } = useUsers();
   const { isAdmin, user, userLoading } = useAdmin();
 
+  useEffect(() => {
+    document.title = 'Dashboard | TechStyles';
+  }, []);
+
   const {
     data: InvoiceData,
     isLoading: InvoiceLoading,
@@ -638,7 +642,7 @@ export default function DashboardPage() {
     if (scope === 'studio') {
       return [
         { color: 'clay', text: `${overDueTask?.length} overdue tasks across ${project?.length} projects` },
-        { color: 'sage', text: `Team utilisation at ${Math.round((totalInvoiceOrder - totalPurchaseOrder) / totalPurchaseOrder)}%` },
+        { color: 'sage', text: `Team utilisation at ${Math.round(((totalPurchaseOrder - totalHours) / totalInvoiceOrder) * 100)}%` },
         {
           color: 'olive',
           text: `${!currencyLoading && (currency?.symbol || '£')}${(
