@@ -1,13 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Search, Filter, Plus, Mail, Phone, MoreHorizontal } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { CrmNav } from "@/components/crm-nav"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { StatusBadge } from "@/components/chip"
+import { useState } from "react";
+import {
+  Search,
+  Filter,
+  Plus,
+  Mail,
+  Phone,
+  MoreHorizontal,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CrmNav } from "@/components/crm-nav";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { StatusBadge } from "@/components/chip";
 
 const leads = [
   {
@@ -54,23 +66,41 @@ const leads = [
     score: 88,
     avatar: "LC",
   },
-]
+];
 
 const getScoreColor = (score: number) => {
-  if (score >= 90) return "text-olive-700"
-  if (score >= 70) return "text-clay-600"
-  return "text-terracotta-600"
-}
+  if (score >= 90) return "text-olive-700";
+  if (score >= 70) return "text-clay-600";
+  return "text-terracotta-600";
+};
 
 export default function LeadsPage() {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const filtered = leads.filter(
-    (l) =>
-      l.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      l.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  // --- NEW: filter state + options
+  const [activeTab, setActiveTab] = useState("all");
+  const contactFilters = [
+    "All",
+    "Website",
+    "Referral",
+    "LinkedIn",
+    "Trade Show",
+  ];
+
+  const typeMatches = (l: (typeof leads)[number]) => {
+    if (activeTab === "all") return true;
+    return (l.source || "").toLowerCase().includes(activeTab);
+  };
+  // --- END NEW
+
+  const filtered = leads.filter((l) => {
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      l.name.toLowerCase().includes(q) ||
+      l.company.toLowerCase().includes(q) ||
+      l.email.toLowerCase().includes(q);
+    return typeMatches(l) && (!q || matchesSearch);
+  });
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">
@@ -80,10 +110,43 @@ export default function LeadsPage() {
         {/* Toolbar */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
-            <Button variant="outline" size="sm" className="gap-2 h-9 bg-transparent">
-              <Filter className="w-4 h-4" />
-              Filter
-            </Button>
+            {/* Filter dropdown (by Source) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Filter className="w-4 h-4 mr-2" />
+                  {activeTab === "all"
+                    ? "Filter"
+                    : activeTab === "website"
+                    ? "Website"
+                    : activeTab === "referral"
+                    ? "Referral"
+                    : activeTab === "linkedin"
+                    ? "LinkedIn"
+                    : "Trade Show"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-40">
+                {contactFilters.map((label) => (
+                  <DropdownMenuItem
+                    key={label}
+                    onClick={() =>
+                      setActiveTab(
+                        label === "All" ? "all" : label.toLowerCase()
+                      )
+                    }
+                    className={
+                      activeTab ===
+                      (label === "All" ? "all" : label.toLowerCase())
+                        ? "font-semibold text-black"
+                        : ""
+                    }>
+                    {label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {/* End filter dropdown */}
 
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -97,7 +160,9 @@ export default function LeadsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:opacity-90">
+            <Button
+              size="sm"
+              className="gap-2 bg-primary text-primary-foreground hover:opacity-90">
               <Plus className="w-4 h-4" />
               Add Lead
             </Button>
@@ -110,25 +175,43 @@ export default function LeadsPage() {
             <table className="w-full table-fixed">
               <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 48 }}>
-                    <input type="checkbox" className="rounded border-gray-300" aria-label="Select all leads" />
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 48 }}>
+                    <input
+                      type="checkbox"
+                      className="rounded border-gray-300"
+                      aria-label="Select all leads"
+                    />
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 320 }}>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 320 }}>
                     Lead
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 360 }}>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 360 }}>
                     Contact Info
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 160 }}>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 160 }}>
                     Source
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 160 }}>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 160 }}>
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-600" style={{ width: 120 }}>
+                  <th
+                    className="px-4 py-3 text-left text-sm font-medium text-gray-600"
+                    style={{ width: 120 }}>
                     Score
                   </th>
-                  <th className="pl-4 pr-6 py-3 text-right text-sm font-medium text-gray-600" style={{ width: 96 }}>
+                  <th
+                    className="pl-4 pr-6 py-3 text-right text-sm font-medium text-gray-600"
+                    style={{ width: 96 }}>
                     Actions
                   </th>
                 </tr>
@@ -137,21 +220,33 @@ export default function LeadsPage() {
                 {filtered.map((lead) => (
                   <tr key={lead.id} className="hover:bg-neutral-50">
                     <td className="px-4 py-3">
-                      <input type="checkbox" className="rounded border-gray-300" aria-label={`Select ${lead.name}`} />
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-300"
+                        aria-label={`Select ${lead.name}`}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <Avatar className="w-8 h-8 shrink-0">
-                          <AvatarImage src={"/placeholder.svg?height=32&width=32&query=avatar"} />
+                          <AvatarImage
+                            src={
+                              "/placeholder.svg?height=32&width=32&query=avatar"
+                            }
+                          />
                           <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                             {lead.avatar}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0">
-                          <div className="font-medium text-gray-900 truncate" title={lead.name}>
+                          <div
+                            className="font-medium text-gray-900 truncate"
+                            title={lead.name}>
                             {lead.name}
                           </div>
-                          <div className="text-xs text-gray-600 truncate" title={lead.company}>
+                          <div
+                            className="text-xs text-gray-600 truncate"
+                            title={lead.company}>
                             {lead.company}
                           </div>
                         </div>
@@ -161,28 +256,33 @@ export default function LeadsPage() {
                       <div className="flex flex-col gap-1 min-w-0">
                         <div
                           className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate"
-                          title={lead.email}
-                        >
+                          title={lead.email}>
                           <Mail className="w-4 h-4 shrink-0" />
                           <span className="truncate">{lead.email}</span>
                         </div>
                         <div
                           className="flex items-center gap-2 text-gray-600 whitespace-nowrap truncate"
-                          title={lead.phone}
-                        >
+                          title={lead.phone}>
                           <Phone className="w-4 h-4 shrink-0" />
                           <span className="truncate">{lead.phone}</span>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap truncate" title={lead.source}>
+                    <td
+                      className="px-4 py-3 text-gray-600 whitespace-nowrap truncate"
+                      title={lead.source}>
                       {lead.source}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={lead.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`font-medium ${getScoreColor(lead.score)} tabular-nums`}>{lead.score}</span>
+                      <span
+                        className={`font-medium ${getScoreColor(
+                          lead.score
+                        )} tabular-nums`}>
+                        {lead.score}
+                      </span>
                     </td>
                     <td className="pl-4 pr-6 py-3 text-right">
                       <DropdownMenu>
@@ -191,8 +291,7 @@ export default function LeadsPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                            aria-label={`Open actions for ${lead.name}`}
-                          >
+                            aria-label={`Open actions for ${lead.name}`}>
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -200,7 +299,9 @@ export default function LeadsPage() {
                           <DropdownMenuItem>View Details</DropdownMenuItem>
                           <DropdownMenuItem>Send Email</DropdownMenuItem>
                           <DropdownMenuItem>Schedule Call</DropdownMenuItem>
-                          <DropdownMenuItem>Convert to Contact</DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Convert to Contact
+                          </DropdownMenuItem>
                           <DropdownMenuItem>Mark as Lost</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -213,5 +314,5 @@ export default function LeadsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
