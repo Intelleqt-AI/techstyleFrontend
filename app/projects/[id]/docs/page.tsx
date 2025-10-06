@@ -23,6 +23,7 @@ import {
   ChevronDown,
   FileIcon,
   Edit2,
+  LinkIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -50,6 +51,9 @@ import {
   updateProjectClientDocs,
   addNewChat,
   renameFile,
+  addLink,
+  getLinks,
+  deleteLink,
 } from "@/supabase/API";
 
 // NEW: import dialog component
@@ -144,6 +148,9 @@ export default function ProjectDocsPage({
   const [selectedForSend, setSelectedForSend] = React.useState<any>(null);
   const [updatedFileName, setUpdatedFileName] = React.useState("");
   const [fileRenameModalOpen, setFileRenameModalOpen] = React.useState(false);
+  const [linkModalOpen, setLinkModalOpen] = React.useState(false);
+  const [link, setLink] = React.useState("");
+  const [linkName, setLinkName] = React.useState("");
 
   // Fetch files/folders
   const {
@@ -321,6 +328,18 @@ export default function ProjectDocsPage({
     },
   });
 
+  function LinkOpenModal() {
+    setLinkModalOpen(true);
+  }
+
+  function LinkAfterCloseModal() {
+    setModalOpen(false);
+  }
+
+  function LinkCloseModal() {
+    setLinkModalOpen(false);
+  }
+
   function formatSize(size?: number) {
     if (!size && size !== 0) return "-";
     if (size < 1024) return `${size} B`;
@@ -474,6 +493,44 @@ export default function ProjectDocsPage({
     },
   });
 
+  // Fetch Links
+  const {
+    data,
+    isLoading: linkLoading,
+    refetch: LinkRefetch,
+  } = useQuery({
+    queryKey: ["GetLinks", params.id],
+    queryFn: () => getLinks(params.id),
+    enabled: !!params.id,
+  });
+
+  // Link Creation Function
+  const linkMutation = useMutation({
+    mutationFn: addLink,
+    onSuccess: () => {
+      LinkRefetch();
+      setLinkModalOpen(false);
+      setLink("");
+      setLinkName("");
+      toast.success("Link added!");
+    },
+    onError: () => {
+      toast.error("Failed to add link");
+    },
+  });
+
+  // Link Delete Function
+  const deleteLinkMutation = useMutation({
+    mutationFn: deleteLink,
+    onSuccess: () => {
+      LinkRefetch();
+      toast.success("Link Deleted!");
+    },
+    onError: () => {
+      toast.error("Failed to delete link");
+    },
+  });
+
   // modify handleClick to accept optional message
   const handleClick = (item: any, message?: string) => {
     let itemWithUrl = item;
@@ -536,6 +593,42 @@ export default function ProjectDocsPage({
     setUpdatedFileName("");
   };
 
+  const handleSubmitLink = () => {
+    if (!link.trim()) {
+      toast.error("Link cannot be empty");
+      return;
+    }
+    try {
+      const url = new URL(link);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        throw new Error();
+      }
+      const hostname = url.hostname.toLowerCase();
+      const suspiciousDomains = ["example.com", "test.com", "localhost"];
+      if (suspiciousDomains.some((domain) => hostname.includes(domain))) {
+        toast.error("This URL appears to be a test or example URL");
+        return;
+      }
+      linkMutation.mutate({
+        id: params.id,
+        link: link,
+        name: linkName,
+        create_time: new Date().getTime(),
+        path: currentPath,
+      });
+    } catch (error) {
+      toast.error(
+        "Please enter a valid URL (starting with http:// or https://)"
+      );
+    }
+  };
+
+  // handle Delete Link
+  const handeDeleteLink = (time) => {
+    if (!time) return;
+    deleteLinkMutation.mutate({ id: params.id, create_time: time });
+  };
+
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -571,21 +664,21 @@ export default function ProjectDocsPage({
               <FolderOpen className="mr-2 h-4 w-4" />
               {"New Folder"}
             </Button>
-            <Button
+            {/* <Button
               className="bg-neutral-900 text-white hover:bg-neutral-800"
               onClick={() => setUploadModal(true)}>
               <Upload className="mr-2 h-4 w-4" />
               {"Upload Files"}
-            </Button>
+            </Button> */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="bg-neutral-900 text-white hover:bg-neutral-800">
-                  {"✨ New Note"}
+                  {"More"}
                   <ChevronDown className="ml-1 h-4 w-4 opacity-80" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
+                {/* <DropdownMenuItem
                   onSelect={() =>
                     console.log("new_note_from_zoom", { projectId: params.id })
                   }>
@@ -604,6 +697,12 @@ export default function ProjectDocsPage({
                     console.log("new_note_blank", { projectId: params.id })
                   }>
                   {"Blank note (paste text)"}
+                </DropdownMenuItem> */}
+                <DropdownMenuItem onSelect={LinkOpenModal}>
+                  {"Add Link"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setUploadModal(true)}>
+                  {"Upload Files"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -690,7 +789,6 @@ export default function ProjectDocsPage({
                 </div>
               );
             })}
-
             {derivedFiles.map((file) => {
               // Build file URL from Supabase (Next.js style env var)
               const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Docs/${params.id}/${file.id}`;
@@ -789,6 +887,96 @@ export default function ProjectDocsPage({
                 </div>
               );
             })}
+            {/* // LinksSection component */}
+            {data &&
+              data.map((link) => {
+                const fileName =
+                  link.name || link.link?.split("/").pop() || "Untitled Link";
+
+                return (
+                  <div
+                    key={link.link}
+                    onClick={() => window.open(link.link, "_blank")}
+                    className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
+                    aria-label={`Open ${fileName}`}>
+                    <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          {/* Link Info */}
+                          <div className="flex items-center gap-3">
+                            <LinkIcon className="h-5 w-5 " aria-hidden="true" />
+                            <div>
+                              <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
+                                {fileName}
+                                <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                  Link
+                                </span>
+                              </h4>
+                              {/* <p className="mt-1 text-xs text-neutral-500">
+                                Created{" "}
+                                {link.create_time
+                                  ? formatDate(link.create_time)
+                                  : "-"}
+                              </p> */}
+                              <p className="mt-1 text-xs text-neutral-400 truncate max-w-[200px]">
+                                {link.link}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Link Options */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
+                                aria-label="Link actions">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(link.link, "_blank");
+                                }}>
+                                Open Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handeDeleteLink(link.create_time);
+                                }}>
+                                Delete Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(link.link);
+                                  // Add toast notification here if needed
+                                }}>
+                                Copy Link
+                              </DropdownMenuItem>
+                              {/* <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Optional: Add rename functionality for links
+                    LinkRenameOpenModal(link);
+                  }}
+                >
+                  Rename Link
+                </DropdownMenuItem> */}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
 
             {/*Rename Folder Modal */}
             <Modal
@@ -834,7 +1022,6 @@ export default function ProjectDocsPage({
                 <Button onClick={() => handleRenameFolder()}>Rename</Button>
               </div>
             </Modal>
-
             {/* Notes smart folder */}
             {/* <button
               type="button"
@@ -1359,6 +1546,60 @@ export default function ProjectDocsPage({
             Cancel
           </Button>
           <Button onClick={handleRenameFile}>Rename</Button>
+        </div>
+      </Modal>
+
+      <Modal
+        className="!h-[300px] !max-w-[500px] !py-7"
+        isOpen={linkModalOpen}
+        onRequestClose={LinkAfterCloseModal}
+        contentLabel="Link Create Modal">
+        <div className="navbar  flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <p>Submit Link</p>
+            </div>
+          </div>
+          {/* Delete and Close Modal Section */}
+          <div className="buttons flex items-center gap-3 !mt-0 px-2">
+            <button
+              onClick={() => LinkCloseModal()}
+              className="close text-sm text-[#17181B] bg-transparent h-7 w-7 flex items-center justify-center rounded-full transition-all hover:bg-gray-200">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="m12 13.4l-4.9 4.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7l4.9-4.9l-4.9-4.9q-.275-.275-.275-.7t.275-.7t.7-.275t.7.275l4.9 4.9l4.9-4.9q.275-.275.7-.275t.7.275t.275.7t-.275.7L13.4 12l4.9 4.9q.275.275.275.7t-.275.7t-.7.275t-.7-.275z"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="py-4 my-7 space-y-4">
+          <Input
+            type="text"
+            placeholder="Link Name"
+            value={linkName}
+            onChange={(e) => setLinkName(e.target.value)}
+          />
+          <Input
+            type="url"
+            placeholder="Enter Link"
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center justify-between">
+          <Button
+            type="submit"
+            variant="outline"
+            onClick={() => LinkCloseModal()}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmitLink}>Submit</Button>
         </div>
       </Modal>
     </div>
