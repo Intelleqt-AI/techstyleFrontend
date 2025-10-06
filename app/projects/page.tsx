@@ -468,7 +468,7 @@ export default function ProjectsPage() {
                           {project?.assigned &&
                             project.assigned.slice(0, 3).map((member, memberIndex) => (
                               <Avatar key={memberIndex} className="w-6 h-6 border-2 border-white">
-                                <AvatarImage src={member.photoURL} />
+                                <AvatarImage src={member?.photoURL} />
                                 <AvatarFallback className="text-xs bg-clay-200 text-clay-700">{member?.name[0]}</AvatarFallback>
                               </Avatar>
                             ))}
