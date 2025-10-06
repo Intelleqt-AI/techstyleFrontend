@@ -258,7 +258,7 @@ export default function ProjectFolderPage({
 
   // Process files data
   useEffect(() => {
-    console.log(files);
+    // console.log(files);
     if (isLoading) return;
     if (files?.data) {
       const processedDocs = files.data.map((item: any) => ({
@@ -810,8 +810,6 @@ export default function ProjectFolderPage({
     }
   };
 
-  // ...existing code...
-
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -1163,20 +1161,22 @@ export default function ProjectFolderPage({
                   {!linkLoading &&
                     linkList.map((item) => {
                       return item.path == currentPath ? (
-                        <tr key={item.create_time}>
+                        <tr key={item.create_time} className="hover:bg-gray-50">
                           <td className="px-4 py-3">
                             <Checkbox
                               key={item.create_time}
-                              value={item.create_time}
+                              value={item}
                               checked={
                                 !!checkedItems.find(
                                   (items) =>
                                     items.create_time == item.create_time
                                 )
                               }
-                              onCheckedChange={(checked) => {
-                                // Handle link checkbox change
-                              }}
+                              onCheckedChange={(checked) =>
+                                handleChange({
+                                  target: { value: item, checked },
+                                })
+                              }
                             />
                           </td>
                           <td className="px-4 py-3">
@@ -1187,7 +1187,7 @@ export default function ProjectFolderPage({
                               <div className="min-w-0">
                                 <a
                                   title={item.link}
-                                  className="text-sm font-medium text-blue-600 hover:text-blue-800 truncate block"
+                                  className="text-sm font-medium hover:underline truncate block"
                                   target="_blank"
                                   href={item?.link}
                                   rel="noopener noreferrer">
@@ -1220,16 +1220,46 @@ export default function ProjectFolderPage({
                           </td>
                           <td className="px-4 py-3 pr-6 text-right">
                             <div className="inline-flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
-                                aria-label="Delete Link"
-                                onClick={() =>
-                                  handeDeleteLink(item.create_time)
-                                }>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-8 h-8 p-0 text-gray-400 hover:text-gray-600"
+                                    aria-label="Link actions">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      window.open(item.link, "_blank")
+                                    }>
+                                    Open Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      try {
+                                        navigator.clipboard.writeText(
+                                          item.link
+                                        );
+                                        toast.success(
+                                          "Link copied to clipboard"
+                                        );
+                                      } catch {
+                                        toast.error("Unable to copy link");
+                                      }
+                                    }}>
+                                    Copy Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handeDeleteLink(item.create_time)
+                                    }>
+                                    Delete Link
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </td>
                         </tr>
