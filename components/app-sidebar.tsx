@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { signOut } from '@/supabase/API';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { TooltipArrow } from '@radix-ui/react-tooltip';
@@ -237,17 +237,21 @@ export function AppSidebar() {
         })}
 
         {/* User Profile Card */}
-        <div className={cn('bg-gray-900 rounded-xl', isCollapsed ? 'p-2' : 'p-3')}>
+        <div className={cn('bg-gray-900 mt-2 rounded-xl', isCollapsed ? 'p-2' : 'p-3')}>
           <div className="flex items-center gap-3">
             <div
               className={cn(
-                'bg-white rounded-full flex items-center justify-center flex-shrink-0',
+                'bg-white rounded-lg flex  items-center justify-center flex-shrink-0',
                 isCollapsed ? 'w-8 h-8 mx-auto' : 'w-10 h-10'
               )}
             >
-              <span className={cn('text-gray-900 font-semibold', isCollapsed ? 'text-base' : 'text-sm')}>
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user?.photoURL} alt={user?.name} />
+                <AvatarFallback className="rounded-lg font-bold tex-[16px]">{!isLoading && user?.name && user?.name[0]}</AvatarFallback>
+              </Avatar>
+              {/* <span className={cn('text-gray-900 font-semibold', isCollapsed ? 'text-base' : 'text-sm')}>
                 {user?.name && user?.name[0]}
-              </span>
+              </span> */}
             </div>
             {!isCollapsed && (
               <>
@@ -277,7 +281,7 @@ export function AppSidebar() {
                     <DropdownMenuLabel className="p-0 font-normal">
                       <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                         <Avatar className="h-8 w-8 rounded-lg">
-                          {/* <AvatarImage src={user?.avatar} alt={user?.name} /> */}
+                          <AvatarImage src={user?.photoURL} alt={user?.name} />
                           <AvatarFallback className="rounded-lg font-bold tex-[16px]">
                             {!isLoading && user?.name && user?.name[0]}
                           </AvatarFallback>

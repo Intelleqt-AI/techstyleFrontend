@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SettingsPageHeader } from '@/components/settings/page-header';
 import { SettingsSection } from '@/components/settings/section';
@@ -307,9 +307,10 @@ export default function TeamPage() {
                             {/* Check Icon if selected */}
                             {isSelected && <Check className="h-4 w-4" />}
 
-                            <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium text-gray-800">
-                              {getInitials(user.name)}
-                            </div>
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={user?.photoURL} alt={user?.name} />
+                              <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                            </Avatar>
 
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
@@ -346,6 +347,7 @@ export default function TeamPage() {
               <li key={m.id} className="grid grid-cols-[1fr,160px,220px,70px] gap-3 items-center px-4 py-3 bg-white">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={m?.photoURL} alt={m?.name} />
                     <AvatarFallback className="text-xs">{getInitials(m.name)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

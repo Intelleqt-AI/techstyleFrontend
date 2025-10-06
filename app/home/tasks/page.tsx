@@ -394,6 +394,7 @@ export default function MyTasksPage() {
   const handleClose = (e: boolean) => {
     setModalOpen(e);
     setEditing(null);
+    setDefaultStatus(undefined);
   };
 
   function handleSave(_payload: Omit<any, 'id'> & { id?: string }) {

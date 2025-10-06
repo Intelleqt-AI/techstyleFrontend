@@ -49,12 +49,12 @@ import type { ListColumn, Phase, TeamMember, Task, Subtask, Priority, Status, At
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import useProjects from '@/supabase/hook/useProject';
-import useUser from '@/supabase/hook/useUser';
 import { addNewTask, createNotification, fetchOnlyProject, getAllFiles, getUsers, modifyTask, uploadDoc } from '@/supabase/API';
 import { toast } from 'sonner';
 import DraggableSubtasks2 from './DraggableSubtasks2';
 import { AnimatePresence, motion } from 'framer-motion';
 import Attachments from './Attachments';
+import useUser from '@/hooks/useUser';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -150,7 +150,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
       ...prev,
       ...(projectId ? { projectID: projectId } : {}),
       ...(phase ? { phase } : {}),
-      status: status ?? 'todo',
+      status: status ? status : prev.status,
     }));
   }, [open, projectId, phase, status]);
 
@@ -289,6 +289,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
   const handleClickSave = () => {
     handleSubmit();
   };
+
   const handleCommentSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // Prevent full page reload
 
@@ -521,7 +522,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                         {selected.slice(0, 4).map(m => (
                           <Avatar key={m.id} className="h-6 w-6 ring-2 ring-white">
                             {/* @ts-ignore optional avatarUrl */}
-                            <AvatarImage src={(m as any).avatarUrl || ''} alt={m.name} />
+                            <AvatarImage src={(m as any).photoURL || ''} alt={m.name} />
                             <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                         ))}
@@ -559,7 +560,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                             className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                           />
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                            <AvatarImage src={m.photoURL || ''} alt={m.name} />
                             <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                           </Avatar>
                           <span className="truncate">{m.name}</span>
@@ -1187,6 +1188,7 @@ export function TaskModal({ open, onOpenChange, projectId, projectName, team, ph
                       <li key={c.id} className="rounded-xl border border-gray-200 bg-white p-4">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-8 w-8">
+                            <AvatarImage src={c?.profileImg || ''} />
                             <AvatarFallback className="text-[10px]">{initialsOf(c?.name)}</AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
