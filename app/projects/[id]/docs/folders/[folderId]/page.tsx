@@ -258,7 +258,7 @@ export default function ProjectFolderPage({
 
   // Process files data
   useEffect(() => {
-    console.log(files);
+    // console.log(files);
     if (isLoading) return;
     if (files?.data) {
       const processedDocs = files.data.map((item: any) => ({
