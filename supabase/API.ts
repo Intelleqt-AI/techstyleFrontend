@@ -2156,3 +2156,27 @@ export const createXeroInvoice = async (invoiceData: any) => {
 
   return data.invoice || null;
 };
+
+// For Profile Picture
+// Upload Project Cover
+export const uploadProfilePicture = async ({ file, id }) => {
+  if (!file || file.length === 0) {
+    throw new Error('No file provided.');
+  }
+  const filePath = `${id}/${file[0].name}`;
+  // Upload file
+  const { data, error } = await supabase.storage.from('Cover').upload(filePath, file[0], { upsert: true }); // optional: overwrite old one
+
+  if (error) {
+    console.error('Upload error:', error);
+    throw new Error(error.message);
+  }
+
+  // Get public URL
+  const { data: publicData } = supabase.storage.from('Cover').getPublicUrl(filePath);
+
+  return {
+    path: filePath,
+    url: publicData.publicUrl,
+  };
+};

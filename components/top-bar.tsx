@@ -194,6 +194,10 @@ export function TopBar() {
     ));
   }, [filteredTask]);
 
+  const handleClose = (e: boolean) => {
+    setTaskmodalOpen(e);
+  };
+
   return (
     <header className="h-14 bg-white flex items-center justify-between px-6 border-b border-gray-200">
       <div className="flex items-center gap-6 flex-1">
@@ -267,6 +271,17 @@ export function TopBar() {
           </DropdownMenu>
         </TooltipProvider>
       </div>
+
+      <TaskModal
+        open={TaskmodalOpen}
+        onOpenChange={handleClose}
+        projectId={null}
+        team={null}
+        taskToEdit={null}
+        onSave={null}
+        setEditing={null}
+        status={null}
+      />
 
       <Modal
         className="!max-w-[500px] flex !h-auto flex-col py-6"
