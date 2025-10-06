@@ -870,54 +870,56 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
           </div>
         </DialogHeader>
 
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-6">
-          {[1, 2, 3].map(stepNumber => (
-            <div key={stepNumber} className="flex items-center">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  stepNumber === step
-                    ? 'bg-clay-600 text-white'
-                    : stepNumber < step
-                    ? 'bg-sage-500 text-white'
-                    : 'bg-greige-200 text-ink-muted'
-                }`}
-              >
-                {stepNumber}
+        <div>
+          {/* Progress Steps */}
+          <div className="flex items-center justify-between mb-6">
+            {[1, 2, 3].map(stepNumber => (
+              <div key={stepNumber} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    stepNumber === step
+                      ? 'bg-clay-600 text-white'
+                      : stepNumber < step
+                      ? 'bg-sage-500 text-white'
+                      : 'bg-greige-200 text-ink-muted'
+                  }`}
+                >
+                  {stepNumber}
+                </div>
+                {stepNumber < 3 && <div className={`w-16 h-0.5 mx-2 ${stepNumber < step ? 'bg-sage-500' : 'bg-greige-200'}`} />}
               </div>
-              {stepNumber < 3 && <div className={`w-16 h-0.5 mx-2 ${stepNumber < step ? 'bg-sage-500' : 'bg-greige-200'}`} />}
-            </div>
-          ))}
-        </div>
-
-        {/* Step Content */}
-        <div className="min-h-[400px]">{renderStep()}</div>
-
-        <Separator className="bg-borderSoft" />
-
-        {/* Footer */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleClose} className="border-borderSoft bg-white hover:bg-greige-50">
-              Cancel
-            </Button>
-            {step > 1 && (
-              <Button variant="outline" onClick={handleBack} className="border-borderSoft bg-white hover:bg-greige-50">
-                Back
-              </Button>
-            )}
+            ))}
           </div>
 
-          <div className="flex items-center gap-2">
-            {step < 3 ? (
-              <Button onClick={handleNext} disabled={!canProceed()} className="bg-clay-600 hover:bg-clay-700 text-white">
-                Continue
+          {/* Step Content */}
+          <div className="min-h-[400px]">{renderStep()}</div>
+
+          <Separator className="bg-borderSoft my-6" />
+
+          {/* Footer */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={handleClose} className="border-borderSoft bg-white hover:bg-greige-50">
+                Cancel
               </Button>
-            ) : (
-              <Button onClick={handleCreate} className="bg-clay-600 hover:bg-clay-700 text-white">
-                Create Project
-              </Button>
-            )}
+              {step > 1 && (
+                <Button variant="outline" onClick={handleBack} className="border-borderSoft bg-white hover:bg-greige-50">
+                  Back
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {step < 3 ? (
+                <Button onClick={handleNext} disabled={!canProceed()} className="bg-clay-600 hover:bg-clay-700 text-white">
+                  Continue
+                </Button>
+              ) : (
+                <Button onClick={handleCreate} className="bg-clay-600 hover:bg-clay-700 text-white">
+                  Create Project
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </DialogContent>

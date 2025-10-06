@@ -1419,7 +1419,7 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
                                 className="focus-visible:ring-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:text-white"
                               />
                               <Avatar className="h-6 w-6">
-                                <AvatarImage src={m.avatarUrl || ''} alt={m.name} />
+                                <AvatarImage src={m?.photoURL || ''} alt={m?.name} />
                                 <AvatarFallback className="text-[10px]">{initialsOf(m?.name)}</AvatarFallback>
                               </Avatar>
                               <span className="truncate">{m.name}</span>
@@ -1442,6 +1442,7 @@ function TeamForm({ value, onChange, onSave, users }: { value: any; onChange: (v
             <div key={member.id || index} className="flex items-center  gap-4 px-4 py-4 justify-between ">
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
+                  <AvatarImage src={member?.photoURL || ''} alt={member.name} />
                   <AvatarFallback className="text-xs">{getInitials(member.name)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">
