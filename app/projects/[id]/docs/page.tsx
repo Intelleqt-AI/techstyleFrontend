@@ -960,6 +960,15 @@ export default function ProjectDocsPage({
                                 }}>
                                 Copy Link
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // open send-to-client dialog for this link
+                                  setSelectedForSend(link);
+                                  setSentDialogOpen(true);
+                                }}>
+                                Send to Client
+                              </DropdownMenuItem>
                               {/* <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
