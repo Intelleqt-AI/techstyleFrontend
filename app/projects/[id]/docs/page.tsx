@@ -58,6 +58,7 @@ import {
 
 // NEW: import dialog component
 import { SentToClientDialog } from "@/components/SentToClientDialog";
+import { DeleteDialog } from "@/components/DeleteDialog";
 
 // Derived from storage
 type DerivedFolder = {
@@ -151,6 +152,11 @@ export default function ProjectDocsPage({
   const [linkModalOpen, setLinkModalOpen] = React.useState(false);
   const [link, setLink] = React.useState("");
   const [linkName, setLinkName] = React.useState("");
+  const [isDeleteOpen, setIsDeleteOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<{
+    name: string;
+    isFolder: boolean;
+  } | null>(null);
 
   // Fetch files/folders
   const {
@@ -177,11 +183,9 @@ export default function ProjectDocsPage({
         fileCount: 0,
         lastModified: f.created_at,
         folderStats: f?.folderStats,
-        isFolder: f?.isFolder,
+        isFolder: f.isFolder,
       }));
   }, [totalDocs]);
-
-  // console.log(totalDocs);
 
   const derivedFiles = React.useMemo<DerivedFolder[]>(() => {
     return totalDocs
@@ -632,7 +636,14 @@ export default function ProjectDocsPage({
     deleteLinkMutation.mutate({ id: params.id, create_time: time });
   };
 
-  // console.log(data);
+  //   const handleDeleteTask = (name: string, isFolder: boolean) => {
+  //   const itemPath = currentPath ? `${currentPath}/${name}` : name;
+  //   deleteMutation.mutate({
+  //     file: itemPath,
+  //     id: params.id,
+  //     isFolder: isFolder,
+  //   });
+  // };
 
   return (
     <div className="flex-1 bg-gray-50 p-6">
@@ -779,10 +790,15 @@ export default function ProjectDocsPage({
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteTask(
-                                  folder?.name,
-                                  folder?.isFolder
-                                );
+                                // handleDeleteTask(
+                                //   folder?.name,
+                                //   folder?.isFolder
+                                // );
+                                setDeleteTarget({
+                                  name: folder.name,
+                                  isFolder: folder.isFolder,
+                                });
+                                setIsDeleteOpen(true);
                               }}>
                               {"Delete"}
                             </DropdownMenuItem>
@@ -894,92 +910,78 @@ export default function ProjectDocsPage({
             })}
             {/* // LinksSection component */}
             {data &&
-              data
-                .filter((item) => !item.path)
-                .map((link) => {
-                  const fileName =
-                    link.name || link.link?.split("/").pop() || "Untitled Link";
+              data.map((link) => {
+                const fileName =
+                  link.name || link.link?.split("/").pop() || "Untitled Link";
 
-                  return (
-                    <div
-                      key={link.link}
-                      onClick={() => window.open(link.link, "_blank")}
-                      className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                      aria-label={`Open ${fileName}`}>
-                      <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            {/* Link Info */}
-                            <div className="flex items-center gap-3">
-                              <LinkIcon
-                                className="h-5 w-5 "
-                                aria-hidden="true"
-                              />
-                              <div>
-                                <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
-                                  {fileName}
-                                  <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
-                                    Link
-                                  </span>
-                                </h4>
-                                {/* <p className="mt-1 text-xs text-neutral-500">
+                return (
+                  <div
+                    key={link.link}
+                    onClick={() => window.open(link.link, "_blank")}
+                    className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
+                    aria-label={`Open ${fileName}`}>
+                    <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          {/* Link Info */}
+                          <div className="flex items-center gap-3">
+                            <LinkIcon className="h-5 w-5 " aria-hidden="true" />
+                            <div>
+                              <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
+                                {fileName}
+                                <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
+                                  Link
+                                </span>
+                              </h4>
+                              {/* <p className="mt-1 text-xs text-neutral-500">
                                 Created{" "}
                                 {link.create_time
                                   ? formatDate(link.create_time)
                                   : "-"}
                               </p> */}
-                                <p className="mt-1 text-xs text-neutral-400 truncate max-w-[200px]">
-                                  {link.link}
-                                </p>
-                              </div>
+                              <p className="mt-1 text-xs text-neutral-400 truncate max-w-[200px]">
+                                {link.link}
+                              </p>
                             </div>
+                          </div>
 
-                            {/* Link Options */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger
-                                asChild
-                                onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                                  aria-label="Link actions">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    window.open(link.link, "_blank");
-                                  }}>
-                                  Open Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handeDeleteLink(link.create_time);
-                                  }}>
-                                  Delete Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(link.link);
-                                    // Add toast notification here if needed
-                                  }}>
-                                  Copy Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // open send-to-client dialog for this link
-                                    setSelectedForSend(link);
-                                    setSentDialogOpen(true);
-                                  }}>
-                                  Send to Client
-                                </DropdownMenuItem>
-                                {/* <DropdownMenuItem
+                          {/* Link Options */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              asChild
+                              onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
+                                aria-label="Link actions">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(link.link, "_blank");
+                                }}>
+                                Open Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handeDeleteLink(link.create_time);
+                                }}>
+                                Delete Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(link.link);
+                                  // Add toast notification here if needed
+                                }}>
+                                Copy Link
+                              </DropdownMenuItem>
+                              {/* <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
                     // Optional: Add rename functionality for links
@@ -988,14 +990,14 @@ export default function ProjectDocsPage({
                 >
                   Rename Link
                 </DropdownMenuItem> */}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  );
-                })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
 
             {/*Rename Folder Modal */}
             <Modal
@@ -1621,6 +1623,25 @@ export default function ProjectDocsPage({
           <Button onClick={handleSubmitLink}>Submit</Button>
         </div>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteDialog
+        isOpen={isDeleteOpen}
+        onClose={() => {
+          setIsDeleteOpen(false);
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDeleteTask(deleteTarget.name, deleteTarget.isFolder);
+            setDeleteTarget(null);
+          }
+        }}
+        title={deleteTarget?.isFolder ? "Delete Folder" : "Delete File"}
+        description="Are you sure you want to delete this item? This action cannot be undone."
+        itemName={deleteTarget?.name}
+        requireConfirmation={false}
+      />
     </div>
   );
 }
