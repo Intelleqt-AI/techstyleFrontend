@@ -883,7 +883,7 @@ function RoomsForm({
   onSave: (p: any) => void;
 }) {
   const handleRemove = (idx: number) => {
-    const next = [...(value.type ?? [])];
+    const next = [...(value?.type ?? [])];
     next.splice(idx, 1);
     onChange({ ...value, type: next });
   };
@@ -903,7 +903,7 @@ function RoomsForm({
                 const input = e.currentTarget as HTMLInputElement;
                 if (input.value.trim()) {
                   const type = [
-                    ...(value.type ?? []),
+                    ...(value?.type ?? []),
                     {
                       text: input.value.trim(),
                       id: crypto.randomUUID(),
@@ -921,12 +921,12 @@ function RoomsForm({
 
         {/* Room list */}
         <div className="space-y-2">
-          {(value.type ?? []).map((room, idx) => (
+          {(value?.type ?? []).map((room, idx) => (
             <div key={room.id ?? idx} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
               <Input
                 value={room.text}
                 onChange={e => {
-                  const next = [...(value.type ?? [])];
+                  const next = [...(value?.type ?? [])];
                   next[idx] = { ...next[idx], text: e.target.value };
                   onChange({ ...value, type: next });
                 }}
@@ -935,7 +935,7 @@ function RoomsForm({
                 placeholder="Dimensions"
                 value={room.dimensions ?? ''}
                 onChange={e => {
-                  const next = [...(value.type ?? [])];
+                  const next = [...(value?.type ?? [])];
                   next[idx] = { ...next[idx], dimensions: e.target.value };
                   onChange({ ...value, type: next });
                 }}
@@ -945,7 +945,7 @@ function RoomsForm({
                   placeholder="Delivery constraints"
                   value={room.constraints ?? ''}
                   onChange={e => {
-                    const next = [...(value.type ?? [])];
+                    const next = [...(value?.type ?? [])];
                     next[idx] = { ...next[idx], constraints: e.target.value };
                     onChange({ ...value, type: next });
                   }}
@@ -965,7 +965,7 @@ function RoomsForm({
 
         {/* Save */}
         <div className="flex pt-3 items-center justify-end">
-          <Button size={'sm'} onClick={() => onSave(value.type)}>
+          <Button size={'sm'} onClick={() => onSave(value?.type)}>
             <Save />
             Save
           </Button>
