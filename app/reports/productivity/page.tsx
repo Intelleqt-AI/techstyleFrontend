@@ -381,6 +381,7 @@ export default function ProductivityReportsPage() {
     'risalat.shahriar@intelleqt.ai',
     'dev@intelleqt.ai',
     'saif@intelleqt.ai',
+    'claire@souqdesign.co.uk',
   ];
 
   const handleProfileVisit = (email, id) => {
