@@ -319,6 +319,7 @@ export default function HomeTimePage() {
       toast('Timer Updated');
       closeModal();
       setValue([0]);
+      setAddValue([0]);
       // Update local state for the specific task
       // setTasks(prev => prev.map(task => (task.id === variables.id ? { ...task, ...variables } : task)));
     },
@@ -336,7 +337,7 @@ export default function HomeTimePage() {
           session: updatedSessions,
           totalWorkTime,
         });
-      }, 1000), // 500ms delay
+      }, 500), // 500ms delay
     [mutation, value, selectedTask]
   );
 
@@ -1023,7 +1024,7 @@ export default function HomeTimePage() {
                 </div>
 
                 <div className="border-b-[5px] flex items-center justify-between pb-[30px]">
-                  <button onClick={handleResetTracking} className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
+                  {/* <button onClick={handleResetTracking} className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="19" height="18" viewBox="0 0 19 18" fill="none">
                       <path
                         d="M17 9C17 13.1421 13.6421 16.5 9.5 16.5C5.35786 16.5 2 13.1421 2 9C2 4.85786 5.35786 1.5 9.5 1.5C11.9537 1.5 14.1322 2.67833 15.5005 4.5V1.5"
@@ -1034,7 +1035,7 @@ export default function HomeTimePage() {
                       />
                     </svg>
                     <span className="text-[#17181B] text-sm font-medium">Reset</span>
-                  </button>
+                  </button> */}
                   {/* <Popover>
                     <PopoverTrigger asChild>
                       <button className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
@@ -1218,11 +1219,6 @@ export default function HomeTimePage() {
                       </div>
                       <p className="text-[#787C86] text-[16px] font-medium mt-4">No Captures Yet</p>
                     </div>
-                  </div>
-
-                  <div className="flex mt-6 mb-2 items-center justify-between">
-                    <p className="text-[16px] underline font-medium">View Work Diary</p>
-                    <p className="text-[16px] underline font-medium">Add Manual Time</p>
                   </div>
                 </div>
               </div>
