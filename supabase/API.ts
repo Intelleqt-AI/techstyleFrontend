@@ -68,6 +68,25 @@ export const getTimeTracking = async () => {
   return { data };
 };
 
+// Get Time Tracker by Creator Email
+export const getTimeTrackingByEmail = async (email: string) => {
+  const { data, error } = await supabase
+    .from('Time Tracker')
+    .select(
+      `
+      *,
+      task:task_id (*)
+    `
+    )
+    .eq('creator', email);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { data };
+};
+
 // Add new time tracker
 export const addTimeTracker = async timer => {
   const { data, error } = await supabase.from('Time Tracker').insert(timer);

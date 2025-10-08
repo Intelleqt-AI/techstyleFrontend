@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HomeNav } from '@/components/home-nav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimeTracking, ModifyTimeTracker } from '@/supabase/API';
+import { getTimeTracking, getTimeTrackingByEmail, ModifyTimeTracker } from '@/supabase/API';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useUser from '@/hooks/useUser';
@@ -264,13 +264,7 @@ function getDailyBreakdown(tasks: any[]): Day[] {
         }, 0);
       }
 
-      // Paused/completed tasks base time
-      let additionalTime = 0;
-      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
-        additionalTime = Number(task.totalWorkTime);
-      }
-
-      return totalHours + (sessionTime + additionalTime) / (1000 * 60 * 60);
+      return totalHours + sessionTime / (1000 * 60 * 60);
     }, 0);
 
     dailyHours.push({
@@ -301,8 +295,9 @@ export default function HomeTimePage() {
   const { data: project, isLoading } = useProjects();
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ['Time Tracking'],
-    queryFn: getTimeTracking,
+    queryKey: [`Time Tracking ${user?.email}`],
+    queryFn: () => getTimeTrackingByEmail(user?.email),
+    enabled: !!user?.email,
   });
 
   const getTrackingButtonClass = (taskId: string | number) => {
@@ -354,6 +349,7 @@ export default function HomeTimePage() {
     if (trackingLoading || !trackingData?.data) return;
     const processedTasks = trackingData.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
     const filterByEmail = processedTasks.filter(item => item.creator == user?.email);
+    console.log(filterByEmail);
     setTasks(filterByEmail);
 
     // Find the active task
