@@ -374,18 +374,9 @@ export default function ProductivityReportsPage() {
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
-  const admins = [
-    'david.zeeman@intelleqt.ai',
-    'roxi.zeeman@souqdesign.co.uk',
-    'risalat.shahriar@intelleqt.ai',
-    'dev@intelleqt.ai',
-    'saif@intelleqt.ai',
-    'claire@souqdesign.co.uk',
-  ];
-
   const handleProfileVisit = (email, id) => {
     if (!id) return;
-    if (admins.includes(user?.email)) {
+    if (user?.isAdmin) {
       router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
     } else if (user?.email == email) {
       router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
