@@ -56,8 +56,7 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }) 
   }
 
   function getTrackingByUser(email) {
-    const processedTasks = trackingData?.filter(item => item.isActive);
-    const filterByEmail = processedTasks?.filter(item => item.creator == email);
+    const filterByEmail = trackingData?.filter(item => item.creator == email);
     return filterByEmail;
   }
 
@@ -86,8 +85,8 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }) 
     const allSessions = tasks
       .flatMap(task =>
         (task.session || []).map(session => ({
-          task_id: task?.task?.id || 'unknown_task',
-          project_id: task?.task?.projectID || 'unknown_project',
+          task_id: task?.task?.id || 'Studio Task',
+          project_id: task?.task?.projectID || 'Studio Project',
           date: new Date(session.date),
           totalTime: session?.totalTime,
           rate: task?.rate || null,
