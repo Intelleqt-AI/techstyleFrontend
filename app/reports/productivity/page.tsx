@@ -274,9 +274,8 @@ export default function ProductivityReportsPage() {
   const { user } = useUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    // const now = new Date();
-    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    undefined;
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const monthOptions = generateMonthOptions();
   const selectedMonthLabel = monthOptions.find(option => option.value === selectedMonth)?.label || 'Select Month';
