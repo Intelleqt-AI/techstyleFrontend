@@ -93,7 +93,7 @@ export default function ProjectsPage() {
     '3d89c8c0-2fed-11f0-8019-958f8e9f687b',
     '3fc4c690-7c4a-11f0-b9fa-a30dc6830efa',
     '92c00750-8ef7-11f0-93f4-b7228a6e6d03',
-    'a6aa17fe-a68f-4e9a-8073-9b002e5a8b93',
+    // 'a6aa17fe-a68f-4e9a-8073-9b002e5a8b93',
   ];
   useEffect(() => {
     if (isLoading) return;
