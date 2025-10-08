@@ -183,8 +183,9 @@ function getFormattedTimeFromMondayToSaturday(tasks) {
 function getFormattedTimeForCurrentMonth(tasks) {
   const now = new Date();
 
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+  const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
   lastDay.setHours(23, 59, 59, 999);
 
   const totalMs = tasks.reduce((total, task) => {
@@ -192,9 +193,11 @@ function getFormattedTimeForCurrentMonth(tasks) {
 
     const sessionTime = task.session.reduce((sum, session) => {
       const sessionDate = new Date(session.date);
-      if (sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
+      console.log(sessionDate);
+      if (sessionDate >= firstDay && sessionDate <= lastDay && session.totalTime) {
         return sum + session.totalTime;
       }
+
       return sum;
     }, 0);
 
@@ -203,7 +206,9 @@ function getFormattedTimeForCurrentMonth(tasks) {
 
   const totalMinutes = totalMs / (1000 * 60);
 
-  if (totalMinutes < 60) {
+  if (totalMinutes < 1) {
+    return 'Less than a minute';
+  } else if (totalMinutes < 60) {
     return `${Math.round(totalMinutes)} Minutes`;
   } else {
     const totalHours = totalMinutes / 60;
