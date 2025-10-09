@@ -950,7 +950,7 @@ export default function HomeTimePage() {
                         className={`rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:text-white ${
                           isTimerActive ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
-                        // onClick={() => openTaskModal(task)}
+                        onClick={() => openTaskModal(task)}
                       >
                         Ended
                       </Button>
@@ -1223,13 +1223,13 @@ export default function HomeTimePage() {
                 </div>
               </div>
 
-              <div className="flex pb-8 justify-between items-center">
+              {/* <div className="flex pb-8 justify-between items-center">
                 {!selectedTask.isActive && (
                   <Button onClick={handleStartTracking} className="w-full rounded-[10px] py-6">
-                    Start Tracking
+                    Start Trackin
                   </Button>
                 )}
-              </div>
+              </div> */}
             </div>
           </div>
         )}
