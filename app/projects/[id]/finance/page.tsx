@@ -74,7 +74,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     if (!client) return;
 
     // filter invoices by client.name or client.surname
-    const filteredInvoices = xeroInvoices.filter(inv => {
+    const filteredInvoices = xeroInvoices?.filter(inv => {
       const contactName = inv.Contact?.Name?.toLowerCase() || '';
       return contactName.includes(client.name?.toLowerCase() || '') || contactName.includes(client.surname?.toLowerCase() || '');
     });
@@ -308,7 +308,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     });
     return totalInvoiceOrder;
   }, [myXeroInvoice]);
-  
+
   console.log(project);
 
   const financeStats = [

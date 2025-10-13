@@ -193,7 +193,6 @@ function getFormattedTimeForCurrentMonth(tasks) {
 
     const sessionTime = task.session.reduce((sum, session) => {
       const sessionDate = new Date(session.date);
-      console.log(sessionDate);
       if (sessionDate >= firstDay && sessionDate <= lastDay && session.totalTime) {
         return sum + session.totalTime;
       }
@@ -355,7 +354,6 @@ export default function HomeTimePage() {
     if (trackingLoading || !trackingData?.data) return;
     const processedTasks = trackingData.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
     const filterByEmail = processedTasks.filter(item => item.creator == user?.email);
-    console.log(filterByEmail);
     setTasks(filterByEmail);
 
     // Find the active task
