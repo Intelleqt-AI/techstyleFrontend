@@ -461,6 +461,9 @@ export default function ProductsPage() {
                             <h3 className="truncate text-sm !capitalize font-semibold tracking-tight text-gray-900">
                               {product?.name || 'Unknown'}
                             </h3>
+                            <h3 className="truncate text-xs my-1 !capitalize font-normal tracking-tight text-gray-500">
+                              {product?.dimensions || 'Unknown'}
+                            </h3>
                             <p className="text-xs capitalize tracking-wide text-gray-500">{product?.supplier || 'No supplier provided'}</p>
                           </button>
                         </div>
