@@ -10,15 +10,11 @@ import { downloadExcel } from 'react-export-table-to-excel';
 import { ChartCard } from './chart-card';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
 
-const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: any) => {
-  const [trackedProject, setTrackedProject] = useState<any[]>([]);
+const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }) => {
+  const [trackedProject, setTrackedProject] = useState([]);
   const [customLoading, setCustomLoading] = useState(true);
-  const [totalItem, setTotalItem] = useState<any[]>([]);
-  const [selectedProject, setSelectedProject] = useState('');
+  const [totalItem, setTotalItem] = useState([]);
 
   const { data, isLoading: taskLoading } = useTask();
   // Projects
@@ -32,7 +28,7 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
-  function getFormattedTimeForCurrentMonth(tasks: any[]) {
+  function getFormattedTimeForCurrentMonth(tasks) {
     if (!tasks) return;
     const now = new Date();
 
@@ -40,10 +36,10 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     lastDay.setHours(23, 59, 59, 999);
 
-    const totalMs = (tasks as any[]).reduce((total: number, task: any) => {
+    const totalMs = tasks.reduce((total, task) => {
       if (!Array.isArray(task.session)) return total;
 
-      const sessionTime = (task.session as any[]).reduce((sum: number, session: any) => {
+      const sessionTime = task.session.reduce((sum, session) => {
         const sessionDate = new Date(session.date);
         if (sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
           return sum + session.totalTime;
@@ -61,8 +57,8 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     return totalHours;
   }
 
-  function getTrackingByUser(email: string) {
-    const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
+  function getTrackingByUser(email) {
+    const filterByEmail = trackingData?.filter(item => item.creator == email);
     return filterByEmail;
   }
 
@@ -88,9 +84,9 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     monthEnd.setHours(23, 59, 59, 999);
 
     // Collect all valid sessions in chosen month
-    const allSessions = (tasks as any[])
-      .flatMap((task: any) =>
-        (task.session || []).map((session: any) => ({
+    const allSessions = tasks
+      .flatMap(task =>
+        (task.session || []).map(session => ({
           task_id: task?.task?.id || 'Studio Task',
           project_id: task?.task?.projectID || 'Studio Project',
           date: new Date(session.date),
@@ -98,15 +94,15 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
           rate: task?.rate || null,
         }))
       )
-      .filter((s: any) => s.date >= monthStart && s.date <= monthEnd);
+      .filter(s => s.date >= monthStart && s.date <= monthEnd);
 
     // Sort by date
-    allSessions.sort((a: any, b: any) => a.date - b.date);
+    allSessions.sort((a, b) => a.date - b.date);
 
     // Format for console
-    const formatted = allSessions.map((s: any) => {
-      const taskName = (data as any)?.data?.find((t: any) => t.id === s.task_id)?.name || s.task_id;
-      const projectName = (project as any)?.find((p: any) => p.id === s.project_id)?.name || s.project_id;
+    const formatted = allSessions.map(s => {
+      const taskName = data?.data?.find(t => t.id === s.task_id)?.name || s.task_id;
+      const projectName = project?.find(p => p.id === s.project_id)?.name || s.project_id;
 
       return {
         date: s.date.toLocaleDateString('en-GB'), // dd/mm/yyyy
@@ -120,15 +116,15 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     return formatted;
   }
 
-  function getUserProjectsWithTime(user: any, projects: any) {
+  function getUserProjectsWithTime(user, projects) {
     // console.log(user, projects);
     if (!user || !projects) return [];
     const userEmail = user?.email;
     const userTracking = getTrackingByUser(userEmail);
-    const result: any[] = [];
+    const result = [];
 
     // Studio Management tracking
-    const studioTask = (userTracking as any[])?.filter((track: any) => track?.task == null) || [];
+    const studioTask = userTracking?.filter(track => track?.task == null) || [];
     const totalStudioWorkTime = getFormattedTimeForCurrentMonth(studioTask);
 
     if (totalStudioWorkTime) {
@@ -139,10 +135,10 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
       });
     }
 
-    (projects as any[]).forEach((project: any) => {
+    projects.forEach(project => {
       // const isAssigned = project.assigned?.some(assignee => assignee.email === userEmail);
       if (true) {
-        const projectTracking = (userTracking as any[])?.filter((track: any) => track?.task?.projectID === project.id) || [];
+        const projectTracking = userTracking?.filter(track => track?.task?.projectID === project.id) || [];
         const totalTime = getFormattedTimeForCurrentMonth(projectTracking);
         if (totalTime) {
           result.push({
@@ -164,41 +160,13 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     setTotalItem(logAugustSessions());
   }, [trackingData, trackingLoading, user, isLoading]);
 
-  // derive project options from fetched projects and totalItem fallback
-  const projectOptions = React.useMemo(() => {
-    const opts: { id: string; name: string }[] = [];
-    // use project data first (use name as id/value because totalItem.project_id stores names)
-    if (project && Array.isArray(project)) {
-      project.forEach(p => {
-        const name = p.name || p.id;
-        opts.push({ id: name, name });
-      });
-    }
-
-    // include any project names from totalItem that may not be in project list
-    (totalItem || []).forEach(it => {
-      const exists = opts.find(o => o.id === it.project_id);
-      if (!exists) opts.push({ id: it.project_id, name: it.project_id });
-    });
-
-    return opts;
-  }, [project, totalItem]);
-
-  // filtered items based on selectedProject; empty string => no filter
-  const filteredItems = React.useMemo(() => {
-    if (!selectedProject) return totalItem || [];
-    return (totalItem || []).filter(
-      it => it.project_id === selectedProject || (it.project_id === 'Studio Project' && selectedProject === 'Studio Project')
-    );
-  }, [selectedProject, totalItem]);
-
   const handleExport = () => {
     downloadExcel({
       fileName: 'My_Report',
       sheet: 'Employees Hours',
       tablePayload: {
         header: ['Date', 'Task Name', 'Project Name', 'Hours'],
-        body: filteredItems.map(item => [item.date, item.task_id, item.project_id, item.hours]),
+        body: totalItem.map(item => [item.date, item.task_id, item.project_id, item.hours]),
       },
     });
   };
@@ -206,56 +174,8 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
   return (
     <Card className={cn('border-gray-200 bg-white')}>
       <CardHeader className="space-y-1">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-base font-semibold text-gray-900">Tracking Breakdown</CardTitle>
-            <CardDescription className="text-gray-600">Breakdown of current month</CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  {selectedProject || 'All projects'} <ChevronsUpDown className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[260px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search projects..." />
-                  <CommandList>
-                    <CommandEmpty>
-                      <p className="py-2 px-4 text-sm">No project found.</p>
-                    </CommandEmpty>
-                    <CommandItem
-                      value=""
-                      onSelect={() => {
-                        setSelectedProject('');
-                      }}
-                    >
-                      <Check className={`mr-2 h-4 w-4 ${selectedProject === '' ? 'opacity-100' : 'opacity-0'}`} />
-                      All projects
-                    </CommandItem>
-                    {projectOptions.map(opt => (
-                      <CommandItem
-                        key={opt.id}
-                        value={opt.id}
-                        onSelect={() => {
-                          setSelectedProject(opt.id);
-                        }}
-                        className="cursor-pointer"
-                      >
-                        <Check className={`mr-2 h-4 w-4 ${selectedProject === opt.id ? 'opacity-100' : 'opacity-0'}`} />
-                        {opt.name}
-                      </CommandItem>
-                    ))}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            <Button size="sm" onClick={handleExport}>
-              <Download className="mr-2 h-4 w-4" /> Export
-            </Button>
-          </div>
-        </div>
+        <CardTitle className="text-base font-semibold text-gray-900">Tracking Breakdown</CardTitle>
+        <CardDescription className="text-gray-600">Breakdown of current month</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         {' '}
@@ -282,11 +202,17 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
                       ))}
                     </tr>
                   ))
-                : filteredItems?.map((item: any, index: number) => (
-                    <tr key={`${item.date}-${index}`} className="border-b cursor-pointer border-gray-100 hover:bg-gray-50">
+                : totalItem?.map((item, index) => (
+                    <tr key={item.name} className="border-b cursor-pointer border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 tabular-nums text-gray-900 text-left">{item?.date}</td>
-                      <td className="px-6 py-4  whitespace-nowrap capitalize text-sm text-center text-gray-700">{item.task_id}</td>
-                      <td className="px-4 py-3 tabular-nums text-gray-900 text-center">{item.project_id}</td>
+                      <td className="px-6 py-4  whitespace-nowrap capitalize text-sm text-center text-gray-700">
+                        {/* {data?.data?.find(task => task.id == item.task_id)?.name || 'Unknown Task'} */}
+                        {item.task_id}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-gray-900 text-center">
+                        {/* {project?.find(task => task.id == item.project_id)?.name || 'Unknown Project'} */}
+                        {item.project_id}
+                      </td>
                       <td className="px-6 py-4 text-center whitespace-nowrap text-sm text-gray-700">{item.hours}hrs</td>
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">0</td>
                     </tr>
