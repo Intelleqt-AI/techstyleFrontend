@@ -33,7 +33,6 @@ const ReportSingleMember = () => {
   });
 
   function getFormattedTimeForMonth(tasks, monthParam) {
-    console.log(tasks);
     const now = new Date();
 
     let year = now.getFullYear();
