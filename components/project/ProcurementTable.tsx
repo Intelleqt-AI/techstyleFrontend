@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { updateProductProcurement } from '@/supabase/API';
+import { getPurchaseOrder, updateProductProcurement } from '@/supabase/API';
 import { debounce } from 'lodash';
 import { Checkbox } from '../ui/checkbox';
 import { TableCell, TableRow } from '../ui/table';
@@ -74,6 +74,11 @@ const ProcurementTable = ({
   const [clientApprove, setClientApprove] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; roomId: string; name: string }>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
 
   function editProduct(item, roomID) {
     setEditItem(item);
@@ -179,6 +184,12 @@ const ProcurementTable = ({
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
+  const handleAddPo = (item, po) => {
+    const updatedPO = [...(item?.PO || []), { poID: po.poID, poNumber: po.poNumber }];
+    const { matchedProduct, ...updatedProduct } = { ...item, PO: updatedPO };
+    mutation.mutate({ product: updatedProduct, projectID, roomID });
+  };
+
   const handleChangeSample = (item, status) => {
     const { matchedProduct, ...updatedProduct } = { ...item, sample: status };
     setEditItem(prev => ({
@@ -252,6 +263,8 @@ const ProcurementTable = ({
     const { matchedProduct, ...updatedProduct } = { ...item, leadTime: date };
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
+
+  console.log(groupedItems);
 
   return (
     <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
@@ -418,13 +431,13 @@ const ProcurementTable = ({
                           {item?.matchedProduct?.dimensions}
                         </td>
                         <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
-                          {item?.PO?.slice(0, 2).map(po => {
-                            return (
-                              <Link className="hover:underline" href={'#'}>
-                                {po?.poNumber} <br />{' '}
-                              </Link>
-                            );
-                          })}
+                          {item?.PO?.slice(-2).map((po, index) => (
+                            <Link key={po?.poID || index} className="hover:underline" href="#">
+                              {po?.poNumber}
+                              <br />
+                            </Link>
+                          ))}
+
                           {!item?.PO && 'None'}
                         </td>
                         <td className={`px-4 py-3 text-neutral-700 whitespace-nowrap truncate `} title={item.sample}>
@@ -714,6 +727,27 @@ const ProcurementTable = ({
                           {statusValues.map(item => (
                             <SelectItem key={item} value={item}>
                               {item}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* PO */}
+                <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
+                  <div className="text-xs font-medium text-neutral-500">{'PO'}</div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-900">
+                    <Select onValueChange={value => handleAddPo(editItem, value)}>
+                      <SelectTrigger className="bg-transparent  text-left focus:ring-0 focus:ring-offset-0 pl-0 text-xs py-1 font-medium w-full border-0 focus:border-0 focus-visible:outline-0">
+                        <SelectValue placeholder={'Select PO'} />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white z-[99] h-[320px]">
+                        <div className="overflow-y-auto h-full">
+                          {data?.data?.map(item => (
+                            <SelectItem key={item} value={item}>
+                              {item?.poNumber}
                             </SelectItem>
                           ))}
                         </div>
