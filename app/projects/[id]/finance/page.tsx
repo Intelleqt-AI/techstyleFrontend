@@ -521,7 +521,11 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             {project?.currency?.symbol ? project?.currency?.symbol : '£'}
                             {(
                               po?.products?.reduce((total, product) => {
-                                return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                                return (
+                                  total +
+                                  parseFloat(product?.amount ? product?.amount?.replace(/[^0-9.-]+/g, '') : 0) *
+                                    (product.QTY && product.QTY > 0 ? product.QTY : 1)
+                                );
                               }, 0) || 0
                             ).toLocaleString('en-GB', {
                               minimumFractionDigits: 2,
