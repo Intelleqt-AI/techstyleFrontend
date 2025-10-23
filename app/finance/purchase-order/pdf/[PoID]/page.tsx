@@ -40,7 +40,7 @@ const PurchaseOrder = ({ params }) => {
 
     const subTotalNum =
       products.reduce((total, product) => {
-        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
+        const amount = product?.amount ? parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) : 0;
         return total + amount * product.QTY;
       }, 0) || 0;
 
@@ -145,17 +145,17 @@ const PurchaseOrder = ({ params }) => {
               <div className="w-1/12 text-center">{item.QTY}</div>
               <div className="w-2/12 text-right">
                 {purchaseOrder?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {parseFloat(item.amount.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
+                {/* {parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })}
+                })} */}
               </div>
               <div className="w-2/12 text-right">
                 {purchaseOrder?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {(item.QTY * parseFloat(item.amount.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
+                {/* {(item.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
-                })}
+                })} */}
               </div>
             </div>
           ))}
