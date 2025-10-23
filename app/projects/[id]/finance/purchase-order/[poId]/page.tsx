@@ -122,7 +122,7 @@ export default function NewPurchaseOrderForm({ params }) {
 
   const subTotalNum =
     defaultValue?.products?.reduce((total, product) => {
-      const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
+      const amount = product?.amount ? parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) : 0;
       return total + amount * product.QTY || 1;
     }, 0) || 0;
 
@@ -474,7 +474,9 @@ export default function NewPurchaseOrderForm({ params }) {
                         className="bg-white border rounded-lg text-[15px] font-medium text-[#091E42] w-full p-2"
                         id="amount"
                         name="amount"
-                        value={`${currency?.symbol || '£'}${parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString()}`}
+                        value={`${currency?.symbol || '£'}${
+                          item?.amount ? parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString() : 0
+                        }`}
                         onChange={e => updateInfo(e, item.itemID)}
                       />
                     </td>
