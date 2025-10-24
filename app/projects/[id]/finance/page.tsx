@@ -228,8 +228,8 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   purchaseOrder.forEach(item => {
     const temp =
       item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
-        return total + amount * product.QTY;
+        const amount = parseFloat(product?.amount ? product?.amount?.replace(/[^0-9.-]+/g, '') : 0);
+        return total + amount * (product.QTY && product.QTY > 0 ? product.QTY : 1);
       }, 0) || 0;
 
     totalPurchaseOrder += temp;
