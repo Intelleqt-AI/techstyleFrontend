@@ -23,6 +23,7 @@ import {
   getInvoices,
   getPurchaseOrder,
   updateInvoice,
+  updatePurchaseOrder,
 } from '@/supabase/API';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -139,6 +140,17 @@ export default function FinancePage() {
     mutationFn: updateInvoice,
     onSuccess: () => {
       InvoiceRefetch();
+    },
+    onError: () => {
+      toast('Error! Try again');
+    },
+  });
+
+  // update PO
+  const mutationPO = useMutation({
+    mutationFn: updatePurchaseOrder,
+    onSuccess: () => {
+      refetch();
     },
     onError: () => {
       toast('Error! Try again');
@@ -574,6 +586,15 @@ export default function FinancePage() {
     }
   };
 
+  const handleOpenPO = id => {
+    window.open(`/finance/purchase-order/pdf/${id}`, '_blank', 'noopener,noreferrer');
+    mutationPO.mutate({ order: { id, isDownloaded: true } });
+  };
+
+  const handleOpenInvoice = id => {
+    window.open(`/finance/invoices/pdf/${id}`, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -770,9 +791,14 @@ export default function FinancePage() {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/purchase-order/pdf/${po.id}`}>
+                                <button
+                                  onClick={() => {
+                                    handleOpenPO(po.id);
+                                  }}
+                                  className="w-full text-left"
+                                >
                                   Download PDF
-                                </Link>
+                                </button>
                               </DropdownMenuItem>
                               <DropdownMenuItem>Send Email</DropdownMenuItem>
                               <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
@@ -883,9 +909,14 @@ export default function FinancePage() {
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/invoices/pdf/${inv.id}`}>
+                                <button
+                                  onClick={() => {
+                                    handleOpenInvoice(inv.id);
+                                  }}
+                                  className="w-full text-left"
+                                >
                                   Download PDF
-                                </Link>
+                                </button>
                               </DropdownMenuItem>
                               <DropdownMenuItem>Send Email</DropdownMenuItem>
                               <DropdownMenuItem>Mark as Paid</DropdownMenuItem>

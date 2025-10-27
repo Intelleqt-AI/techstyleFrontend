@@ -18,6 +18,20 @@ const Invoice = ({ params }) => {
     queryFn: getInvoices,
   });
 
+  // useEffect(() => {
+  //   if (!InvoiceLoading && InvoiceData?.data) {
+  //     const filteredData = InvoiceData.data.filter((item: any) => item.id == id);
+  //     setPurchaseOrder(filteredData);
+
+  //     if (filteredData[0]?.inNumber) {
+  //       document.title = `${filteredData[0]?.inNumber}`;
+  //     }
+  //     setTimeout(() => {
+  //       window.print();
+  //     }, 900);
+  //   }
+  // }, [InvoiceData, InvoiceLoading, id]);
+
   useEffect(() => {
     if (!InvoiceLoading && InvoiceData?.data) {
       const filteredData = InvoiceData.data.filter((item: any) => item.id == id);
@@ -26,10 +40,44 @@ const Invoice = ({ params }) => {
       if (filteredData[0]?.inNumber) {
         document.title = `${filteredData[0]?.inNumber}`;
       }
-      setTimeout(() => {
-        window.print();
-      }, 900);
     }
+    const closeWindow = () => {
+      // Works if the page was opened with window.open()
+      if (window.opener) {
+        window.close();
+      } else {
+        // Fallback: navigate away if direct open
+        window.close();
+      }
+    };
+
+    // Fire print dialog when page is ready
+    const printTimer = setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print failed:', err);
+        closeWindow();
+      }
+    }, 500);
+
+    // Close after printing or canceling
+    const handleAfterPrint = () => {
+      closeWindow();
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Safari doesn’t always trigger afterprint, so use fallback
+    const fallbackClose = setTimeout(() => {
+      closeWindow();
+    }, 15000); // close after 15s no matter what
+
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      clearTimeout(printTimer);
+      clearTimeout(fallbackClose);
+    };
   }, [InvoiceData, InvoiceLoading, id]);
 
   // Calculate totals
