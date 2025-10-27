@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CircleArrowDown, Loader, Truck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import logo from '/public/studio.jpeg';
 import placeHolder from '/public/product-placeholder-wp.jpg';
 import { getPurchaseOrder } from '@/supabase/API';
@@ -27,14 +28,48 @@ const PurchaseOrder = ({ params }) => {
     const po = data?.data.find(item => item.id == id);
     setPurchaseOrder(po);
     if (po?.poNumber) {
-      document.title = `${po.poNumber}`;
+      document.title = `${po?.supplier?.company} - ${po.poNumber}`;
     }
-    setTimeout(() => {
-      window.print();
-    }, 1000);
+
+    const closeWindow = () => {
+      // Works if the page was opened with window.open()
+      if (window.opener) {
+        window.close();
+      } else {
+        // Fallback: navigate away if direct open
+        window.close();
+      }
+    };
+
+    // Fire print dialog when page is ready
+    const printTimer = setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print failed:', err);
+        closeWindow();
+      }
+    }, 500);
+
+    // Close after printing or canceling
+    const handleAfterPrint = () => {
+      closeWindow();
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Safari doesn’t always trigger afterprint, so use fallback
+    const fallbackClose = setTimeout(() => {
+      closeWindow();
+    }, 15000); // close after 15s no matter what
+
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      clearTimeout(printTimer);
+      clearTimeout(fallbackClose);
+    };
   }, [loadingPO, data?.data, id]);
 
-  // Calculate totals
   const calculateTotals = () => {
     const products = purchaseOrder?.products || [];
 
