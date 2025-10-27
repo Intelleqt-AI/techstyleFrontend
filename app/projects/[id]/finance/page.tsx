@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/chip';
-import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
+import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal, CircleCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
-import { addNewChat, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
+import { addNewChat, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder, updatePurchaseOrder } from '@/supabase/API';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
@@ -62,10 +62,26 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     queryFn: fetchInvoices,
   });
 
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
+
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: [`project ${id}`],
     queryFn: () => fetchOnlyProject({ projectID: id }),
     enabled: !!id,
+  });
+
+  // update PO
+  const mutation = useMutation({
+    mutationFn: updatePurchaseOrder,
+    onSuccess: () => {
+      refetch();
+    },
+    onError: () => {
+      toast('Error! Try again');
+    },
   });
 
   useEffect(() => {
@@ -81,11 +97,6 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
 
     setMyXeroInvoice(filteredInvoices);
   }, [clientData, project, xeroInvoices, clientLoading, projectLoading, XeroLoading]);
-
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['pruchaseOrder'],
-    queryFn: getPurchaseOrder,
-  });
 
   const {
     data: InvoiceData,
@@ -374,6 +385,15 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     }
   };
 
+  const handleOpenPO = id => {
+    window.open(`/finance/purchase-order/pdf/${id}`, '_blank', 'noopener,noreferrer');
+    mutation.mutate({ order: { id, isDownloaded: true } });
+  };
+
+  const handleOpenInvoice = id => {
+    window.open(`/finance/invoices/pdf/${id}`, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -503,8 +523,9 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             />
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            <Link className="hover:underline" href={`${pathname}/purchase-order/${po.id}`}>
-                              {po.poNumber}
+                            <Link className="hover:underline flex items-center gap-2" href={`${pathname}/purchase-order/${po.id}`}>
+                              <span> {po.poNumber}</span>
+                              {po?.isDownloaded && <CircleCheck size={15} color="green" />}
                             </Link>
                           </td>
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
@@ -554,9 +575,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/purchase-order/pdf/${po.id}`}>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenPO(po.id);
+                                    }}
+                                    className="w-full text-left"
+                                  >
                                     Download PDF
-                                  </Link>
+                                  </button>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>Send Email</DropdownMenuItem>
                                 <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
@@ -632,9 +658,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/invoices/pdf/${inv.id}`}>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenInvoice(inv.id);
+                                    }}
+                                    className="w-full text-left"
+                                  >
                                     Download PDF
-                                  </Link>
+                                  </button>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSendToClient(inv)}>Send As Thread</DropdownMenuItem>
                                 {/* <DropdownMenuItem>Mark as Paid</DropdownMenuItem> */}
