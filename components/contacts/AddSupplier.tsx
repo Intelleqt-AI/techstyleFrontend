@@ -1,33 +1,27 @@
-import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
-import { addNewContact } from "@/supabase/API";
-import { toast } from "sonner";
-import React, { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import CustomDropdown from "./CustomDropdown";
-import { Textarea } from "../ui/textarea";
+import { Button } from '@/components/ui/button';
+import { useMutation } from '@tanstack/react-query';
+import { addNewContact } from '@/supabase/API';
+import { toast } from 'sonner';
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import CustomDropdown from './CustomDropdown';
+import { Textarea } from '../ui/textarea';
 
 const initialValue = {
-  name: "",
-  company: "",
-  email: "",
-  type: "Supplier",
-  connection: "",
-  find: "",
+  name: '',
+  company: '',
+  email: '',
+  type: 'Supplier',
+  connection: '',
+  find: '',
   budget: 0,
-  project: "",
-  status: "",
-  phone: "",
-  surname: "",
-  address: "",
+  project: '',
+  status: '',
+  phone: '',
+  surname: '',
+  address: '',
 };
 
 const AddSupplier = ({ refetchSupplier }) => {
@@ -37,38 +31,31 @@ const AddSupplier = ({ refetchSupplier }) => {
   const mutation = useMutation({
     mutationFn: addNewContact,
     onSuccess: () => {
-      toast("Supplier Added!");
+      toast('Supplier Added!');
       refetchSupplier();
       setOpen(false);
     },
     onError: () => {
-      toast("Error! Try again");
+      toast('Error! Try again');
     },
   });
 
-  const updateTask = React.useCallback(
-    (
-      e:
-        | React.ChangeEvent<HTMLInputElement>
-        | { target: { name: string; value: string } }
-    ) => {
-      const { name, value } = e.target;
-      setDefaultValue((prevTask) => ({
-        ...prevTask,
-        [name]: value,
-      }));
-    },
-    []
-  );
+  const updateTask = React.useCallback((e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: string } }) => {
+    const { name, value } = e.target;
+    setDefaultValue(prevTask => ({
+      ...prevTask,
+      [name]: value,
+    }));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (defaultValue.name.length < 2) {
-      toast.error("First Name Required");
+      toast.error('First Name Required');
       return;
     }
     if (defaultValue.company.length < 1) {
-      toast.error("Company Required");
+      toast.error('Company Required');
       return;
     }
     mutation.mutate(defaultValue);
@@ -77,11 +64,9 @@ const AddSupplier = ({ refetchSupplier }) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <button className="text-sm w-full  border-t px-2 py-2 text-center">
-          Add Supplier
-        </button>
+        <button className="text-sm w-full  border-t px-2 py-2 text-center">Add Supplier</button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[625px]">
+      <DialogContent className="sm:max-w-[625px] z-[999]">
         <DialogHeader>
           <DialogTitle>Add Supplier</DialogTitle>
         </DialogHeader>
@@ -142,10 +127,10 @@ const AddSupplier = ({ refetchSupplier }) => {
               <Label htmlFor="status">Status</Label>
               <CustomDropdown
                 value={defaultValue.status}
-                onChange={(value) => {
+                onChange={value => {
                   updateTask({
                     target: {
-                      name: "status",
+                      name: 'status',
                       value: value,
                     },
                   });
