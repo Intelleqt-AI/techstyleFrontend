@@ -409,6 +409,7 @@ const AddProductModal = ({ closeModal, modalOpen }) => {
                           ))}
                       </CommandList>
                     </Command>
+
                     <AddSupplier refetchSupplier={refetchSupplier} />
                   </PopoverContent>
                 </Popover>
