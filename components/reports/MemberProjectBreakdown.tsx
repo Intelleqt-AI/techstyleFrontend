@@ -61,8 +61,31 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     return totalHours;
   }
 
+  function getFormattedTimeForAllTime(tasks: any[]) {
+    if (!tasks) return;
+
+    const totalMs = (tasks as any[])?.reduce((total: number, task: any) => {
+      if (!Array.isArray(task.session)) return total;
+
+      const sessionTime = (task.session as any[])?.reduce((sum: number, session: any) => {
+        if (typeof session.totalTime === 'number') {
+          return sum + session.totalTime;
+        }
+        return sum;
+      }, 0);
+
+      return total + sessionTime;
+    }, 0);
+
+    const totalMinutes = totalMs / (1000 * 60);
+    const totalHours = totalMinutes / 60;
+
+    return totalHours;
+  }
+
   function getTrackingByUser(email: string) {
-    const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
+    // const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
+    const filterByEmail = trackingData;
     return filterByEmail;
   }
 
@@ -128,22 +151,22 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
     const result: any[] = [];
 
     // Studio Management tracking
-    const studioTask = (userTracking as any[])?.filter((track: any) => track?.task == null) || [];
-    const totalStudioWorkTime = getFormattedTimeForCurrentMonth(studioTask);
+    // const studioTask = (userTracking as any[])?.filter((track: any) => track?.task == null) || [];
+    // const totalStudioWorkTime = getFormattedTimeForCurrentMonth(studioTask);
 
-    if (totalStudioWorkTime) {
-      result.push({
-        projectID: null,
-        projectName: 'Studio Management',
-        totalTime: totalStudioWorkTime,
-      });
-    }
+    // if (totalStudioWorkTime) {
+    //   result.push({
+    //     projectID: null,
+    //     projectName: 'Studio Management',
+    //     totalTime: totalStudioWorkTime,
+    //   });
+    // }
 
     (projects as any[]).forEach((project: any) => {
       // const isAssigned = project.assigned?.some(assignee => assignee.email === userEmail);
       if (true) {
         const projectTracking = (userTracking as any[])?.filter((track: any) => track?.task?.projectID === project.id) || [];
-        const totalTime = getFormattedTimeForCurrentMonth(projectTracking);
+        const totalTime = getFormattedTimeForAllTime(projectTracking);
         if (totalTime) {
           result.push({
             projectID: project.id,
@@ -156,6 +179,20 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
 
     return result;
   }
+
+  function logSpecificProjectTotalTime(user: any, projects: any) {
+    const allProjects = getUserProjectsWithTime(user, projects);
+    console.log('allProjects', allProjects);
+    const targetProject = allProjects.find(p => p.projectID === 'fbf5f7d0-7dbc-11f0-95e8-a1a6b244414d');
+
+    if (targetProject) {
+      console.log(`Total time for project "${targetProject.projectName}" (${targetProject.projectID}):`, targetProject.totalTime);
+    } else {
+      console.log('Project not found or no time recorded for this project.');
+    }
+  }
+
+  logSpecificProjectTotalTime(user, project);
 
   useEffect(() => {
     if (trackingLoading || !trackingData || isLoading) return;
