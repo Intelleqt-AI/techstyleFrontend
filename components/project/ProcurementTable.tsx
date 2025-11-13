@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronsUpDown, ExternalLink, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsUpDown, ExternalLink, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -33,6 +33,81 @@ import { Calendar } from '../ui/calendar';
 import dayjs from 'dayjs';
 import { DeleteDialog } from '../DeleteDialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+
+function SamplePill({ status, onChange }) {
+  // Default to "None" if status is null, undefined, or empty string
+  const currentStatus = status ?? 'None';
+
+  const labels = {
+    None: 'Not required',
+    Requested: 'Requested',
+    Received: 'Received',
+    Submitted: 'Sent',
+  };
+
+  const colors = {
+    None: 'bg-greige-100 text-taupe-700 border-greige-500',
+    Requested: 'bg-ochre-300/30 text-ochre-700 border-ochre-700/30',
+    Submitted: 'bg-slatex-500/10 text-slatex-700 border-slatex-500/20',
+    Received: 'bg-sage-300/50 text-olive-700 border-olive-700/20',
+  };
+
+  if (onChange) {
+    return (
+      <Select value={currentStatus} onValueChange={onChange}>
+        <SelectTrigger className={cn('h-6 text-xs font-medium border whitespace-nowrap w-auto', colors[currentStatus])}>
+          <SelectValue>{labels[currentStatus]}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="None">Not required</SelectItem>
+          <SelectItem value="Requested">Requested</SelectItem>
+          <SelectItem value="Submitted">Sent</SelectItem>
+          <SelectItem value="Received">Received</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <span
+      className={cn('inline-flex items-center rounded-md border h-6 px-2 text-xs font-medium whitespace-nowrap', colors[currentStatus])}
+    >
+      {labels[currentStatus]}
+    </span>
+  );
+}
+
+function ApprovalPill({ status, onChange }) {
+  const labels = { 'not-needed': 'Not needed', pending: 'Pending', approved: 'Approved', rejected: 'Changes requested' };
+  const colors = {
+    'not-needed': 'bg-greige-100 text-taupe-700 border-greige-500',
+    pending: 'bg-ochre-300/30 text-ochre-700 border-ochre-700/30',
+    approved: 'bg-sage-300/50 text-olive-700 border-olive-700/20',
+    rejected: 'bg-terracotta-600/10 text-terracotta-600 border-terracotta-600/30',
+  };
+
+  if (onChange) {
+    return (
+      <Select value={status} onValueChange={onChange}>
+        <SelectTrigger className={cn('h-6 text-xs font-medium border whitespace-nowrap w-auto', colors[status])}>
+          <SelectValue>{labels[status]}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="not-needed">Not needed</SelectItem>
+          <SelectItem value="pending">Pending</SelectItem>
+          <SelectItem value="approved">Approved</SelectItem>
+          <SelectItem value="rejected">Changes requested</SelectItem>
+        </SelectContent>
+      </Select>
+    );
+  }
+
+  return (
+    <span className={cn('inline-flex items-center rounded-md border h-6 px-2 text-xs font-medium whitespace-nowrap', colors[status])}>
+      {labels[status]}
+    </span>
+  );
+}
 
 function ApprovalBadge({ status }) {
   const label = status === 'approved' ? 'Approved' : status === 'pending' ? 'Pending' : 'Rejected';
@@ -75,6 +150,7 @@ const ProcurementTable = ({
   const [clientApprove, setClientApprove] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; roomId: string; name: string }>(null);
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set(['Living Room', 'Dining Room', 'Bedroom', 'Bathroom']));
 
   const { data, isLoading } = useQuery({
     queryKey: ['pruchaseOrder'],
@@ -176,13 +252,14 @@ const ProcurementTable = ({
     'Delivered',
   ];
 
-  const handleChangeStatus = (item, status) => {
-    const { matchedProduct, ...updatedProduct } = { ...item, initialStatus: status };
+  const handleChangeStatus = (item, status, roomid) => {
+    const currentRoomID = roomid || roomID;
+    const { matchedProduct, ...updatedProduct } = { ...item, status: status };
     setEditItem(prev => ({
       ...prev,
-      initialStatus: status,
+      status: status,
     }));
-    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
   };
 
   const handleAddPo = (item, po) => {
@@ -191,26 +268,29 @@ const ProcurementTable = ({
     mutation.mutate({ product: updatedProduct, projectID, roomID });
   };
 
-  const handleChangeSample = (item, status) => {
+  const handleChangeSample = (item, status, roomid) => {
+    const currentRoomID = roomid || roomID;
     const { matchedProduct, ...updatedProduct } = { ...item, sample: status };
     setEditItem(prev => ({
       ...prev,
       sample: status,
     }));
-    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
   };
 
-  const debouncedHandleQtyChange = debounce((item, value) => {
-    handleQtyChange(item, value, roomID);
+  const debouncedHandleQtyChange = debounce((item, value, roomid) => {
+    console.log(item, value, roomid);
+    const currentRoomID = roomid || roomID;
+    handleQtyChange(item, value, currentRoomID);
   }, 700);
 
-  const handleQtyChange = (item, qty) => {
+  const handleQtyChange = (item, qty, roomid) => {
     if (qty < 1 || Number.isNaN(qty)) {
       toast('Enter valid Qty');
       return;
     }
     const { matchedProduct, ...updatedProduct } = { ...item, qty: qty };
-    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: roomid });
   };
 
   const handleDueDateChange = (item, date) => {
@@ -265,271 +345,377 @@ const ProcurementTable = ({
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
   };
 
-  console.log(groupedItems);
+  const toggleRoom = (room: string) => {
+    setExpandedRooms(prev => {
+      const next = new Set(prev);
+      if (next.has(room)) next.delete(room);
+      else next.add(room);
+      return next;
+    });
+  };
+
+  // Total price of a room
+  function getTotalPrice(room) {
+    console.log(room);
+    if (!room?.product?.length) return '0.00';
+
+    const total = room.product.reduce((sum, item) => {
+      const mp = item.matchedProduct || {};
+      let priceStr = mp.priceMember && mp.priceMember !== '0' && mp.priceMember.trim() !== '' ? mp.priceMember : mp.priceRegular;
+
+      if (!priceStr) return sum;
+      const price = parseFloat(priceStr.replace(/[R\s,]/g, '')) || 0;
+      const qty = item.qty && Number(item.qty) > 0 ? Number(item.qty) : 1;
+      return sum + price * qty;
+    }, 0);
+
+    // Format result
+    return total.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  // PO Cell
+
+  function POStatusDots({
+    poId,
+    poSentAt,
+    supplierPaidAt,
+  }: {
+    poId: string | null;
+    poSentAt: string | null;
+    supplierPaidAt: string | null;
+  }) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-neutral-600">
+        <div className="flex items-center gap-1" title="PO created">
+          <div
+            className={cn('w-3 h-3 rounded-full shrink-0 border-2', poId ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300')}
+          />
+          <span className="hidden xl:inline">Created</span>
+        </div>
+        <div className="flex items-center gap-1" title="PO sent to supplier">
+          <div
+            className={cn(
+              'w-3 h-3 rounded-full shrink-0 border-2',
+              poSentAt ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300'
+            )}
+          />
+          <span className="hidden xl:inline">Sent</span>
+        </div>
+        <div className="flex items-center gap-1" title="Supplier paid">
+          <div
+            className={cn(
+              'w-3 h-3 rounded-full shrink-0 border-2',
+              supplierPaidAt ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300'
+            )}
+          />
+          <span className="hidden xl:inline">Paid</span>
+        </div>
+      </div>
+    );
+  }
+
+  function POCell({ item }) {
+    console.log(item);
+    if (!item.PO?.length) {
+      return (
+        <div className="flex flex-col gap-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'h-8 px-2 text-sm whitespace-nowrap w-fit',
+              item?.matchedProduct?.supplier && item.status === 'approved'
+                ? 'text-primary hover:bg-primary/10'
+                : 'text-neutral-400 cursor-not-allowed'
+            )}
+            disabled={!item?.matchedProduct?.supplier || item.status !== 'approved'}
+            title={
+              !item?.matchedProduct?.supplier || item.status !== 'approved' ? 'Supplier must be set and approval must be Approved' : ''
+            }
+          >
+            Create PO
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-1.5">
+        <button className="text-sm text-primary hover:underline text-left whitespace-nowrap">{item?.PO[0]?.poNumber}</button>
+        <POStatusDots poId={item?.PO[0]?.poNumber} poSentAt={item?.PO[0]?.poSentAt} supplierPaidAt={item?.PO[0]?.supplierPaidAt} />
+      </div>
+    );
+  }
 
   return (
     <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed border-collapse">
-            <colgroup>
-              <col style={{ width: 50 }} />
-              <col style={{ width: 180 }} />
-              <col style={{ width: 150 }} />
-              <col style={{ width: 100 }} /> {/* PO # */}
-              <col style={{ width: 112 }} /> {/* Sample */}
-              <col style={{ width: 110 }} /> {/* Order Date */}
-              <col style={{ width: 110 }} /> {/* Lead Time */}
-              <col style={{ width: 60 }} /> {/* Qty */}
-              <col style={{ width: 110 }} /> {/* Price */}
-              <col style={{ width: 152 }} /> {/* Status */}
-              <col style={{ width: 90 }} /> {/* Approval */}
-              <col style={{ width: 100 }} /> {/* Actions */}
-            </colgroup>
-            <thead className="bg-neutral-50 border-b border-greige-500/30 sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700 w-10">
-                  {/* <input type="checkbox" className="rounded border-greige-500/30" aria-label="Select all items" /> */}
-                  <Checkbox onCheckedChange={checked => handleCheckAll({ target: { checked } })} />
-                </th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Item</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Dimensions</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">PO #</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Sample</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Order Date</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Lead Time</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Qty</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Price</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-neutral-700">Approval</th>
-                <th className="pl-4 pr-6 py-3 text-right text-sm font-medium text-neutral-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200 text-sm">
-              {loading &&
-                [1, 2, 3, 4, 5, 6, 7].map(item => {
-                  return (
-                    <TableRow>
-                      {/* Checkbox */}
-                      <TableCell>
-                        <Skeleton className="w-5 h-5 bg-gray-200 rounded border" />
-                      </TableCell>
+        {loading &&
+          [1, 2, 3, 4, 5, 6, 7].map(item => (
+            <TableRow key={item}>
+              <TableCell>
+                <Skeleton className="w-5 h-5 bg-gray-200 rounded border" />
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-4">
+                  <Skeleton className="w-12 bg-gray-200 h-12 rounded" />
+                  <div className="space-y-1">
+                    <Skeleton className="w-28 bg-gray-200 h-4" />
+                    <Skeleton className="w-20 bg-gray-200 h-3" />
+                  </div>
+                </div>
+              </TableCell>
+              <TableCell>
+                <Skeleton className="w-28 bg-gray-200 h-4" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="w-12 bg-gray-200 h-4" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="w-10 bg-gray-200 h-4" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="w-20 bg-gray-200 h-4" />
+              </TableCell>
+              <TableCell>
+                <Skeleton className="w-24 bg-gray-200 h-6 rounded" />
+              </TableCell>
+            </TableRow>
+          ))}
 
-                      {/* Product image and info */}
-                      <TableCell>
-                        <div className="flex items-center gap-4">
-                          <Skeleton className="w-12 bg-gray-200 h-12 rounded" />
-                          <div className="space-y-1">
-                            <Skeleton className="w-28 bg-gray-200 h-4" />
-                            <Skeleton className="w-20 bg-gray-200 h-3" />
-                          </div>
-                        </div>
-                      </TableCell>
+        {groupedItems?.type?.map(items => {
+          const subtotalCount = items?.product?.length || 0;
+          if (!subtotalCount) return null;
 
-                      {/* Dimensions */}
-                      <TableCell>
-                        <Skeleton className="w-28 bg-gray-200 h-4" />
-                      </TableCell>
+          const isExpanded = expandedRooms?.has(items.text);
+          const allSelected = items.product.every(item => checkedItems.find(check => check.id === item.id && check.roomID === items.id));
+          const totalPrice = getTotalPrice(items);
 
-                      {/* Delivery & Install Dates */}
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Skeleton className="w-2 bg-gray-2004 h-3" />
-                          <Skeleton className="w-24 bg-gray-200 h-3" />
-                        </div>
-                      </TableCell>
-
-                      {/* Quantity */}
-                      <TableCell>
-                        <Skeleton className="w-12 bg-gray-200 h-6" />
-                      </TableCell>
-
-                      {/* N/A */}
-                      <TableCell>
-                        <Skeleton className="w-10 bg-gray-200 h-4" />
-                      </TableCell>
-
-                      {/* Total */}
-                      <TableCell>
-                        <Skeleton className="w-20 bg-gray-200 h-4" />
-                      </TableCell>
-
-                      {/* Location dropdown */}
-                      <TableCell>
-                        <Skeleton className="w-24 bg-gray-200 h-6 rounded" />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-
-              {groupedItems?.type?.map((items, index) => (
-                <>
-                  {items?.product?.length > 0 && (
-                    <tr key={items.text}>
-                      <TableCell colSpan={5} className="font-medium capitalize pl-16   sticky left-0 bg-white  z-10  text-[16px] ">
-                        {items.text}
-                        <span className="text-[12px] ml-1 bg-gray-100 font-medium px-2 py-1 rounded-2xl">
-                          {items?.product?.length} items
-                        </span>
-                      </TableCell>
-                    </tr>
+          return (
+            <div key={items.text} className="border-b border-greige-500/30 last:border-b-0">
+              {/* Group header */}
+              <div className="bg-neutral-100 border-b border-greige-500/30">
+                <button
+                  onClick={() => toggleRoom(items.text)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-200 transition-colors"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4 text-neutral-600 shrink-0" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-neutral-600 shrink-0" />
                   )}
+                  <span className="font-semibold capitalize text-neutral-900">
+                    {items.text} — {subtotalCount} items • Subtotal {project?.currency?.symbol}
+                    {totalPrice}
+                  </span>
+                </button>
+              </div>
 
-                  {(clientApprove ? items?.product?.filter(item => item.status === 'approved') : items.product)?.map((item, index) => {
-                    return (
-                      <tr key={item.id} className="hover:bg-neutral-50">
-                        <td className="px-4 py-3">
-                          <Checkbox
-                            key={item?.id}
-                            value={item.id}
-                            checked={!!checkedItems.find(checkItem => checkItem.id == item.id && checkItem.roomID == items.id)}
-                            onCheckedChange={checked => handleChange({ target: { value: item, checked, room: items.id } })}
-                          />
-                        </td>
+              {/* Table body per group */}
+              {isExpanded && (
+                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent">
+                  <table className="w-full min-w-[1600px]">
+                    <thead className="bg-neutral-50 border-b border-greige-500/30">
+                      <tr>
+                        <th className="sticky left-0 z-10 bg-neutral-50 px-4 py-3 w-12">
+                          <Checkbox checked={allSelected} onCheckedChange={() => handleCheckAllGroup(items)} />
+                        </th>
+                        <th className="sticky left-12 z-10 bg-neutral-50 px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[280px]">
+                          Product
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Supplier</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[100px]">Sample</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Qty / Unit</th>
+                        <th className="px-4 py-3 text-right text-xs  font-medium text-neutral-700  min-w-[80px]">
+                          Unit {project?.currency?.symbol || '£'}
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 min-w-[110px]">
+                          Total {project?.currency?.symbol || '£'}
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[60px]">Approval</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[110px]">PO</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Billing</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Logistics</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
+                      </tr>
+                    </thead>
 
-                        {/* Item cell with thumbnail button to open sheet */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => openProduct(item.matchedProduct)}
-                              className="shrink-0 focus:outline-none focus:ring-2 focus:ring-clay-600 rounded-lg"
-                              aria-label={`View ${item.name}`}
-                              title={`View ${item.name}`}
-                            >
-                              {item?.matchedProduct?.imageURL?.length > 0 ? (
-                                <ProductImage
-                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
-                                  alt={item?.matchedProduct?.name || 'Product image'}
-                                  src={item?.matchedProduct?.imageURL?.[0]}
-                                />
-                              ) : item?.matchedProduct?.images.length > 0 ? (
-                                <ProductImage
-                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
-                                  alt={item?.name}
-                                  src={item?.matchedProduct?.images[0]}
-                                />
-                              ) : (
-                                <ProductImage
-                                  className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
-                                  alt={item?.name}
-                                  src={errorImage.src}
-                                />
-                              )}
-                            </button>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-neutral-900 whitespace-nowrap truncate" title={item?.matchedProduct?.name}>
-                                {item?.matchedProduct?.name}
+                    <tbody className="divide-y divide-neutral-200 text-sm">
+                      {(clientApprove ? items?.product?.filter(i => i.status === 'approved') : items.product)?.map(item => {
+                        const isChecked = !!checkedItems.find(check => check.id === item.id && check.roomID === items.id);
+
+                        return (
+                          <tr key={item.id} className={cn('hover:bg-neutral-50 transition-colors group', isChecked && 'bg-primary/5')}>
+                            {/* Checkbox */}
+                            <td className="sticky left-0 z-10 bg-white group-hover:bg-neutral-50 px-4 py-3">
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={checked => handleChange({ target: { value: item, checked, room: items.id } })}
+                              />
+                            </td>
+
+                            {/* Product */}
+                            <td className="sticky left-12 z-10 bg-white group-hover:bg-neutral-50 px-4 py-3">
+                              <div className="flex items-start gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => openProduct(item.matchedProduct)}
+                                  className="shrink-0 focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                                >
+                                  <ProductImage
+                                    className="w-12 h-12 rounded-lg object-cover border border-greige-500/30 bg-white"
+                                    alt={item?.matchedProduct?.name || 'Product image'}
+                                    src={item?.matchedProduct?.imageURL?.[0] || item?.matchedProduct?.images?.[0] || errorImage.src}
+                                  />
+                                </button>
+                                <div className="flex-1 min-w-0 pt-0.5">
+                                  <button
+                                    onClick={() => openProduct(item.matchedProduct)}
+                                    className="font-semibold text-sm text-neutral-900 hover:text-primary block truncate max-w-[180px]"
+                                    title={item?.matchedProduct?.name}
+                                  >
+                                    {item?.matchedProduct?.name}
+                                  </button>
+                                  <div className="text-xs text-neutral-600 mt-1 truncate">{item?.matchedProduct?.dimensions}</div>
+                                </div>
                               </div>
-                              <div className="text-xs text-neutral-600 whitespace-nowrap truncate" title={item?.matchedProduct?.supplier}>
-                                {item?.matchedProduct?.supplier}
+                            </td>
+
+                            {/* Dimensions */}
+                            <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item?.matchedProduct?.supplier}</td>
+
+                            {/* PO */}
+                            <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
+                              {/* {item?.PO?.slice(-2).map(po => (
+                                <Link key={po?.poID} className="hover:underline" href="#">
+                                  {po?.poNumber}
+                                  <br />
+                                </Link>
+                              )) || 'None'} */}
+
+                              <SamplePill status={item?.sample} onChange={status => handleChangeSample(item, status, items?.id)} />
+                            </td>
+
+                            {/* QTY */}
+                            <td className="px-4 py-3">
+                              {/* <span
+                                className={`${getStatusColor(
+                                  item?.sample
+                                )} inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium leading-none select-none`}
+                              >
+                                {item?.sample || 'None'}
+                              </span> */}
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  onChange={e => debouncedHandleQtyChange(item, e.target.value)}
+                                  type="number"
+                                  defaultValue={item.qty || 1}
+                                  className="h-9 w-16 text-sm px-2 tabular-nums"
+                                />
+                                <Select defaultValue={'ea'}>
+                                  <SelectTrigger className="h-9 w-16 text-sm px-2">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="ea">ea</SelectItem>
+                                    <SelectItem value="m">m</SelectItem>
+                                    <SelectItem value="m²">m²</SelectItem>
+                                    <SelectItem value="set">set</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
-                            </div>
-                          </div>
-                        </td>
+                            </td>
 
-                        <td className="px-4 py-3 text-neutral-700 w-32 whitespace-nowrap truncate" title={item?.matchedProduct?.dimensions}>
-                          {item?.matchedProduct?.dimensions}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
-                          {item?.PO?.slice(-2).map((po, index) => (
-                            <Link key={po?.poID || index} className="hover:underline" href="#">
-                              {po?.poNumber}
-                              <br />
-                            </Link>
-                          ))}
-
-                          {!item?.PO && 'None'}
-                        </td>
-                        <td className={`px-4 py-3 text-neutral-700 whitespace-nowrap truncate `} title={item.sample}>
-                          <span
-                            className={`${getStatusColor(
-                              item?.sample
-                            )} inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium leading-none select-none" `}
-                          >
-                            {' '}
-                            {item?.sample || 'None'}
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate" title={item?.delivery}>
-                          {item?.delivery ? format(new Date(item?.delivery), 'MMM dd, yyyy') : 'None'}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
-                          {item?.leadTime ? item.leadTime + ' Weeks' : 'None'}
-                        </td>
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">{item?.qty || 1}</td>
-                        <td className="px-4 py-3 font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate" title={item?.price}>
-                          <p>
-                            <span className=" ">
-                              {project?.currency?.symbol ? project?.currency?.symbol : '£'}
-
+                            {/* Order Date */}
+                            <td className="px-4 py-3 text-right text-neutral-700 whitespace-nowrap truncate">
+                              {/* {item?.delivery ? format(new Date(item?.delivery), 'MMM dd, yyyy') : 'None'} */}
+                              {project?.currency?.symbol || '£'}
                               {(() => {
                                 const memberPrice = parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, '') || '0');
                                 const regularPrice = parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, '') || '0');
-                                let priceToUse = memberPrice > 0 ? memberPrice : regularPrice;
-                                priceToUse = priceToUse * (item?.qty || 1);
-
-                                return priceToUse.toLocaleString('en-GB', {
-                                  maximumFractionDigits: 2,
-                                  minimumFractionDigits: 2,
-                                });
+                                const priceToUse = memberPrice > 0 ? memberPrice : regularPrice;
+                                return priceToUse.toLocaleString('en-GB', { minimumFractionDigits: 2 });
                               })()}
-                            </span>
-                          </p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge
-                            status={item.initialStatus}
-                            label={item.initialStatus.charAt(0).toUpperCase() + item.initialStatus.slice(1)}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <ApprovalBadge status={item?.status} />
-                        </td>
+                            </td>
 
-                        <td className="pl-4 pr-6 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                                aria-label={`Open actions for ${item.name}`}
-                              >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openProduct(item.matchedProduct)}>View details</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => editProduct(item, items.id)}>Update status</DropdownMenuItem>
-                              <DropdownMenuItem>Download PO</DropdownMenuItem>
-                              <DropdownMenuItem>Contact supplier</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setDeleteTarget({
-                                    id: item.id,
-                                    roomId: items.id,
-                                    name: item?.matchedProduct?.name,
-                                  });
-                                  setIsDeleteOpen(true);
-                                }}
-                                className="text-red-600"
-                              >
-                                Remove
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                            {/* Lead Time */}
+                            <td className="px-4 font-semibold py-3 text-right text-neutral-700 whitespace-nowrap truncate">
+                              {/* {item?.leadTime ? `${item.leadTime} Weeks` : 'None'} */}
+                              {project?.currency?.symbol || '£'}
+                              {(() => {
+                                const memberPrice = parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, '') || '0');
+                                const regularPrice = parseFloat(item?.matchedProduct?.priceRegular?.replace(/[^\d.]/g, '') || '0');
+                                const priceToUse = (memberPrice > 0 ? memberPrice : regularPrice) * (item?.qty || 1);
+                                return priceToUse.toLocaleString('en-GB', { minimumFractionDigits: 2 });
+                              })()}
+                            </td>
+
+                            {/* Qty */}
+                            <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
+                              <ApprovalPill status={item?.status} onChange={status => handleChangeStatus(item, status, items?.id)} />
+                            </td>
+
+                            {/* Price */}
+                            <td className="px-4 py-3 text-right font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate">
+                              <POCell item={item} />
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-3">
+                              {/* <StatusBadge
+                                status={item.initialStatus}
+                                label={item.initialStatus.charAt(0).toUpperCase() + item.initialStatus.slice(1)}
+                              /> */}
+                              -
+                            </td>
+
+                            {/* Approval */}
+                            <td className="px-4 py-3">{/* <ApprovalBadge status={item?.status} /> */}-</td>
+
+                            {/* Actions */}
+                            <td className="px-4 py-3 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => openProduct(item.matchedProduct)}>View details</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => editProduct(item, items.id)}>Update status</DropdownMenuItem>
+                                  <DropdownMenuItem>Download PO</DropdownMenuItem>
+                                  <DropdownMenuItem>Contact supplier</DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setDeleteTarget({
+                                        id: item.id,
+                                        roomId: items.id,
+                                        name: item?.matchedProduct?.name,
+                                      });
+                                      setIsDeleteOpen(true);
+                                    }}
+                                    className="text-red-600"
+                                  >
+                                    Remove
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </CardContent>
 
       {/* Product detail sheet */}
@@ -691,7 +877,7 @@ const ProcurementTable = ({
                       type="number"
                       defaultValue={editItem?.qty}
                       placeholder={editItem?.qty}
-                      onBlur={e => debouncedHandleQtyChange(editItem, e.target.value)}
+                      onChange={e => debouncedHandleQtyChange(editItem, e.target.value)}
                     />
                   </div>
                 </div>
@@ -738,24 +924,24 @@ const ProcurementTable = ({
 
                 {/* PO */}
                 {/* <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
-                  <div className="text-xs font-medium text-neutral-500">{'PO'}</div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-900">
-                    <Select onValueChange={value => handleAddPo(editItem, value)}>
-                      <SelectTrigger className="bg-transparent  text-left focus:ring-0 focus:ring-offset-0 pl-0 text-xs py-1 font-medium w-full border-0 focus:border-0 focus-visible:outline-0">
-                        <SelectValue placeholder={'Select PO'} />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white z-[99] h-[320px]">
-                        <div className="overflow-y-auto h-full">
-                          {data?.data?.map(item => (
-                            <SelectItem key={item} value={item}>
-                              {item?.poNumber}
-                            </SelectItem>
-                          ))}
+                        <div className="text-xs font-medium text-neutral-500">{'PO'}</div>
+                        <div className="mt-1 text-sm font-semibold text-neutral-900">
+                          <Select onValueChange={value => handleAddPo(editItem, value)}>
+                            <SelectTrigger className="bg-transparent  text-left focus:ring-0 focus:ring-offset-0 pl-0 text-xs py-1 font-medium w-full border-0 focus:border-0 focus-visible:outline-0">
+                              <SelectValue placeholder={'Select PO'} />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white z-[99] h-[320px]">
+                              <div className="overflow-y-auto h-full">
+                                {data?.data?.map(item => (
+                                  <SelectItem key={item} value={item}>
+                                    {item?.poNumber}
+                                  </SelectItem>
+                                ))}
+                              </div>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div> */}
+                      </div> */}
                 <div className={cn('rounded-lg border border-greige-500/30 bg-neutral-50 p-4')}>
                   <div className="text-xs font-medium text-neutral-500">{'PO'}</div>
                   <div className="mt-1 text-sm font-semibold text-neutral-900">

@@ -20,6 +20,9 @@ import {
   Loader2,
   MessageSquareMore,
   MessageSquareText,
+  ChevronDown,
+  Info,
+  X,
 } from 'lucide-react';
 import { ProductDetailSheet, type ProductDetails } from '@/components/product-detail-sheet';
 import useProjects from '@/supabase/hook/useProject';
@@ -47,6 +50,9 @@ import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui
 import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTrigger } from '@/components/ui/drawer';
 import { Switch } from '@/components/ui/switch';
 import ProcurementTable from '@/components/project/ProcurementTable';
+import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Table rows (future-dated)
 type ApprovalStatus = 'approved' | 'pending' | 'rejected';
@@ -102,6 +108,63 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   const [currentRoom, setCurrentRoom] = useState('All Rooms');
   const [filterType, setFilterType] = useState(null);
   const [mainOpen, setMainOpen] = useState(false);
+
+  const [showTip, setShowTip] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [needsActionActive, setNeedsActionActive] = useState(false);
+  const [roomFilter, setRoomFilter] = useState('all');
+  const [supplierFilter, setSupplierFilter] = useState('all');
+  const [approvalFilter, setApprovalFilter] = useState('all');
+  const [poStatusFilter, setPOStatusFilter] = useState('all');
+  const [billingFilter, setBillingFilter] = useState('all');
+  const [sampleFilter, setSampleFilter] = useState('all');
+  const [logisticsFilter, setLogisticsFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`procurement-filters-${params.id}`);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      setNeedsActionActive(parsed.needsAction || false);
+      setRoomFilter(parsed.room || 'all');
+      setSupplierFilter(parsed.supplier || 'all');
+      setApprovalFilter(parsed.approval || 'all');
+      setPOStatusFilter(parsed.poStatus || 'all');
+      setBillingFilter(parsed.billing || 'all');
+      setSampleFilter(parsed.sample || 'all');
+      setLogisticsFilter(parsed.logistics || 'all');
+      setDateFilter(parsed.date || 'all');
+    }
+  }, [params.id]);
+
+  // Save filters to localStorage on change
+  useEffect(() => {
+    const filters = {
+      needsAction: needsActionActive,
+      room: roomFilter,
+      supplier: supplierFilter,
+      approval: approvalFilter,
+      poStatus: poStatusFilter,
+      billing: billingFilter,
+      sample: sampleFilter,
+      logistics: logisticsFilter,
+      date: dateFilter,
+    };
+    localStorage.setItem(`procurement-filters-${params.id}`, JSON.stringify(filters));
+  }, [
+    params.id,
+    needsActionActive,
+    roomFilter,
+    supplierFilter,
+    approvalFilter,
+    poStatusFilter,
+    billingFilter,
+    sampleFilter,
+    logisticsFilter,
+    dateFilter,
+  ]);
+
+  // Old function
 
   useEffect(() => {
     if (!params?.id) return;
@@ -652,6 +715,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
       subtitle: 'Estimated cost',
       icon: DollarSign,
     },
+
     {
       title: 'Delivery Progress',
       value: `${Math.ceil(totalDeliveryCount / totalItemsCount / 100)}%`,
@@ -696,13 +760,78 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     }
   }, [project?.sendToClient, project?.type, projectID]);
 
-  //
+  const needsActionCount = useMemo(() => {
+    return 10;
+    const today = new Date();
+    return groupedItems?.filter(item => {
+      const condApproval = !item?.clientApproval || item.clientApproval === 'pending';
+      const condPO = !item.poId || !item.poSentAt;
+      const condInvoice = !item.invoiceId || (item.invoiceId && !item.clientPaidAt);
+      const etaDate = item.eta ? new Date(item.eta) : null;
+      const condLogistics = !item.orderedDate || (item.logisticsStatus === 'in-transit' && etaDate && etaDate < today);
 
-  ////
+      return condApproval || condPO || condInvoice || condLogistics;
+    }).length;
+  }, []);
 
-  //
+  const canCreatePO = useMemo(() => {
+    return false;
+    if (checkedItems.size === 0) return false;
+    const items = checkedItems.filter(item => checkedItems.has(item.id));
+    const suppliers = new Set(items.map(item => item.supplier));
+    const allApproved = items.every(item => item.clientApproval === 'approved');
+    return suppliers.size === 1 && allApproved && items.every(item => !item.poId);
+  }, [checkedItems]);
+
+  const canCreateInvoice = useMemo(() => {
+    return false;
+    if (checkedItems.size === 0) return false;
+    const items = groupedItems?.filter(item => checkedItems.has(item.id));
+    return items.every(item => !item.invoiceId);
+  }, [checkedItems]);
+
+  const canMarkSupplierPaid = useMemo(() => {
+    return false;
+    if (checkedItems.size === 0) return false;
+    const items = groupedItems.filter(item => checkedItems.has(item.id));
+    return items.every(item => item.poId && !item.supplierPaidAt);
+  }, [checkedItems]);
+
+  const canMarkClientPaid = useMemo(() => {
+    return false;
+    if (checkedItems.size === 0) return false;
+    const items = groupedItems.filter(item => checkedItems.has(item.id));
+    return items.every(item => item.invoiceId && !item.clientPaidAt);
+  }, [checkedItems]);
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      roomFilter !== 'all' ||
+      supplierFilter !== 'all' ||
+      approvalFilter !== 'all' ||
+      poStatusFilter !== 'all' ||
+      billingFilter !== 'all' ||
+      sampleFilter !== 'all' ||
+      logisticsFilter !== 'all' ||
+      dateFilter !== 'all'
+    );
+  }, [roomFilter, supplierFilter, approvalFilter, poStatusFilter, billingFilter, sampleFilter, logisticsFilter, dateFilter]);
+
+  function resetFilters() {
+    setRoomFilter('all');
+    setSupplierFilter('all');
+    setApprovalFilter('all');
+    setPOStatusFilter('all');
+    setBillingFilter('all');
+    setSampleFilter('all');
+    setLogisticsFilter('all');
+    setDateFilter('all');
+  }
+
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ProductDetails | undefined>(undefined);
+
+  console.log(project);
 
   return (
     <div className="flex-1 bg-neutral-50 p-6">
@@ -740,7 +869,46 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               />
             </div>
 
-            <Popover open={mainOpen} onOpenChange={setMainOpen}>
+            <Button
+              variant={needsActionActive ? 'default' : 'outline'}
+              size="sm"
+              className={cn('h-9', needsActionActive ? 'bg-neutral-600 text-white hover:bg-neutral-700' : 'bg-white border-greige-500/30')}
+              onClick={() => setNeedsActionActive(!needsActionActive)}
+            >
+              Needs action
+              {needsActionCount > 0 && (
+                <span
+                  className={cn(
+                    'ml-1.5 px-1.5 py-0.5 text-xs font-semibold rounded',
+                    needsActionActive ? 'bg-white text-neutral-900' : 'bg-neutral-100 text-neutral-700'
+                  )}
+                >
+                  {needsActionCount}
+                </span>
+              )}
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 bg-white border-greige-500/30" disabled={checkedItems.size === 0}>
+                  Bulk actions
+                  {checkedItems.size > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-xs font-semibold rounded bg-neutral-100 text-neutral-700">
+                      {checkedItems.size}
+                    </span>
+                  )}
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem disabled={!canCreatePO}>Create PO</DropdownMenuItem>
+                <DropdownMenuItem disabled={!canCreateInvoice}>Create Invoice</DropdownMenuItem>
+                <DropdownMenuItem disabled={!canMarkSupplierPaid}>Mark Supplier Paid</DropdownMenuItem>
+                <DropdownMenuItem disabled={!canMarkClientPaid}>Mark Client Paid</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* <Popover open={mainOpen} onOpenChange={setMainOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 border-greige-500/30">
                   <Filter className="w-4 h-4 mr-2" />
@@ -804,11 +972,11 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                   </Command>
                 )}
               </PopoverContent>
-            </Popover>
+            </Popover> */}
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
+            {/* <Button
               onClick={handleClickPO}
               disabled={checkedItems.length === 0 || buttonLoadingPO}
               // variant="ghost"
@@ -825,7 +993,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                   Create PO
                 </>
               )}
-            </Button>
+            </Button> */}
 
             {/* Comment Drawer */}
             <Drawer direction="right">
@@ -924,6 +1092,163 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               <ExternalLink className="w-4 h-4 ml-2" />
             </Button> */}
           </div>
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={roomFilter} onValueChange={setRoomFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>{roomFilter === 'all' ? 'Room' : roomFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All rooms</SelectItem>
+                {project?.type?.map(room => (
+                  <SelectItem key={room?.text} value={room?.text}>
+                    {room?.text}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>{supplierFilter === 'all' ? 'Supplier' : supplierFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {!supplierLoading &&
+                  supplier?.data?.map(supplier => (
+                    <SelectItem key={supplier?.company} value={supplier?.company}>
+                      {supplier?.company}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>
+                  {approvalFilter === 'all' ? 'Approval' : approvalFilter === 'not-needed' ? 'Not needed' : approvalFilter}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="not-needed">Not needed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={poStatusFilter} onValueChange={setPOStatusFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>{poStatusFilter === 'all' ? 'PO' : poStatusFilter === 'ackd' ? "Ack'd" : poStatusFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="ackd">Ack'd</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="backorder">Backorder</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={billingFilter} onValueChange={setBillingFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>
+                  {billingFilter === 'all'
+                    ? 'Billing'
+                    : billingFilter === 'not-invoiced'
+                    ? 'Not invoiced'
+                    : billingFilter === 'part-invoiced'
+                    ? 'Part-invoiced'
+                    : billingFilter}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="not-invoiced">Not invoiced</SelectItem>
+                <SelectItem value="invoiced">Invoiced</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="part-invoiced">Part-invoiced</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={sampleFilter} onValueChange={setSampleFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>{sampleFilter === 'all' ? 'Sample' : sampleFilter === 'none' ? 'Not needed' : sampleFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="requested">Requested</SelectItem>
+                <SelectItem value="received">Received</SelectItem>
+                <SelectItem value="none">Not needed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={logisticsFilter} onValueChange={setLogisticsFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>
+                  {logisticsFilter === 'all'
+                    ? 'Logistics'
+                    : logisticsFilter === 'not-ordered'
+                    ? 'Not ordered'
+                    : logisticsFilter === 'in-transit'
+                    ? 'In transit'
+                    : logisticsFilter === 'qc-issue'
+                    ? 'Back-ordered'
+                    : logisticsFilter}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="not-ordered">Not ordered</SelectItem>
+                <SelectItem value="ordered">Ordered</SelectItem>
+                <SelectItem value="dispatching">Dispatching</SelectItem>
+                <SelectItem value="in-transit">In transit</SelectItem>
+                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="qc-issue">Back-ordered</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+                <SelectValue>{dateFilter === 'all' ? 'Date' : dateFilter}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All dates</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* </CHANGE> */}
+
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" className="h-8 text-xs text-neutral-600 hover:text-neutral-900" onClick={resetFilters}>
+                Reset
+              </Button>
+            )}
+
+            <Button variant="outline" size="sm" className="h-8 text-xs bg-white border-greige-500/30">
+              Save view
+            </Button>
+          </div>
+
+          {showTip && (
+            <div className="flex items-start mt-5 gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-900 flex-1">Select multiple items from the same supplier to create one PO.</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100 shrink-0"
+                onClick={() => setShowTip(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/*Table */}
