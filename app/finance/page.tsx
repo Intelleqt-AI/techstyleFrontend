@@ -726,7 +726,7 @@ export default function FinancePage() {
               <Plus className="w-4 h-4 mr-2" />
               {buttonLoadingPO ? 'Creating...' : 'Create Invoice'}
             </Button>
-            <Button onClick={handleSync} disabled={InvoiceLoading || isLoading || customLoading} variant="outline">
+            {/* <Button onClick={handleSync} disabled={InvoiceLoading || isLoading || customLoading} variant="outline">
               {customLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -738,7 +738,7 @@ export default function FinancePage() {
                   Sync with Xero
                 </>
               )}
-            </Button>
+            </Button> */}
           </div>
         </div>
 
