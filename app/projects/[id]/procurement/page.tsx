@@ -559,63 +559,51 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     setProduct(data);
   }, [isLoading, data]);
 
-  const totalItem = () => {
-    if (!groupedItems) {
-      return 0;
-    }
-    if (!Array.isArray(groupedItems.type)) {
-      return 0;
-    }
+  const totalItemsCount = useMemo(() => {
+    if (!groupedItems?.type) return 0;
+
+    return groupedItems.type.reduce((sum, item) => {
+      return sum + (Array.isArray(item.product) ? item.product.length : 0);
+    }, 0);
+  }, [groupedItems]);
+
+  const totalPendingCount = useMemo(() => {
+    if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
 
     let totalCount = 0;
-    groupedItems.type.forEach(item => {
-      if (item && Array.isArray(item.product)) {
-        totalCount += item.product.length;
-      }
-    });
-    return totalCount;
-  };
 
-  const totalPendingItem = () => {
-    if (!groupedItems) {
-      return 0;
-    }
-    if (!Array.isArray(groupedItems.type)) {
-      return 0;
-    }
-    let totalCount = 0;
     groupedItems.type.forEach(item => {
       if (item && Array.isArray(item.product)) {
         item.product.forEach(singleItem => {
-          if (singleItem.sendToClient && singleItem.status == 'pending') {
+          if (singleItem.sendToClient && singleItem.status === 'pending') {
             totalCount++;
           }
         });
       }
     });
-    return totalCount;
-  };
 
-  const totalDelivered = () => {
-    if (!groupedItems) {
-      return 0;
-    }
-    if (!Array.isArray(groupedItems.type)) {
-      return 0;
-    }
+    return totalCount;
+  }, [groupedItems]);
+
+  const totalDeliveryCount = useMemo(() => {
+    if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
+
     let totalCount = 0;
+
     groupedItems.type.forEach(item => {
       if (item && Array.isArray(item.product)) {
         item.product.forEach(singleItem => {
-          if (singleItem.initialStatus == 'Delivered') {
+          if (singleItem.initialStatus === 'Delivered') {
             totalCount++;
           }
         });
       }
     });
+
     return totalCount;
-  };
-  const totalCost = useMemo(() => {
+  }, [groupedItems]);
+
+  const totalCostCount = useMemo(() => {
     if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
 
     let cost = 0;
@@ -646,60 +634,54 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     return cost;
   }, [groupedItems]);
 
-  const approvedCost = () => {
+  // const totalApprovedCost = useMemo(() => {
+  //   if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
+
+  //   let cost = 0;
+
+  //   groupedItems.type.forEach(typeObj => {
+  //     if (!typeObj || !Array.isArray(typeObj.product)) return;
+
+  //     typeObj.product.forEach(product => {
+  //       if (product?.status !== 'approved') return;
+
+  //       const quantity = Number(product.qty) < 1 ? 1 : Number(product.qty);
+  //       const matched = product.matchedProduct;
+
+  //       let priceString = '';
+
+  //       if (matched?.priceMember && parseFloat(matched.priceMember.replace(/[^\d.]/g, '')) > 0) {
+  //         priceString = matched.priceMember;
+  //       } else if (matched?.priceRegular && parseFloat(matched.priceRegular.replace(/[^\d.]/g, '')) > 0) {
+  //         priceString = matched.priceRegular;
+  //       } else {
+  //         return;
+  //       }
+
+  //       const priceValue = Number(parseFloat(priceString.replace(/[^\d.]/g, '')));
+  //       cost += priceValue * quantity;
+  //     });
+  //   });
+
+  //   return cost;
+  // }, [groupedItems]);
+
+  const totalQuantity = useMemo(() => {
     if (!groupedItems || !Array.isArray(groupedItems.type)) return 0;
-    let cost = 0;
-    groupedItems.type.forEach(typeObj => {
-      if (!typeObj || !Array.isArray(typeObj.product)) return;
-
-      typeObj.product.forEach(product => {
-        if (product?.status !== 'approved') return;
-
-        const quantity = Number(product.qty) < 1 ? 1 : Number(product.qty);
-        const matched = product.matchedProduct;
-        let priceString = '';
-
-        if (matched?.priceMember && parseFloat(matched.priceMember.replace(/[^\d.]/g, '')) > 0) {
-          priceString = matched.priceMember;
-        } else if (matched?.priceRegular && parseFloat(matched.priceRegular.replace(/[^\d.]/g, '')) > 0) {
-          priceString = matched.priceRegular;
-        } else {
-          return;
-        }
-
-        const priceValue = Number(parseFloat(priceString.replace(/[^\d.]/g, '')));
-        cost += priceValue * quantity;
-      });
-    });
-
-    return cost;
-  };
-
-  const totalQty = () => {
-    if (!groupedItems || !Array.isArray(groupedItems.type)) {
-      return 0;
-    }
 
     let totalQuantity = 0;
+
     groupedItems.type.forEach(typeObj => {
       if (typeObj && Array.isArray(typeObj.product)) {
         typeObj.product.forEach(product => {
-          // Convert to number and use 0 as fallback if NaN
-          const quantity = Number(product?.qty) || 1;
+          const quantity = product?.unitType === 'm' || product?.unitType === 'm²' ? 1 : Number(product?.qty) || 1;
           totalQuantity += quantity;
         });
       }
     });
 
     return totalQuantity;
-  };
-
-  const totalItemsCount = totalItem();
-  const totalCostCount = totalCost;
-  const totalApprovedCost = approvedCost();
-  const totalQuantity = totalQty();
-  const totalPendingCount = totalPendingItem();
-  const totalDeliveryCount = totalDelivered();
+  }, [groupedItems]);
 
   // Top summary
   const procurementStats = [

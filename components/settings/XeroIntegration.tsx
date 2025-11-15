@@ -10,13 +10,16 @@ const XeroIntegration = () => {
 
   const handleConnect = () => {
     const clientId = '640C611FE83942D7B3A1DF43E410FCD5';
-    const redirectUri = 'https://xero-backend-pi.vercel.app/api/xero-callback';
-    const scope = 'openid profile email accounting.transactions accounting.contacts offline_access  ';
+    // const redirectUri = 'https://xero-backend-pi.vercel.app/api/xero-callback';
+    const redirectUri = 'https://be.techstyles.ai/api/xero/connect/';
+    const scope = 'openid profile email accounting.transactions accounting.contacts offline_access';
     const state = 'random_xyz';
 
-    const authUrl = `https://login.xero.com/identity/connect/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(
-      scope
-    )}&state=${state}`;
+    // const authUrl = `https://login.xero.com/identity/connect/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(
+    //   scope
+    // )}&state=${state}`;
+
+    const authUrl = 'https://be.techstyles.ai/api/xero/connect/';
 
     const popup = window.open(authUrl, 'XeroAuth', 'width=600,height=700');
 

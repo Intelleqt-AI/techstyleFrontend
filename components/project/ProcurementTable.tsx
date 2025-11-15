@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '../chip';
 import {
@@ -150,12 +150,20 @@ const ProcurementTable = ({
   const [clientApprove, setClientApprove] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; roomId: string; name: string }>(null);
-  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set(['Living Room', 'Dining Room', 'Bedroom', 'Bathroom']));
+  const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
 
   const { data, isLoading } = useQuery({
     queryKey: ['pruchaseOrder'],
     queryFn: getPurchaseOrder,
   });
+
+  useEffect(() => {
+    if (!project) return;
+    const rooms = project?.type?.map(item => item.text) || [];
+    setExpandedRooms(new Set(rooms));
+  }, [project]);
+
+  console.log(expandedRooms);
 
   function editProduct(item, roomID) {
     setEditItem(item);
@@ -258,6 +266,16 @@ const ProcurementTable = ({
     setEditItem(prev => ({
       ...prev,
       status: status,
+    }));
+    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
+  };
+
+  const handleChangeUnitType = (item, status, roomid) => {
+    const currentRoomID = roomid || roomID;
+    const { matchedProduct, ...updatedProduct } = { ...item, unitType: status };
+    setEditItem(prev => ({
+      ...prev,
+      unitType: status,
     }));
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
   };
@@ -611,12 +629,15 @@ const ProcurementTable = ({
                               </span> */}
                               <div className="flex items-center gap-2">
                                 <Input
-                                  onChange={e => debouncedHandleQtyChange(item, e.target.value)}
+                                  onChange={e => debouncedHandleQtyChange(item, e.target.value, items?.id)}
                                   type="number"
                                   defaultValue={item.qty || 1}
                                   className="h-9 w-16 text-sm px-2 tabular-nums"
                                 />
-                                <Select defaultValue={'ea'}>
+                                <Select
+                                  defaultValue={item.unitType || 'ea'}
+                                  onValueChange={status => handleChangeUnitType(item, status, items?.id)}
+                                >
                                   <SelectTrigger className="h-9 w-16 text-sm px-2">
                                     <SelectValue />
                                   </SelectTrigger>

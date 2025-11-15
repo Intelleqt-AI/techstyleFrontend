@@ -2,6 +2,7 @@ import JSZip, { file } from 'jszip';
 import { saveAs } from 'file-saver';
 import { error } from 'console';
 import supabase from './supabaseClient';
+import { useQuery } from '@tanstack/react-query';
 interface SignInResponse {
   data: any;
   error: any;
@@ -2181,21 +2182,10 @@ export const fetchProjectEmails = async ({ projectID }) => {
 };
 
 export const createXeroInvoice = async (invoiceData: any) => {
-  const accessToken = localStorage.getItem('xero_access_token');
-  const tenantId = localStorage.getItem('xero_tenant_id');
-
-  console.log(accessToken, tenantId);
-
-  if (!accessToken || !tenantId) {
-    throw new Error('Missing Xero token or tenant ID');
-  }
-
-  const res = await fetch('https://xero-backend-pi.vercel.app/api/create-invoice', {
+  const res = await fetch('https://be.techstyles.ai/api/invoice/push/', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-      'xero-tenant-id': tenantId,
     },
     body: JSON.stringify(invoiceData),
   });
@@ -2207,7 +2197,26 @@ export const createXeroInvoice = async (invoiceData: any) => {
     throw new Error(data?.error || 'Failed to create invoice');
   }
 
-  return data.invoice || null;
+  return data || null;
+};
+
+export const createXeroPO = async (invoiceData: any) => {
+  const res = await fetch('https://be.techstyles.ai/api/bill/push/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(invoiceData),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error('Invoice creation error:', data?.error || data);
+    throw new Error(data?.error || 'Failed to create invoice');
+  }
+
+  return data || null;
 };
 
 // For Profile Picture

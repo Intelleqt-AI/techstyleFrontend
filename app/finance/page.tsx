@@ -16,6 +16,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import {
   createXeroInvoice,
+  createXeroPO,
   deleteInvoices,
   deletePurchaseOrder,
   fetchInvoices,
@@ -34,6 +35,8 @@ import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DeleteDialog } from '@/components/DeleteDialog';
 import { useCurrency } from '@/hooks/useCurrency';
+import InvoiceStatus from './invoices/InvoiceStatus';
+import PoStatus from './invoices/InvoiceStatus copy';
 
 export default function FinancePage() {
   const [purchaseOrder, setPurchaseOrder] = useState([]);
@@ -193,8 +196,37 @@ export default function FinancePage() {
   } = useMutation({
     mutationFn: createXeroInvoice,
     onSuccess(data, variables, context) {
-      toast.success('Invoice Added');
-      fetchInvoice();
+      toast.success(data?.message);
+      // Extract original invoice you want to update (inv)
+      const inv = variables?._originalInvoice;
+
+      // Only run second mutation if ID exists
+      if (data?.invoice_id) {
+        mutation.mutate({
+          invoice: {
+            ...inv,
+            xero_invoice_id: data.invoice_id,
+          },
+        });
+      }
+    },
+  });
+
+  const { mutate: createPOMutate } = useMutation({
+    mutationFn: createXeroPO,
+    onSuccess(data, variables, context) {
+      toast.success(data?.message);
+      // Extract original invoice you want to update (inv)
+      const inv = variables?._originalPo;
+      // Only run second mutation if ID exists
+      if (data?.bill_id) {
+        mutationPO.mutate({
+          order: {
+            ...inv,
+            xero_po_id: data.bill_id,
+          },
+        });
+      }
     },
   });
 
@@ -432,43 +464,81 @@ export default function FinancePage() {
   //   // in the `onSuccess` or `onSettled` callback of your `createInvoiceOrder.mutate` hook.
   // };
 
+  function formatDateObj(dateStr) {
+    const [year, month, day] = dateStr.split('-');
+    return { year, month, day };
+  }
+
+  function addDays(dateStr, days) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
+  }
+
+  function parseMoney(value) {
+    if (!value) return 0;
+
+    // Remove currency symbols, spaces, commas, etc.
+    const cleaned = value.replace(/[^\d.-]/g, '');
+    return parseFloat(cleaned) || 0;
+  }
+
   // Create Xero Invoice
   const handleCreate = inv => {
-    if (!xeroConnected) {
-      toast.warning('Please connect Xero');
-      return;
-    }
-    // Map your products to Xero LineItems
     const lineItems = inv.products.map(p => ({
-      Description: p.itemName,
-      Quantity: p.QTY,
-      UnitAmount: parseFloat(p.amount),
-      AccountCode: '200',
+      description: p.itemName,
+      quantity: p.QTY,
+      unit_amount: parseMoney(p.amount),
+      account_code: '200',
     }));
 
-    // Create the invoice object
+    const issueDate = inv.issueDate.split('T')[0];
+    const dueAfter30 = addDays(issueDate, 30);
+
     const invoicePayload = {
-      Invoices: [
-        {
-          Type: 'ACCREC',
-          Contact: {
-            Name: inv.clientName,
-          },
-          Date: inv.issueDate.split('T')[0],
-          DueDate: inv.dueDate ? inv.dueDate.split('T')[0] : inv.issueDate.split('T')[0],
-          InvoiceNumber: inv.inNumber,
-          Reference: inv.poNumber?.join(', ') || '',
-          CurrencyCode: currency?.code,
-          Status: xeroStatusMap[inv?.status] || 'DRAFT',
-          LineAmountTypes: 'Exclusive',
-          LineItems: lineItems,
-        },
-      ],
+      type: 'ACCREC',
+      contact: inv.clientName,
+      date: formatDateObj(issueDate),
+      due_date: formatDateObj(dueAfter30),
+      invoice_number: inv.inNumber,
+      reference: inv.poNumber?.join(', ') || '',
+      currency_code: currency?.code,
+      // status: xeroStatusMap[inv?.status] || 'AUTHORISED',
+      status: 'AUTHORISED',
+      line_items: lineItems,
+
+      // attach original invoice here
+      _originalInvoice: inv,
     };
 
-    // Call the mutation
     createInvoiceMutate(invoicePayload);
-    mutation.mutate({ invoice: { ...inv, synced: true } });
+  };
+
+  // Create Xero PO / Bill
+  const handleCreatePo = inv => {
+    const lineItems = inv.products.map(p => ({
+      description: p.itemName,
+      quantity: p.QTY,
+      unit_amount: parseMoney(p.amount),
+      account_code: '200',
+    }));
+    const issueDate = inv.issueDate.split('T')[0];
+    const dueAfter30 = addDays(issueDate, 30);
+
+    const invoicePayload = {
+      type: 'ACCPAY',
+      contact: inv.clientName,
+      date: formatDateObj(issueDate),
+      due_date: formatDateObj(dueAfter30),
+      invoice_number: inv.poNumber,
+      reference: inv.poNumber || '',
+      currency_code: currency?.code,
+      status: 'AUTHORISED',
+      line_items: lineItems,
+      _originalPo: inv,
+    };
+
+    createPOMutate(invoicePayload);
   };
 
   // Calculate totals for stats
@@ -769,9 +839,40 @@ export default function FinancePage() {
                           })}
                         </td>
                         <td className="px-4 py-3">
-                          <StatusBadge status={po.status} label={po.status} className={getStatusStyle(po.status)} />
+                          <PoStatus po={po} />
                         </td>
-                        <td className="px-4 text-center py-3">-</td>
+                        <td className="px-4 text-center py-3">
+                          {po?.xero_po_id ? (
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="25"
+                              height="25"
+                              className="logo-xero-blue mx-auto"
+                              viewBox="0 0 45 46"
+                              id="xero"
+                            >
+                              <path
+                                fill="#13B5EA"
+                                d="M22.457 45.49c12.402 0 22.456-10.072 22.456-22.495C44.913 10.57 34.86.5 22.457.5 10.054.5 0 10.57 0 22.995 0 35.418 10.054 45.49 22.457 45.49"
+                                className="logo-xero-blue__circle"
+                              ></path>
+                              <path
+                                fill="#fff"
+                                d="M10.75 22.935l3.832-3.85a.688.688 0 0 0-.977-.965l-3.83 3.833-3.845-3.84a.687.687 0 0 0-.966.979l3.832 3.837-3.83 3.84a.688.688 0 1 0 .964.981l3.84-3.842 3.825 3.827a.685.685 0 0 0 1.184-.473.68.68 0 0 0-.2-.485l-3.83-3.846m22.782.003c0 .69.56 1.25 1.25 1.25a1.25 1.25 0 0 0-.001-2.5c-.687 0-1.246.56-1.246 1.25m-2.368 0c0-1.995 1.62-3.62 3.614-3.62 1.99 0 3.613 1.625 3.613 3.62s-1.622 3.62-3.613 3.62a3.62 3.62 0 0 1-3.614-3.62m-1.422 0c0 2.78 2.26 5.044 5.036 5.044s5.036-2.262 5.036-5.043c0-2.78-2.26-5.044-5.036-5.044a5.046 5.046 0 0 0-5.036 5.044m-.357-4.958h-.21c-.635 0-1.247.2-1.758.595a.696.696 0 0 0-.674-.54.68.68 0 0 0-.68.684l.002 8.495a.687.687 0 0 0 1.372-.002v-5.224c0-1.74.16-2.444 1.648-2.63.14-.017.288-.014.29-.014.406-.015.696-.296.696-.675a.69.69 0 0 0-.69-.688m-13.182 4.127c0-.02.002-.04.003-.058a3.637 3.637 0 0 1 7.065.055H16.2zm8.473-.13c-.296-1.403-1.063-2.556-2.23-3.296a5.064 5.064 0 0 0-5.61.15 5.098 5.098 0 0 0-1.973 5.357 5.08 5.08 0 0 0 4.274 3.767c.608.074 1.2.04 1.81-.12a4.965 4.965 0 0 0 1.506-.644c.487-.313.894-.727 1.29-1.222.006-.01.014-.017.022-.027.274-.34.223-.826-.077-1.056-.254-.195-.68-.274-1.014.156-.072.104-.153.21-.24.315-.267.295-.598.58-.994.802-.506.27-1.08.423-1.69.427-1.998-.023-3.066-1.42-3.447-2.416a3.716 3.716 0 0 1-.153-.58l-.01-.105h7.17c.982-.022 1.51-.717 1.364-1.51z"
+                                className="logo-xero-blue__text"
+                              ></path>
+                            </svg>
+                          ) : (
+                            <Button
+                              onClick={() => handleCreatePo(po)}
+                              className=" rounded-2xl text-xs !py-1 h-auto px-3"
+                              variant={'outline'}
+                              size={'sm'}
+                            >
+                              Sync
+                            </Button>
+                          )}
+                        </td>
                         <td className="px-2 pr-4 py-3 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -785,6 +886,7 @@ export default function FinancePage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              {!po?.xero_po_id && <DropdownMenuItem onClick={() => handleCreatePo(po)}>Sync with Xero</DropdownMenuItem>}
                               <DropdownMenuItem>
                                 <Link className="w-full" href={`/finance/purchase-order/${po.id}`}>
                                   View Details
@@ -817,123 +919,128 @@ export default function FinancePage() {
                       </tr>
                     ))}
 
-                  {!customLoading &&
-                    filteredInvoices.map(inv => (
-                      <tr key={inv.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
-                            {inv.inNumber}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{inv?.clientName}</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {project?.find(item => item.id == inv?.projectID)?.name || '—'}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {inv.issueDate
-                            ? new Date(inv.issueDate).toLocaleDateString('en-GB')
-                            : new Date(inv.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {inv?.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '-'}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                          {!currencyLoading && (currency?.symbol || '£')}
-                          {Number(
-                            (
-                              (inv?.products?.reduce((total, product) => {
-                                return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
-                              }, 0) || 0) + Number(inv.delivery_charge)
-                            ).toFixed(2)
-                          ).toLocaleString('en-US', {
-                            maximumFractionDigits: 2,
-                            minimumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={inv.status} label={inv.status} className={getStatusStyle(inv.status)} />
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {inv?.synced ? (
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="25"
-                              height="25"
-                              className="logo-xero-blue mx-auto"
-                              viewBox="0 0 45 46"
-                              id="xero"
-                            >
-                              <path
-                                fill="#13B5EA"
-                                d="M22.457 45.49c12.402 0 22.456-10.072 22.456-22.495C44.913 10.57 34.86.5 22.457.5 10.054.5 0 10.57 0 22.995 0 35.418 10.054 45.49 22.457 45.49"
-                                className="logo-xero-blue__circle"
-                              ></path>
-                              <path
-                                fill="#fff"
-                                d="M10.75 22.935l3.832-3.85a.688.688 0 0 0-.977-.965l-3.83 3.833-3.845-3.84a.687.687 0 0 0-.966.979l3.832 3.837-3.83 3.84a.688.688 0 1 0 .964.981l3.84-3.842 3.825 3.827a.685.685 0 0 0 1.184-.473.68.68 0 0 0-.2-.485l-3.83-3.846m22.782.003c0 .69.56 1.25 1.25 1.25a1.25 1.25 0 0 0-.001-2.5c-.687 0-1.246.56-1.246 1.25m-2.368 0c0-1.995 1.62-3.62 3.614-3.62 1.99 0 3.613 1.625 3.613 3.62s-1.622 3.62-3.613 3.62a3.62 3.62 0 0 1-3.614-3.62m-1.422 0c0 2.78 2.26 5.044 5.036 5.044s5.036-2.262 5.036-5.043c0-2.78-2.26-5.044-5.036-5.044a5.046 5.046 0 0 0-5.036 5.044m-.357-4.958h-.21c-.635 0-1.247.2-1.758.595a.696.696 0 0 0-.674-.54.68.68 0 0 0-.68.684l.002 8.495a.687.687 0 0 0 1.372-.002v-5.224c0-1.74.16-2.444 1.648-2.63.14-.017.288-.014.29-.014.406-.015.696-.296.696-.675a.69.69 0 0 0-.69-.688m-13.182 4.127c0-.02.002-.04.003-.058a3.637 3.637 0 0 1 7.065.055H16.2zm8.473-.13c-.296-1.403-1.063-2.556-2.23-3.296a5.064 5.064 0 0 0-5.61.15 5.098 5.098 0 0 0-1.973 5.357 5.08 5.08 0 0 0 4.274 3.767c.608.074 1.2.04 1.81-.12a4.965 4.965 0 0 0 1.506-.644c.487-.313.894-.727 1.29-1.222.006-.01.014-.017.022-.027.274-.34.223-.826-.077-1.056-.254-.195-.68-.274-1.014.156-.072.104-.153.21-.24.315-.267.295-.598.58-.994.802-.506.27-1.08.423-1.69.427-1.998-.023-3.066-1.42-3.447-2.416a3.716 3.716 0 0 1-.153-.58l-.01-.105h7.17c.982-.022 1.51-.717 1.364-1.51z"
-                                className="logo-xero-blue__text"
-                              ></path>
-                            </svg>
-                          ) : (
-                            <Button
-                              onClick={() => handleCreate(inv)}
-                              className=" rounded-2xl text-xs !py-1 h-auto px-3"
-                              variant={'outline'}
-                              size={'sm'}
-                            >
-                              Sync
-                            </Button>
-                          )}
-                        </td>
-                        <td className="px-2 pr-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
-                                aria-label={`Actions for ${inv.inNumber}`}
+                  {filteredInvoices.length > 0 &&
+                    filteredInvoices.map(inv => {
+                      return (
+                        <tr key={inv.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <Checkbox disabled aria-label={`Select ${inv.inNumber}`} />
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            <Link className="hover:underline" href={`/finance/invoices/${inv.id}`}>
+                              {inv.inNumber}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{inv?.clientName}</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">Invoice</td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {project?.find(item => item.id == inv?.projectID)?.name || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv.issueDate
+                              ? new Date(inv.issueDate).toLocaleDateString('en-GB')
+                              : new Date(inv.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {inv?.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB') : '-'}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
+                            {!currencyLoading && (currency?.symbol || '£')}
+                            {Number(
+                              (
+                                (inv?.products?.reduce((total, product) => {
+                                  return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                                }, 0) || 0) + Number(inv.delivery_charge)
+                              ).toFixed(2)
+                            ).toLocaleString('en-US', {
+                              maximumFractionDigits: 2,
+                              minimumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="px-4 py-3">
+                            {/* <StatusBadge status={inv.status} label={inv.status} className={getStatusStyle(inv.status)} /> */}
+                            <InvoiceStatus inv={inv} />
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {inv?.xero_invoice_id ? (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="25"
+                                height="25"
+                                className="logo-xero-blue mx-auto"
+                                viewBox="0 0 45 46"
+                                id="xero"
                               >
-                                <MoreHorizontal className="w-4 h-4" />
+                                <path
+                                  fill="#13B5EA"
+                                  d="M22.457 45.49c12.402 0 22.456-10.072 22.456-22.495C44.913 10.57 34.86.5 22.457.5 10.054.5 0 10.57 0 22.995 0 35.418 10.054 45.49 22.457 45.49"
+                                  className="logo-xero-blue__circle"
+                                ></path>
+                                <path
+                                  fill="#fff"
+                                  d="M10.75 22.935l3.832-3.85a.688.688 0 0 0-.977-.965l-3.83 3.833-3.845-3.84a.687.687 0 0 0-.966.979l3.832 3.837-3.83 3.84a.688.688 0 1 0 .964.981l3.84-3.842 3.825 3.827a.685.685 0 0 0 1.184-.473.68.68 0 0 0-.2-.485l-3.83-3.846m22.782.003c0 .69.56 1.25 1.25 1.25a1.25 1.25 0 0 0-.001-2.5c-.687 0-1.246.56-1.246 1.25m-2.368 0c0-1.995 1.62-3.62 3.614-3.62 1.99 0 3.613 1.625 3.613 3.62s-1.622 3.62-3.613 3.62a3.62 3.62 0 0 1-3.614-3.62m-1.422 0c0 2.78 2.26 5.044 5.036 5.044s5.036-2.262 5.036-5.043c0-2.78-2.26-5.044-5.036-5.044a5.046 5.046 0 0 0-5.036 5.044m-.357-4.958h-.21c-.635 0-1.247.2-1.758.595a.696.696 0 0 0-.674-.54.68.68 0 0 0-.68.684l.002 8.495a.687.687 0 0 0 1.372-.002v-5.224c0-1.74.16-2.444 1.648-2.63.14-.017.288-.014.29-.014.406-.015.696-.296.696-.675a.69.69 0 0 0-.69-.688m-13.182 4.127c0-.02.002-.04.003-.058a3.637 3.637 0 0 1 7.065.055H16.2zm8.473-.13c-.296-1.403-1.063-2.556-2.23-3.296a5.064 5.064 0 0 0-5.61.15 5.098 5.098 0 0 0-1.973 5.357 5.08 5.08 0 0 0 4.274 3.767c.608.074 1.2.04 1.81-.12a4.965 4.965 0 0 0 1.506-.644c.487-.313.894-.727 1.29-1.222.006-.01.014-.017.022-.027.274-.34.223-.826-.077-1.056-.254-.195-.68-.274-1.014.156-.072.104-.153.21-.24.315-.267.295-.598.58-.994.802-.506.27-1.08.423-1.69.427-1.998-.023-3.066-1.42-3.447-2.416a3.716 3.716 0 0 1-.153-.58l-.01-.105h7.17c.982-.022 1.51-.717 1.364-1.51z"
+                                  className="logo-xero-blue__text"
+                                ></path>
+                              </svg>
+                            ) : (
+                              <Button
+                                onClick={() => handleCreate(inv)}
+                                className=" rounded-2xl text-xs !py-1 h-auto px-3"
+                                variant={'outline'}
+                                size={'sm'}
+                              >
+                                Sync
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleCreate(inv)}>Sync with Xero</DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
-                                  View Details
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <button
-                                  onClick={() => {
-                                    handleOpenInvoice(inv.id);
-                                  }}
-                                  className="w-full text-left"
+                            )}
+                          </td>
+                          <td className="px-2 pr-4 py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                  aria-label={`Actions for ${inv.inNumber}`}
                                 >
-                                  Download PDF
-                                </button>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Send Email</DropdownMenuItem>
-                              <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
-                                  Edit
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(inv, 'inv')}>
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {!inv?.xero_invoice_id && (
+                                  <DropdownMenuItem onClick={() => handleCreate(inv)}>Sync with Xero</DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
+                                    View Details
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenInvoice(inv.id);
+                                    }}
+                                    className="w-full text-left"
+                                  >
+                                    Download PDF
+                                  </button>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>Send Email</DropdownMenuItem>
+                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
+                                    Edit
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(inv, 'inv')}>
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      );
+                    })}
 
                   {!customLoading &&
                     !XeroLoading &&

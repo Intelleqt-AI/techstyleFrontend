@@ -6,13 +6,15 @@
   <body>
     <script>
       const params = new URLSearchParams(window.location.hash.slice(1));
-      const accessToken = params.get('access_token');
+      // const accessToken = params.get('access_token');
+      const accessToken = params.get('code');
 
       if (accessToken && window.opener) {
         window.opener.postMessage({ type: 'OAUTH_SUCCESS', accessToken }, window.location.origin);
         window.close();
       } else {
         document.body.innerText = 'OAuth Failed or Popup Blocked.';
+        window.close();
       }
     </script>
   </body>
