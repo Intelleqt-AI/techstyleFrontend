@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '../chip';
 import {
@@ -8,17 +8,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, ChevronRight, ChevronsUpDown, ExternalLink, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsUpDown, ExternalLink, Loader2, MoreHorizontal } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { getPurchaseOrder, updateProductProcurement } from '@/supabase/API';
+import {
+  createInvoice,
+  createPurchaseOrder,
+  createXeroInvoice,
+  createXeroPO,
+  getContactbyID,
+  getPurchaseOrder,
+  updateInvoice,
+  updateProductProcurement,
+  updatePurchaseOrder,
+} from '@/supabase/API';
 import { debounce } from 'lodash';
 import { Checkbox } from '../ui/checkbox';
 import { TableCell, TableRow } from '../ui/table';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
-import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import errorImage from '/public/product-placeholder-wp.jpg';
 import Image from 'next/image';
@@ -27,12 +36,60 @@ import { format } from 'date-fns';
 import { ProductDetailSheet } from '../product-detail-sheet';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { Separator } from '../ui/separator';
-import { cn } from '@/lib/utils';
+import { addDays, cn, formatDateObj, parseMoney } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import dayjs from 'dayjs';
 import { DeleteDialog } from '../DeleteDialog';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import useSupplier from '@/hooks/useSupplier';
+import LogisticsPill from './LogisticsPill';
+import POCell from './POCell';
+import BillingCell from './BillingCell';
+
+function StatusPill({ value, onChange }) {
+  const labels = {
+    Draft: 'Draft',
+    Quoting: 'Quoting',
+    'Internal Review': 'Internal Review',
+    'Out of Stock': 'Out of Stock',
+    'Client Review': 'Client Review',
+    'Payment Due': 'Payment Due',
+    Ordered: 'Ordered',
+    'In Transit': 'In Transit',
+    Delivered: 'Delivered',
+    Installed: 'Installed',
+  };
+
+  const colors = {
+    Draft: 'bg-gray-200/50 text-gray-700 border-gray-400/40',
+    Quoting: 'bg-sage-200/40 text-olive-700 border-olive-300',
+    'Internal Review': 'bg-ochre-200/30 text-ochre-700 border-ochre-500/20',
+    'Out of Stock': 'bg-terracotta-600/10 text-terracotta-600 border-terracotta-600/30',
+    'Client Review': 'bg-greige-100 text-taupe-700 border-greige-500',
+    'Payment Due': 'bg-amber-200/40 text-amber-700 border-amber-700/20',
+    Ordered: 'bg-blue-200/40 text-blue-700 border-blue-700/20',
+    'In Transit': 'bg-purple-200/40 text-purple-700 border-purple-700/20',
+    Delivered: 'bg-green-200/40 text-green-700 border-green-700/20',
+    Installed: 'bg-emerald-200/40 text-emerald-700 border-emerald-700/20',
+  };
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={cn('h-6  text-xs font-medium border whitespace-nowrap w-auto ', colors[value])}>
+        <SelectValue>{labels[value]}</SelectValue>
+      </SelectTrigger>
+
+      <SelectContent>
+        {Object.keys(labels).map(key => (
+          <SelectItem key={key} value={key}>
+            {labels[key]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function SamplePill({ status, onChange }) {
   // Default to "None" if status is null, undefined, or empty string
@@ -140,30 +197,177 @@ const ProcurementTable = ({
   projectID,
 }) => {
   const [expandedRows, setExpandedRows] = useState<string[]>([]);
+  const { data: supplier, isLoading: supplierLoading } = useSupplier();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editItem, setEditItem] = useState(undefined);
   const [selected, setSelected] = useState(undefined);
   const [roomID, setRoomID] = useState(null);
-  //   const navigate = useNavigate();
   const [clientApprove, setClientApprove] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<null | { id: string; roomId: string; name: string }>(null);
   const [expandedRooms, setExpandedRooms] = useState<Set<string>>(new Set());
+  const [loadingProductId, setLoadingProductId] = useState<string | null>(null);
+  const [loadingProductIdForInv, setLoadingProductIdForInv] = useState<string | null>(null);
+  const [currentProduct, setCurrentProduct] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['pruchaseOrder'],
     queryFn: getPurchaseOrder,
   });
 
+  const { data: contact, isLoading: clientLoading } = useQuery({
+    queryKey: ['contact', project?.client],
+    queryFn: () => getContactbyID(project?.client),
+    enabled: !!project?.client,
+  });
+
+  const mutationInvoice = useMutation({
+    mutationFn: updateInvoice,
+    onSuccess: () => {},
+    onError: () => {
+      toast('Error! Try again');
+    },
+  });
+
+  // Update Product in room
+  const mutation = useMutation({
+    mutationFn: updateProductProcurement,
+    onSuccess: () => {
+      toast('Status Updated');
+      queryClient.refetchQueries('GetAllProduct');
+      setLoadingProductIdForInv(null);
+    },
+    onError: () => {
+      toast('Error! Try again');
+    },
+  });
+
+  // update PO
+  const mutationPO = useMutation({
+    mutationFn: updatePurchaseOrder,
+    onSuccess: () => {
+      refetch();
+      setLoadingProductId(null);
+    },
+    onError: () => {
+      setLoadingProductId(null);
+      toast('Error! Try again');
+    },
+  });
+
+  const { mutate: createPOMutate } = useMutation({
+    mutationFn: createXeroPO,
+    onSuccess(data, variables, context) {
+      toast.success(data?.message);
+      // Extract original invoice you want to update (inv)
+      const inv = variables?._originalPo;
+      // Only run second mutation if ID exists
+      if (data?.bill_id) {
+        mutationPO.mutate({
+          order: {
+            ...inv,
+            xero_po_id: data.bill_id,
+          },
+        });
+
+        const { matchedProduct, ...updatedProduct } = {
+          ...currentProduct,
+          xeroPoNumber: data.bill_id,
+        };
+        mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+      }
+    },
+  });
+
+  const createPurchase = useMutation({
+    mutationFn: createPurchaseOrder,
+    onSuccess: async e => {
+      try {
+        if (!e?.data?.[0]) {
+          toast.error('Failed to get PO details from response.');
+          return;
+        }
+        const inv = e?.data?.[0];
+        const lineItems = inv.products.map(p => ({
+          description: p.itemName,
+          quantity: p.QTY,
+          unit_amount: parseMoney(p.amount),
+          account_code: '200',
+        }));
+        const issueDate = inv.issueDate.split('T')[0];
+        const dueAfter30 = addDays(issueDate, 30);
+
+        const invoicePayload = {
+          type: 'ACCPAY',
+          contact: inv.clientName,
+          date: formatDateObj(issueDate),
+          due_date: formatDateObj(dueAfter30),
+          invoice_number: inv.poNumber,
+          reference: inv.poNumber || '',
+          currency_code: project?.currency?.code,
+          status: 'AUTHORISED',
+          line_items: lineItems,
+          _originalPo: inv,
+        };
+
+        createPOMutate(invoicePayload);
+        // After all mutations are done
+      } catch (err) {
+        toast.error(err.message || 'An error occurred during product updates.');
+        setLoadingProductId(null);
+      }
+    },
+    onError: e => {
+      toast.error(e.message || 'Failed to create purchase order.');
+      setLoadingProductId(null);
+    },
+  });
+
+  const handleClickPO = (product, room) => {
+    setRoomID(room);
+    setCurrentProduct(product);
+    setLoadingProductId(product?.id);
+    const totalOrder = {
+      supplier: supplier.data.find(items => items.company.trim() === product.matchedProduct.supplier.trim()),
+      projectID: projectID,
+      projectName: project?.name,
+      status: 'Pending',
+      clientName: contact ? contact.name + ' ' + contact.surname : null,
+      clientEmail: contact ? contact.email : null,
+      clientPhone: contact ? contact.phone : null,
+      clientAddress: contact ? contact.address : null,
+      issueDate: new Date().toISOString(),
+      dueDate: new Date().toISOString(),
+      products: [],
+    };
+    const products = [
+      {
+        dueDate: product?.install,
+        amount:
+          product?.matchedProduct?.priceMember && parseFloat(product?.matchedProduct.priceMember?.replace(/[^0-9.-]+/g, '')) > 0
+            ? product.matchedProduct?.priceMember
+            : product.matchedProduct.priceRegular,
+        QTY: product.qty,
+        itemName: product.matchedProduct.name,
+        itemID: product.matchedProduct.id,
+        dimensions: product?.matchedProduct?.dimensions,
+        imageURL:
+          product?.matchedProduct?.imageURL?.length > 0
+            ? product?.matchedProduct?.imageURL[0]
+            : product?.matchedProduct?.images?.length > 0 && product?.matchedProduct?.images[0],
+      },
+    ];
+    totalOrder.products = [...products];
+    createPurchase.mutate({ order: totalOrder });
+  };
+
   useEffect(() => {
     if (!project) return;
     const rooms = project?.type?.map(item => item.text) || [];
     setExpandedRooms(new Set(rooms));
   }, [project]);
-
-  console.log(expandedRooms);
 
   function editProduct(item, roomID) {
     setEditItem(item);
@@ -219,45 +423,28 @@ const ProcurementTable = ({
 
   const handleChange = e => {
     const { value, checked, room } = e.target;
+
     setCheckedItems(prev => {
       if (checked) {
         return [...prev, { ...value, roomID: room }];
       } else {
-        return prev.filter(item => item.id !== value.id && roomID == room);
+        return prev.filter(item => !(item.id === value.id && item.roomID === room));
       }
     });
   };
 
-  // Update Product
-  const mutation = useMutation({
-    mutationFn: updateProductProcurement,
-    onSuccess: () => {
-      toast('Status Updated');
-      queryClient.refetchQueries('GetAllProduct');
-    },
-    onError: () => {
-      toast('Error! Try again');
-    },
-  });
-
   // handle Change product Status
   const statusValues = [
     'Draft',
-    'Hidden',
-    'Selected',
     'Quoting',
     'Internal Review',
+    'Out of Stock',
     'Client Review',
-    'Resubmit',
-    'Closed',
-    'Rejected',
-    'Approved',
-    'Ordered',
     'Payment Due',
-    'In Production',
+    'Ordered',
     'In Transit',
-    'Installed',
     'Delivered',
+    'Installed',
   ];
 
   const handleChangeStatus = (item, status, roomid) => {
@@ -266,6 +453,16 @@ const ProcurementTable = ({
     setEditItem(prev => ({
       ...prev,
       status: status,
+    }));
+    mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
+  };
+
+  const handleChangeInitialStatus = (item, status, roomid) => {
+    const currentRoomID = roomid || roomID;
+    const { matchedProduct, ...updatedProduct } = { ...item, initialStatus: status };
+    setEditItem(prev => ({
+      ...prev,
+      initialStatus: status,
     }));
     mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: currentRoomID });
   };
@@ -297,7 +494,6 @@ const ProcurementTable = ({
   };
 
   const debouncedHandleQtyChange = debounce((item, value, roomid) => {
-    console.log(item, value, roomid);
     const currentRoomID = roomid || roomID;
     handleQtyChange(item, value, currentRoomID);
   }, 700);
@@ -374,7 +570,6 @@ const ProcurementTable = ({
 
   // Total price of a room
   function getTotalPrice(room) {
-    console.log(room);
     if (!room?.product?.length) return '0.00';
 
     const total = room.product.reduce((sum, item) => {
@@ -394,176 +589,208 @@ const ProcurementTable = ({
     });
   }
 
-  // PO Cell
-
-  function POStatusDots({
-    poId,
-    poSentAt,
-    supplierPaidAt,
-  }: {
-    poId: string | null;
-    poSentAt: string | null;
-    supplierPaidAt: string | null;
-  }) {
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-neutral-600">
-        <div className="flex items-center gap-1" title="PO created">
-          <div
-            className={cn('w-3 h-3 rounded-full shrink-0 border-2', poId ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300')}
-          />
-          <span className="hidden xl:inline">Created</span>
-        </div>
-        <div className="flex items-center gap-1" title="PO sent to supplier">
-          <div
-            className={cn(
-              'w-3 h-3 rounded-full shrink-0 border-2',
-              poSentAt ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300'
-            )}
-          />
-          <span className="hidden xl:inline">Sent</span>
-        </div>
-        <div className="flex items-center gap-1" title="Supplier paid">
-          <div
-            className={cn(
-              'w-3 h-3 rounded-full shrink-0 border-2',
-              supplierPaidAt ? 'bg-[#8FA989] border-[#8FA989]' : 'bg-white border-gray-300'
-            )}
-          />
-          <span className="hidden xl:inline">Paid</span>
-        </div>
-      </div>
+  const handleChangeLogistics = (updatedProduct, roomID, done) => {
+    mutation.mutate(
+      { product: updatedProduct, projectID, roomID },
+      {
+        onSettled: () => {
+          if (done) done();
+        },
+      }
     );
-  }
+  };
 
-  function POCell({ item }) {
-    console.log(item);
-    if (!item.PO?.length) {
-      return (
-        <div className="flex flex-col gap-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(
-              'h-8 px-2 text-sm whitespace-nowrap w-fit',
-              item?.matchedProduct?.supplier && item.status === 'approved'
-                ? 'text-primary hover:bg-primary/10'
-                : 'text-neutral-400 cursor-not-allowed'
-            )}
-            disabled={!item?.matchedProduct?.supplier || item.status !== 'approved'}
-            title={
-              !item?.matchedProduct?.supplier || item.status !== 'approved' ? 'Supplier must be set and approval must be Approved' : ''
-            }
-          >
-            Create PO
-          </Button>
-        </div>
-      );
-    }
+  const {
+    mutate: createInvoiceMutate,
+    data: createdInvoice,
+    isPending,
+  } = useMutation({
+    mutationFn: createXeroInvoice,
+    onSuccess(data, variables, context) {
+      toast.success(data?.message);
+      // Extract original invoice you want to update (inv)
+      const inv = variables?._originalInvoice;
+      // Only run second mutation if ID exists
+      if (data?.invoice_id) {
+        mutationInvoice.mutate({
+          invoice: {
+            ...inv,
+            xero_invoice_id: data.invoice_id,
+          },
+        });
+      }
 
-    return (
-      <div className="flex flex-col gap-1.5">
-        <button className="text-sm text-primary hover:underline text-left whitespace-nowrap">{item?.PO[0]?.poNumber}</button>
-        <POStatusDots poId={item?.PO[0]?.poNumber} poSentAt={item?.PO[0]?.poSentAt} supplierPaidAt={item?.PO[0]?.supplierPaidAt} />
-      </div>
-    );
-  }
+      const { matchedProduct, ...updatedProduct } = {
+        ...currentProduct,
+        xeroInvNumber: data.invoice_id,
+      };
+      mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+    },
+  });
+
+  const createInvoiceOrder = useMutation({
+    mutationFn: createInvoice,
+    onSuccess: (data, variables, context) => {
+      if (data?.data[0]) {
+        const inv = data?.data[0];
+        console.log(data?.data[0]);
+        const lineItems = inv.products.map(p => ({
+          description: p.itemName,
+          quantity: p.QTY,
+          unit_amount: parseMoney(p.amount),
+          account_code: '200',
+        }));
+        const issueDate = inv.issueDate.split('T')[0];
+        const dueAfter30 = addDays(issueDate, 30);
+
+        const invoicePayload = {
+          type: 'ACCREC',
+          contact: inv.clientName,
+          date: formatDateObj(issueDate),
+          due_date: formatDateObj(dueAfter30),
+          invoice_number: inv.inNumber,
+          reference: inv.inNumber,
+          currency_code: project?.currency?.code,
+          status: 'AUTHORISED',
+          line_items: lineItems,
+
+          // attach original invoice here
+          _originalInvoice: inv,
+        };
+
+        createInvoiceMutate(invoicePayload);
+      }
+    },
+    onError: e => {
+      toast.error(e.message);
+    },
+  });
+
+  const handleInvoice = inv => {
+    createInvoiceOrder.mutate({
+      invoice: {
+        projectID: projectID,
+        status: 'Pending',
+        clientName: inv?.clientName,
+        clientEmail: inv?.clientEmail,
+        clientPhone: inv?.clientPhone,
+        clientAddress: inv?.clientAddress,
+        delivery_charge: inv?.delivery_charge,
+        poNumber: inv?.poNumber,
+        products: inv?.products,
+        synced: false,
+      },
+    });
+  };
+
+  const clickHandleInvoice = (item, room, po) => {
+    setLoadingProductIdForInv(item?.id);
+    setRoomID(room);
+    setCurrentProduct(item);
+    handleInvoice(po);
+  };
 
   return (
     <Card className="border border-greige-500/30 shadow-sm overflow-hidden rounded-xl">
       <CardContent className="p-0">
-        {loading &&
-          [1, 2, 3, 4, 5, 6, 7].map(item => (
-            <TableRow key={item}>
-              <TableCell>
-                <Skeleton className="w-5 h-5 bg-gray-200 rounded border" />
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="w-12 bg-gray-200 h-12 rounded" />
-                  <div className="space-y-1">
-                    <Skeleton className="w-28 bg-gray-200 h-4" />
-                    <Skeleton className="w-20 bg-gray-200 h-3" />
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="w-28 bg-gray-200 h-4" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="w-12 bg-gray-200 h-4" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="w-10 bg-gray-200 h-4" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="w-20 bg-gray-200 h-4" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="w-24 bg-gray-200 h-6 rounded" />
-              </TableCell>
-            </TableRow>
-          ))}
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent">
+          <table className="w-full min-w-[1600px]">
+            <thead className="bg-neutral-50 border-b border-greige-500/30">
+              <tr>
+                <th className=" left-0 sticky  z-10 bg-neutral-50 px-4 py-3 w-12">
+                  <Checkbox onCheckedChange={checked => handleCheckAll({ target: { checked } })} />
+                </th>
+                <th className=" z-10 sticky left-10 bg-neutral-50 px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[280px]">
+                  Product
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Supplier</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[100px]">Sample</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Qty / Unit</th>
+                <th className="px-4 py-3 text-right text-xs  font-medium text-neutral-700  min-w-[80px]">
+                  Unit {project?.currency?.symbol || '£'}
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 min-w-[110px]">
+                  Total {project?.currency?.symbol || '£'}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[60px]">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[60px]">Approval</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[110px]">PO</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Billing</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Logistics</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-200 text-sm">
+              {loading &&
+                [1, 2, 3, 4, 5, 6, 7].map(item => (
+                  <TableRow key={item}>
+                    <TableCell>
+                      <Skeleton className="w-5 h-5 bg-gray-200 rounded border" />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="w-12 bg-gray-200 h-12 rounded" />
+                        <div className="space-y-1">
+                          <Skeleton className="w-28 bg-gray-200 h-4" />
+                          <Skeleton className="w-20 bg-gray-200 h-3" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="w-28 bg-gray-200 h-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="w-12 bg-gray-200 h-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="w-10 bg-gray-200 h-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="w-20 bg-gray-200 h-4" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="w-24 bg-gray-200 h-6 rounded" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              {groupedItems?.type?.map(items => {
+                const subtotalCount = items?.product?.length || 0;
+                if (!subtotalCount) return null;
 
-        {groupedItems?.type?.map(items => {
-          const subtotalCount = items?.product?.length || 0;
-          if (!subtotalCount) return null;
+                const isExpanded = expandedRooms?.has(items.text);
+                const allSelected = items.product.every(item =>
+                  checkedItems.find(check => check.id === item.id && check.roomID === items.id)
+                );
+                const totalPrice = getTotalPrice(items);
 
-          const isExpanded = expandedRooms?.has(items.text);
-          const allSelected = items.product.every(item => checkedItems.find(check => check.id === item.id && check.roomID === items.id));
-          const totalPrice = getTotalPrice(items);
+                return (
+                  <>
+                    <tr key={items.text} className=" border-greige-500/30 last:border-b-0">
+                      {/* Group header */}
+                      <TableCell colSpan={5} className="font-medium capitalize  sticky left-0 bg-white  z-10  text-[16px] ">
+                        <div className="bg-neutral-30  border-greige-500/30">
+                          <button
+                            onClick={() => toggleRoom(items.text)}
+                            className="w-full flex items-center gap-3 px-4 py-1 text-left  transition-colors"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-neutral-600 shrink-0" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-neutral-600 shrink-0" />
+                            )}
+                            <span className="font-semibold capitalize text-neutral-900">
+                              {items.text} — {subtotalCount} items • Subtotal {project?.currency?.symbol}
+                              {totalPrice}
+                            </span>
+                          </button>
+                        </div>
+                      </TableCell>
+                    </tr>
 
-          return (
-            <div key={items.text} className="border-b border-greige-500/30 last:border-b-0">
-              {/* Group header */}
-              <div className="bg-neutral-100 border-b border-greige-500/30">
-                <button
-                  onClick={() => toggleRoom(items.text)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-200 transition-colors"
-                >
-                  {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-neutral-600 shrink-0" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-neutral-600 shrink-0" />
-                  )}
-                  <span className="font-semibold capitalize text-neutral-900">
-                    {items.text} — {subtotalCount} items • Subtotal {project?.currency?.symbol}
-                    {totalPrice}
-                  </span>
-                </button>
-              </div>
-
-              {/* Table body per group */}
-              {isExpanded && (
-                <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent">
-                  <table className="w-full min-w-[1600px]">
-                    <thead className="bg-neutral-50 border-b border-greige-500/30">
-                      <tr>
-                        <th className="sticky left-0 z-10 bg-neutral-50 px-4 py-3 w-12">
-                          <Checkbox checked={allSelected} onCheckedChange={() => handleCheckAllGroup(items)} />
-                        </th>
-                        <th className="sticky left-12 z-10 bg-neutral-50 px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[280px]">
-                          Product
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Supplier</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[100px]">Sample</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Qty / Unit</th>
-                        <th className="px-4 py-3 text-right text-xs  font-medium text-neutral-700  min-w-[80px]">
-                          Unit {project?.currency?.symbol || '£'}
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 min-w-[110px]">
-                          Total {project?.currency?.symbol || '£'}
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[60px]">Approval</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[110px]">PO</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[140px]">Billing</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 min-w-[120px]">Logistics</th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
-                        <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 w-12"></th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-neutral-200 text-sm">
-                      {(clientApprove ? items?.product?.filter(i => i.status === 'approved') : items.product)?.map(item => {
+                    {/* Table body per group */}
+                    {isExpanded &&
+                      (clientApprove ? items?.product?.filter(i => i.status === 'approved') : items.product)?.map(item => {
                         const isChecked = !!checkedItems.find(check => check.id === item.id && check.roomID === items.id);
 
                         return (
@@ -608,25 +835,10 @@ const ProcurementTable = ({
 
                             {/* PO */}
                             <td className="px-4 py-3 text-xs text-neutral-700 whitespace-nowrap truncate">
-                              {/* {item?.PO?.slice(-2).map(po => (
-                                <Link key={po?.poID} className="hover:underline" href="#">
-                                  {po?.poNumber}
-                                  <br />
-                                </Link>
-                              )) || 'None'} */}
-
                               <SamplePill status={item?.sample} onChange={status => handleChangeSample(item, status, items?.id)} />
                             </td>
 
-                            {/* QTY */}
                             <td className="px-4 py-3">
-                              {/* <span
-                                className={`${getStatusColor(
-                                  item?.sample
-                                )} inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium leading-none select-none`}
-                              >
-                                {item?.sample || 'None'}
-                              </span> */}
                               <div className="flex items-center gap-2">
                                 <Input
                                   onChange={e => debouncedHandleQtyChange(item, e.target.value, items?.id)}
@@ -653,7 +865,6 @@ const ProcurementTable = ({
 
                             {/* Order Date */}
                             <td className="px-4 py-3 text-right text-neutral-700 whitespace-nowrap truncate">
-                              {/* {item?.delivery ? format(new Date(item?.delivery), 'MMM dd, yyyy') : 'None'} */}
                               {project?.currency?.symbol || '£'}
                               {(() => {
                                 const memberPrice = parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, '') || '0');
@@ -665,7 +876,6 @@ const ProcurementTable = ({
 
                             {/* Lead Time */}
                             <td className="px-4 font-semibold py-3 text-right text-neutral-700 whitespace-nowrap truncate">
-                              {/* {item?.leadTime ? `${item.leadTime} Weeks` : 'None'} */}
                               {project?.currency?.symbol || '£'}
                               {(() => {
                                 const memberPrice = parseFloat(item?.matchedProduct?.priceMember?.replace(/[^\d.]/g, '') || '0');
@@ -677,25 +887,33 @@ const ProcurementTable = ({
 
                             {/* Qty */}
                             <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
+                              <StatusPill
+                                value={item?.initialStatus}
+                                onChange={value => handleChangeInitialStatus(item, value, items?.id)}
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-neutral-700 whitespace-nowrap truncate">
                               <ApprovalPill status={item?.status} onChange={status => handleChangeStatus(item, status, items?.id)} />
                             </td>
 
                             {/* Price */}
                             <td className="px-4 py-3 text-right font-medium text-neutral-900 tabular-nums whitespace-nowrap truncate">
-                              <POCell item={item} />
+                              <POCell room={items?.id} item={item} handleClickPO={handleClickPO} loadingProductId={loadingProductId} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <BillingCell
+                                clickHandleInvoice={clickHandleInvoice}
+                                loadingProductIdForInv={loadingProductIdForInv}
+                                item={item}
+                                room={items?.id}
+                                allPOs={data?.data}
+                              />
                             </td>
 
                             {/* Status */}
                             <td className="px-4 py-3">
-                              {/* <StatusBadge
-                                status={item.initialStatus}
-                                label={item.initialStatus.charAt(0).toUpperCase() + item.initialStatus.slice(1)}
-                              /> */}
-                              -
+                              <LogisticsPill item={item} room={items} handleChangeLogistics={handleChangeLogistics} />
                             </td>
-
-                            {/* Approval */}
-                            <td className="px-4 py-3">{/* <ApprovalBadge status={item?.status} /> */}-</td>
 
                             {/* Actions */}
                             <td className="px-4 py-3 text-right">
@@ -730,13 +948,12 @@ const ProcurementTable = ({
                           </tr>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  </>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </CardContent>
 
       {/* Product detail sheet */}

@@ -37,6 +37,7 @@ import { DeleteDialog } from '@/components/DeleteDialog';
 import { useCurrency } from '@/hooks/useCurrency';
 import InvoiceStatus from './invoices/InvoiceStatus';
 import PoStatus from './invoices/InvoiceStatus copy';
+import { addDays, formatDateObj, parseMoney } from '@/lib/utils';
 
 export default function FinancePage() {
   const [purchaseOrder, setPurchaseOrder] = useState([]);
@@ -292,13 +293,6 @@ export default function FinancePage() {
         toast.success('Invoice Created!');
         setButtonLoadingPO(false);
         InvoiceRefetch();
-        // navigate(`/finances/invoice/${id}`, {
-        //   state: {
-        //     purchaseOrders: checkedItems,
-        //     printMultiple: true,
-        //   },
-        // })
-        // router.push(`/finances/invoice/${id}?printMultiple=true&purchaseOrders=${encodeURIComponent(JSON.stringify(checkedItems))}`);
       }, 1000);
     },
     onError: e => {
@@ -463,25 +457,6 @@ export default function FinancePage() {
   //   // Note: You might want to handle the button loading state (setButtonLoadingPO(false))
   //   // in the `onSuccess` or `onSettled` callback of your `createInvoiceOrder.mutate` hook.
   // };
-
-  function formatDateObj(dateStr) {
-    const [year, month, day] = dateStr.split('-');
-    return { year, month, day };
-  }
-
-  function addDays(dateStr, days) {
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + days);
-    return d.toISOString().split('T')[0]; // "YYYY-MM-DD"
-  }
-
-  function parseMoney(value) {
-    if (!value) return 0;
-
-    // Remove currency symbols, spaces, commas, etc.
-    const cleaned = value.replace(/[^\d.-]/g, '');
-    return parseFloat(cleaned) || 0;
-  }
 
   // Create Xero Invoice
   const handleCreate = inv => {

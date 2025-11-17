@@ -1,5 +1,6 @@
 import { StatusBadge } from '@/components/chip';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 const getStatusStyle = (status: string) => {
   switch (status?.toLowerCase()) {
@@ -16,50 +17,35 @@ const getStatusStyle = (status: string) => {
   }
 };
 
+async function fetchInvoiceStatus(xeroId: string) {
+  const res = await fetch(`https://be.techstyles.ai/api/invoice/${xeroId}/status/`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch status');
+  }
+
+  return res.json(); // Expected { status: "paid" }
+}
+
 const InvoiceStatus = ({ inv }) => {
-  // 1. Initialize state with the status from the prop
-  const [currentStatus, setCurrentStatus] = useState(inv.status);
-  const [isLoading, setIsLoading] = useState(false);
+  const hasXero = Boolean(inv.xero_invoice_id);
 
-  useEffect(() => {
-    const fetchInvoiceStatus = async () => {
-      if (inv.xero_invoice_id) {
-        setIsLoading(true);
-        try {
-          const response = await fetch(`https://be.techstyles.ai/api/invoice/${inv.xero_invoice_id}/status/`);
+  // Enable only if invoice has a remote status ID
+  const { data, isLoading } = useQuery({
+    queryKey: ['invoice-status', inv.xero_invoice_id],
+    queryFn: () => fetchInvoiceStatus(inv.xero_invoice_id),
+    enabled: hasXero, // prevents running when no xero_invoice_id
+    staleTime: 1000 * 60 * 5, // cache for 5 minutes
+    refetchOnWindowFocus: false,
+  });
 
-          if (!response.ok) {
-            throw new Error('Failed to fetch status');
-          }
+  const status = data?.status || inv.status;
 
-          const data = await response.json(); // Assuming API returns { "status": "paid" }
-
-          // 4. Update the component's local state with the new status
-          if (data.status) {
-            setCurrentStatus(data.status);
-          }
-        } catch (error) {
-          console.error('Error fetching invoice status:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setCurrentStatus(inv.status);
-      }
-    };
-
-    fetchInvoiceStatus();
-
-    // Rerun this effect if any of these invoice properties change
-  }, [inv.id, inv.status, inv.xero_invoice_id]);
-
-  // Optionally show a loading state
   if (isLoading) {
     return <StatusBadge status="loading" label="Checking..." className={getStatusStyle('loading')} />;
   }
 
-  // 6. Render the badge with the correct (original or fetched) status
-  return <StatusBadge status={currentStatus} label={currentStatus} className={getStatusStyle(currentStatus)} />;
+  return <StatusBadge status={status} label={status} className={getStatusStyle(status)} />;
 };
 
 export default InvoiceStatus;

@@ -1507,7 +1507,7 @@ export const createPurchaseOrder = async ({ order }) => {
 
 // Create Invoice
 export const createInvoice = async ({ invoice }) => {
-  const { data, error } = await supabase.from('Invoices').insert(invoice);
+  const { data, error } = await supabase.from('Invoices').insert(invoice).select();
   if (error) {
     console.log(error);
     throw new Error(error.message);

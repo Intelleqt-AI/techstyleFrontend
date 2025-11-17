@@ -34,6 +34,7 @@ import {
   addNewChat,
   changeRoom,
   createPurchaseOrder,
+  createXeroPO,
   getAllProduct,
   getContactbyID,
   modifyProject,
@@ -43,6 +44,7 @@ import {
   updateAllProductsSendToClient,
   updateProductProcurement,
   updateProductStatusToInternalReview,
+  updatePurchaseOrder,
 } from '@/supabase/API';
 import { toast } from 'sonner';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -50,7 +52,7 @@ import { Command, CommandInput, CommandItem, CommandList } from '@/components/ui
 import { Drawer, DrawerContent, DrawerFooter, DrawerHeader, DrawerTrigger } from '@/components/ui/drawer';
 import { Switch } from '@/components/ui/switch';
 import ProcurementTable from '@/components/project/ProcurementTable';
-import { cn } from '@/lib/utils';
+import { addDays, cn, formatDateObj, parseMoney } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -70,6 +72,20 @@ type ProcurementItem = {
   poNumber: string;
   sample: 'Yes' | 'No' | 'Requested';
   clientApproval: ApprovalStatus;
+};
+
+const logisticsLabels = {
+  all: 'All',
+  Draft: 'Draft',
+  Quoting: 'Quoting',
+  'Internal Review': 'Internal Review',
+  'Out of Stock': 'Out of Stock',
+  'Client Review': 'Client Review',
+  'Payment Due': 'Payment Due',
+  Ordered: 'Ordered',
+  'In Transit': 'In Transit',
+  Delivered: 'Delivered',
+  Installed: 'Installed',
 };
 
 const formatDate = isoString => {
@@ -176,7 +192,6 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     mutationFn: updateProductProcurement,
     onSuccess: () => {
       toast('Status Updated');
-      queryClient.refetchQueries('GetAllProduct');
     },
     onError: () => {
       toast('Error! Try again');
@@ -294,6 +309,57 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     },
   });
 
+  // update PO
+  const mutationPO = useMutation({
+    mutationFn: updatePurchaseOrder,
+    onSuccess: () => {},
+    onError: () => {
+      toast('Error! Try again');
+    },
+  });
+
+  const { mutate: createPOMutate } = useMutation({
+    mutationFn: createXeroPO,
+    onSuccess(data, variables, context) {
+      try {
+        toast.success(data?.message);
+        const inv = variables?._originalPo;
+        if (data?.bill_id) {
+          mutationPO.mutate({
+            order: {
+              ...inv,
+              xero_po_id: data.bill_id,
+            },
+          });
+          const runSequential = async () => {
+            for (const product of checkedItems) {
+              const { matchedProduct: _, ...updatedProduct } = {
+                ...product,
+                xeroPoNumber: data.bill_id,
+              };
+
+              await mutationP0Number.mutateAsync({
+                product: updatedProduct,
+                projectID,
+                roomID: product.roomID,
+              });
+            }
+          };
+          runSequential();
+        }
+      } catch (error) {
+        console.error('Error in onSuccess:', error);
+        toast.error('Something went wrong while updating products.');
+      } finally {
+        setCheckedItems([]);
+        toast.success('Purchase Order Synced With Xero');
+        setButtonLoadingPO(false);
+        queryClient.invalidateQueries(['purchaseOrder']);
+        queryClient.refetchQueries('GetAllProduct');
+      }
+    },
+  });
+
   // Send Product for purchase Order
   const createPurchase = useMutation({
     mutationFn: createPurchaseOrder,
@@ -305,30 +371,49 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           return;
         }
 
-        await Promise.all(
-          checkedItems.map(item => {
-            // Find the room ID for this item
-            const roomID = groupedItems?.type?.find(room => room.product?.some(product => product.id === item.id))?.id;
+        const inv = e?.data?.[0];
+        const lineItems = inv.products.map(p => ({
+          description: p.itemName,
+          quantity: p.QTY,
+          unit_amount: parseMoney(p.amount),
+          account_code: '200',
+        }));
+        const issueDate = inv.issueDate.split('T')[0];
+        const dueAfter30 = addDays(issueDate, 30);
 
-            const { matchedProduct, ...updatedProduct } = {
-              ...item,
-              PO: [
-                ...(Array.isArray(item.PO) ? item.PO : []),
-                {
-                  poNumber: e.data[0].poNumber,
-                  poID: e.data[0].id,
-                },
-              ],
-            };
-            return mutationP0Number.mutateAsync({ product: updatedProduct, projectID: projectID, roomID });
-          })
-        );
+        const invoicePayload = {
+          type: 'ACCPAY',
+          contact: inv.clientName,
+          date: formatDateObj(issueDate),
+          due_date: formatDateObj(dueAfter30),
+          invoice_number: inv.poNumber,
+          reference: inv.poNumber || '',
+          currency_code: project?.currency?.code,
+          status: 'AUTHORISED',
+          line_items: lineItems,
+          _originalPo: inv,
+        };
 
-        // After all mutations are done
-        setCheckedItems([]);
-        toast.success('Purchase Order Created!');
-        setButtonLoadingPO(false);
-        queryClient.invalidateQueries(['purchaseOrder']);
+        createPOMutate(invoicePayload);
+
+        // await Promise.all(
+        //   checkedItems.map(item => {
+        //     // Find the room ID for this item
+        //     const roomID = groupedItems?.type?.find(room => room.product?.some(product => product.id === item.id))?.id;
+
+        //     const { matchedProduct, ...updatedProduct } = {
+        //       ...item,
+        //       PO: [
+        //         ...(Array.isArray(item.PO) ? item.PO : []),
+        //         {
+        //           poNumber: e.data[0].poNumber,
+        //           poID: e.data[0].id,
+        //         },
+        //       ],
+        //     };
+        //     return mutationP0Number.mutateAsync({ product: updatedProduct, projectID: projectID, roomID });
+        //   })
+        // );
       } catch (err) {
         toast.error(err.message || 'An error occurred during product updates.');
         setButtonLoadingPO(false);
@@ -343,97 +428,49 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   const handleClickPO = async () => {
     setButtonLoadingPO(true);
     // Filter to only include approved items
-    const approvedItems = checkedItems.filter(item => item.status == 'approved');
+    const approvedItems = checkedItems.filter(item => item.status == 'approved' || !item.xeroPoNumber);
     if (approvedItems.length == 0) {
       toast.warning('No approved item found !');
       setButtonLoadingPO(false);
       return;
     }
-
     mutationUpdateProduct.mutate({ product: approvedItems, projectID });
-
     try {
-      if (currentSupplier === 'All') {
-        try {
-          const mutations = approvedItems.map(item => {
-            createPurchase.mutate({
-              order: {
-                supplier: supplier.data.find(items => items.company.trim() === item.matchedProduct.supplier.trim()),
-                projectID: projectID,
-                projectName: project?.name,
-                issueDate: new Date().toISOString(),
-                dueDate: new Date().toISOString(),
-                status: 'Pending',
-                clientName: client ? client.name + ' ' + client.surname : null,
-                clientEmail: client ? client.email : null,
-                clientPhone: client ? client.phone : null,
-                clientAddress: client ? client.address : null,
-                products: [
-                  {
-                    QTY: item.matchedProduct.qty,
-                    itemName: item.matchedProduct.name,
-                    itemID: item.matchedProduct.id,
-                    amount:
-                      item?.matchedProduct.priceMember && parseFloat(item?.matchedProduct.priceMember?.replace(/[^0-9.-]+/g, '')) > 0
-                        ? item.matchedProduct.priceMember
-                        : item.matchedProduct.priceRegular,
-                    dueDate: item.install,
-                    dimensions: item?.matchedProduct?.dimensions,
-                    imageURL:
-                      item.matchedProduct?.imageURL?.length > 0
-                        ? item.matchedProduct?.imageURL[0]
-                        : item.matchedProduct?.images?.length > 0 && item?.matchedProduct?.images[0],
-                  },
-                ],
-              },
-            });
-          });
-          await Promise.all(mutations);
-        } catch (error) {
-          console.error('Error creating purchase orders:', error);
-          throw error;
-        }
-      } else {
-        try {
-          const totalOrder = {
-            supplier: supplier.data.find(items => items.company.trim() === currentSupplier.trim()),
-            projectID: projectID,
-            projectName: project?.name,
-            status: 'Pending',
-            clientName: client ? client.name + ' ' + client.surname : null,
-            clientEmail: client ? client.email : null,
-            clientPhone: client ? client.phone : null,
-            clientAddress: client ? client.address : null,
-            issueDate: new Date().toISOString(),
-            dueDate: new Date().toISOString(),
-            products: [],
-          };
-          const products = approvedItems.map(item => {
-            return {
-              dueDate: item?.install,
-              amount:
-                item?.matchedProduct?.priceMember && parseFloat(item?.matchedProduct.priceMember?.replace(/[^0-9.-]+/g, '')) > 0
-                  ? item.matchedProduct?.priceMember
-                  : item.matchedProduct.priceRegular,
-              QTY: item.qty,
-              itemName: item.matchedProduct.name,
-              itemID: item.matchedProduct.id,
-              dimensions: item?.matchedProduct?.dimensions,
-              imageURL:
-                item?.matchedProduct?.imageURL?.length > 0
-                  ? item?.matchedProduct?.imageURL[0]
-                  : item?.matchedProduct?.images?.length > 0 && item?.matchedProduct?.images[0],
-            };
-          });
-          totalOrder.products = [...products];
-          createPurchase.mutate({ order: totalOrder });
-        } catch (error) {
-          console.error('Error creating purchase orders:', error);
-          throw error;
-        }
-      }
+      const totalOrder = {
+        supplier: supplier.data.find(items => items.company.trim() === approvedItems[0]?.matchedProduct?.supplier?.trim()),
+        projectID: projectID,
+        projectName: project?.name,
+        status: 'Pending',
+        clientName: client ? client.name + ' ' + client.surname : null,
+        clientEmail: client ? client.email : null,
+        clientPhone: client ? client.phone : null,
+        clientAddress: client ? client.address : null,
+        issueDate: new Date().toISOString(),
+        dueDate: new Date().toISOString(),
+        products: [],
+      };
+      const products = approvedItems.map(item => {
+        return {
+          dueDate: item?.install,
+          amount:
+            item?.matchedProduct?.priceMember && parseFloat(item?.matchedProduct.priceMember?.replace(/[^0-9.-]+/g, '')) > 0
+              ? item.matchedProduct?.priceMember
+              : item.matchedProduct.priceRegular,
+          QTY: item.qty,
+          itemName: item.matchedProduct.name,
+          itemID: item.matchedProduct.id,
+          dimensions: item?.matchedProduct?.dimensions,
+          imageURL:
+            item?.matchedProduct?.imageURL?.length > 0
+              ? item?.matchedProduct?.imageURL[0]
+              : item?.matchedProduct?.images?.length > 0 && item?.matchedProduct?.images[0],
+        };
+      });
+      totalOrder.products = [...products];
+      createPurchase.mutate({ order: totalOrder });
     } catch (error) {
-      console.error('Error in handleClickPO:', error);
+      console.error('Error creating purchase orders:', error);
+      throw error;
     } finally {
       // setButtonLoadingPO(false);
     }
@@ -485,74 +522,99 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     staleTime: 5 * 60 * 1000,
   });
 
-  const enrichProjectWithProducts = (searchText = '', currentSupplier = 'All', currentRoom = 'All Rooms') => {
-    // Early return if required data is missing
-    if (!project || !project.type || !Array.isArray(product)) return project;
-
-    // Create a deep copy of the project only once at the end
-    let enrichedProject = JSON.parse(JSON.stringify(project));
-
-    if (currentRoom == 'All Rooms') {
-      // enrichedProject = JSON.parse(JSON.stringify(project));
-    } else {
-      enrichedProject = { ...enrichedProject, type: project?.type?.filter(item => item.text.trim() == currentRoom.trim()) };
+  const enrichProjectWithProducts = (
+    searchText = '',
+    currentSupplier = 'all',
+    currentRoom = 'all',
+    approvalFilter = 'all',
+    sampleFilter = 'all',
+    logisticsFilter = 'all'
+  ) => {
+    if (!project || !Array.isArray(project.type) || !Array.isArray(product)) {
+      return project;
     }
 
-    // Filter products first - only create filtered list once
-    let filteredItems = product.filter(item => {
-      // Make sure item exists
-      if (!item) return false;
+    // -------------- ROOM FILTER ---------------
+    let filteredTypes =
+      currentRoom === 'all'
+        ? [...project.type]
+        : project.type.filter(t => t.text.trim().toLowerCase() === currentRoom.trim().toLowerCase());
 
-      // Filter by supplier if not 'All'
-      if (currentSupplier !== 'All') {
-        // Handle possible undefined supplier gracefully
-        const itemSupplier = item.supplier?.trim().toLowerCase() || '';
-        const supplierToMatch = currentSupplier.trim().toLowerCase();
-        if (itemSupplier !== supplierToMatch) return false;
-      }
-
-      // Filter by search text if provided
-      if (searchText?.trim()) {
-        const itemName = item.name?.toLowerCase() || '';
-        if (!itemName.includes(searchText.toLowerCase())) return false;
-      }
-
-      return true;
-    });
-
-    // Only create lookup once with filtered products
+    // Build product lookup (fast)
     const productLookup = {};
-    filteredItems.forEach(product => {
-      if (product?.id) {
-        productLookup[product.id] = product;
-      }
+    product.forEach(p => {
+      if (p?.id) productLookup[p.id] = p;
     });
 
-    // Enrich project with matched products
-    if (Array.isArray(enrichedProject.type)) {
-      enrichedProject.type.forEach(typeObj => {
-        if (typeObj && Array.isArray(typeObj.product)) {
-          // Replace array instead of modifying in place for better performance
-          typeObj.product = typeObj.product
-            .map(productEntry => {
-              if (productEntry?.id && productLookup[productEntry.id]) {
-                return {
-                  ...productEntry,
-                  matchedProduct: productLookup[productEntry.id],
-                };
-              }
-              // Skip items that don't match our filter
-              return null;
-            })
-            .filter(Boolean); // Remove null entries
-        }
-      });
-    }
+    // SEARCH normalised once
+    const searchLower = searchText.trim().toLowerCase();
 
-    return enrichedProject;
+    // -------------- ENRICH + APPLY FILTERS ---------------
+    const enrichedTypes = filteredTypes.map(typeObj => {
+      if (!Array.isArray(typeObj.product)) return typeObj;
+
+      // Filter + enrich each product in the room
+      const newProductList = typeObj.product
+        .map(prod => {
+          const matched = productLookup[prod.id];
+          if (!matched) return null;
+
+          // ---------------- FILTERS ----------------
+
+          // Supplier filter
+          if (currentSupplier !== 'all') {
+            const pSupplier = matched.supplier?.trim().toLowerCase() || '';
+            const fSupplier = currentSupplier.trim().toLowerCase();
+            if (pSupplier !== fSupplier) return null;
+          }
+
+          // Search filter
+          if (searchLower) {
+            const name = matched.name?.toLowerCase() || '';
+            if (!name.includes(searchLower)) return null;
+          }
+
+          // Approval filter
+          if (approvalFilter !== 'all') {
+            const status = prod.status?.toLowerCase() || '';
+            if (status !== approvalFilter.toLowerCase()) return null;
+          }
+
+          // Sample filter
+          if (sampleFilter !== 'all') {
+            const sample = prod.sample?.toLowerCase() || '';
+            if (sample !== sampleFilter.toLowerCase()) return null;
+          }
+
+          // Status filter
+          if (logisticsFilter !== 'all') {
+            const sample = prod.initialStatus?.toLowerCase() || '';
+            if (sample !== logisticsFilter.toLowerCase()) return null;
+          }
+
+          // ---------------- RETURN ENRICHED ----------------
+          return {
+            ...prod,
+            matchedProduct: matched,
+          };
+        })
+        .filter(Boolean); // remove null (filtered out)
+
+      return {
+        ...typeObj,
+        product: newProductList,
+      };
+    });
+
+    return {
+      ...project,
+      type: enrichedTypes,
+    };
   };
 
-  const groupedItems = project ? enrichProjectWithProducts(searchText, currentSupplier, currentRoom) : {};
+  const groupedItems = project
+    ? enrichProjectWithProducts(searchText, supplierFilter, roomFilter, approvalFilter, sampleFilter, logisticsFilter)
+    : {};
 
   useEffect(() => {
     if (isLoading) return;
@@ -757,12 +819,16 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
   }, []);
 
   const canCreatePO = useMemo(() => {
-    return false;
-    if (checkedItems.size === 0) return false;
-    const items = checkedItems.filter(item => checkedItems.has(item.id));
-    const suppliers = new Set(items.map(item => item.supplier));
-    const allApproved = items.every(item => item.clientApproval === 'approved');
-    return suppliers.size === 1 && allApproved && items.every(item => !item.poId);
+    64;
+    if (checkedItems.length === 0) return false;
+    const suppliers = new Set(checkedItems.map(item => item.matchedProduct?.supplier.trim()));
+    console.log(suppliers);
+    if (suppliers.size !== 1) return false;
+    const allApproved = checkedItems.every(item => item.status === 'approved');
+    if (!allApproved) return false;
+    const noExistingPO = checkedItems.every(item => !item.xeroPoNumber);
+    if (!noExistingPO) return false;
+    return true;
   }, [checkedItems]);
 
   const canCreateInvoice = useMemo(() => {
@@ -810,11 +876,10 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
     setDateFilter('all');
   }
 
+  console.log(checkedItems);
+
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<ProductDetails | undefined>(undefined);
-
-  console.log(project);
-
   return (
     <div className="flex-1 bg-neutral-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -874,16 +939,18 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 bg-white border-greige-500/30" disabled={checkedItems.size === 0}>
                   Bulk actions
-                  {checkedItems.size > 0 && (
+                  {checkedItems.length > 0 && (
                     <span className="ml-1.5 px-1.5 py-0.5 text-xs font-semibold rounded bg-neutral-100 text-neutral-700">
-                      {checkedItems.size}
+                      {checkedItems.length}
                     </span>
                   )}
                   <ChevronDown className="w-4 h-4 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem disabled={!canCreatePO}>Create PO</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleClickPO} disabled={!canCreatePO}>
+                  Create PO
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled={!canCreateInvoice}>Create Invoice</DropdownMenuItem>
                 <DropdownMenuItem disabled={!canMarkSupplierPaid}>Mark Supplier Paid</DropdownMenuItem>
                 <DropdownMenuItem disabled={!canMarkClientPaid}>Mark Client Paid</DropdownMenuItem>
@@ -1079,13 +1146,13 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <Select value={roomFilter} onValueChange={setRoomFilter}>
-              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+              <SelectTrigger className="w-[90px] h-8 bg-white capitalize border-greige-500/30 text-xs">
                 <SelectValue>{roomFilter === 'all' ? 'Room' : roomFilter}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All rooms</SelectItem>
                 {project?.type?.map(room => (
-                  <SelectItem key={room?.text} value={room?.text}>
+                  <SelectItem className="capitalize" key={room?.text} value={room?.text}>
                     {room?.text}
                   </SelectItem>
                 ))}
@@ -1100,7 +1167,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                 <SelectItem value="all">All</SelectItem>
                 {!supplierLoading &&
                   supplier?.data?.map(supplier => (
-                    <SelectItem key={supplier?.company} value={supplier?.company}>
+                    <SelectItem key={supplier?.id} value={supplier?.company}>
                       {supplier?.company}
                     </SelectItem>
                   ))}
@@ -1108,7 +1175,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             </Select>
 
             <Select value={approvalFilter} onValueChange={setApprovalFilter}>
-              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+              <SelectTrigger className="w-[90px] capitalize h-8 bg-white border-greige-500/30 text-xs">
                 <SelectValue>
                   {approvalFilter === 'all' ? 'Approval' : approvalFilter === 'not-needed' ? 'Not needed' : approvalFilter}
                 </SelectValue>
@@ -1123,7 +1190,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             </Select>
 
             <Select value={poStatusFilter} onValueChange={setPOStatusFilter}>
-              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+              <SelectTrigger className="w-[90px] capitalize h-8 bg-white border-greige-500/30 text-xs">
                 <SelectValue>{poStatusFilter === 'all' ? 'PO' : poStatusFilter === 'ackd' ? "Ack'd" : poStatusFilter}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -1138,7 +1205,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             </Select>
 
             <Select value={billingFilter} onValueChange={setBillingFilter}>
-              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+              <SelectTrigger className="w-[90px] capitalize h-8 bg-white border-greige-500/30 text-xs">
                 <SelectValue>
                   {billingFilter === 'all'
                     ? 'Billing'
@@ -1160,7 +1227,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             </Select>
 
             <Select value={sampleFilter} onValueChange={setSampleFilter}>
-              <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
+              <SelectTrigger className="w-[90px] capitalize h-8 bg-white border-greige-500/30 text-xs">
                 <SelectValue>{sampleFilter === 'all' ? 'Sample' : sampleFilter === 'none' ? 'Not needed' : sampleFilter}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -1173,26 +1240,14 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
 
             <Select value={logisticsFilter} onValueChange={setLogisticsFilter}>
               <SelectTrigger className="w-[90px] h-8 bg-white border-greige-500/30 text-xs">
-                <SelectValue>
-                  {logisticsFilter === 'all'
-                    ? 'Logistics'
-                    : logisticsFilter === 'not-ordered'
-                    ? 'Not ordered'
-                    : logisticsFilter === 'in-transit'
-                    ? 'In transit'
-                    : logisticsFilter === 'qc-issue'
-                    ? 'Back-ordered'
-                    : logisticsFilter}
-                </SelectValue>
+                <SelectValue placeholder="Status">{logisticsLabels[logisticsFilter] || logisticsFilter}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="not-ordered">Not ordered</SelectItem>
-                <SelectItem value="ordered">Ordered</SelectItem>
-                <SelectItem value="dispatching">Dispatching</SelectItem>
-                <SelectItem value="in-transit">In transit</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
-                <SelectItem value="qc-issue">Back-ordered</SelectItem>
+                {Object.entries(logisticsLabels).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -1249,6 +1304,49 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
 
       {/* Product detail sheet */}
       <ProductDetailSheet open={open} onOpenChange={setOpen} product={selected} />
+
+      {checkedItems?.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-greige-500/30 shadow-lg">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-neutral-900">
+                  {checkedItems?.length} item{checkedItems?.length !== 1 ? 's' : ''} selected
+                </span>
+                <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent" onClick={() => setCheckedItems([])}>
+                  Clear selection
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canCreatePO || buttonLoadingPO}
+                  onClick={handleClickPO}
+                  className="border-greige-500/30 bg-transparent flex items-center gap-2"
+                  title={!canCreatePO ? 'All selected items must be from the same supplier and have Approved status' : ''}
+                >
+                  {buttonLoadingPO ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating..
+                    </span>
+                  ) : (
+                    'Create PO'
+                  )}
+                </Button>
+
+                <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent" disabled={!canCreateInvoice}>
+                  Create client invoice
+                </Button>
+                <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent" disabled={!canMarkSupplierPaid}>
+                  Set dates
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

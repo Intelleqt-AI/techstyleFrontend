@@ -40,35 +40,35 @@ const XeroIntegration = () => {
     window.addEventListener('message', handleMessage);
   };
 
-  useEffect(() => {
-    const token = localStorage.getItem('xero_access_token');
-    async function checkXeroConnection(accessToken) {
-      if (!accessToken) return;
+  // useEffect(() => {
+  //   const token = localStorage.getItem('xero_access_token');
+  //   async function checkXeroConnection(accessToken) {
+  //     if (!accessToken) return;
 
-      try {
-        const res = await fetch('https://xero-backend-pi.vercel.app/api/check-xero-connection', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('xero_access_token')}`,
-          },
-        });
-        const result = await res.json();
-        if (!res.ok) {
-          console.error('Xero API error:', res.status);
-          return false;
-        }
+  //     try {
+  //       const res = await fetch('https://xero-backend-pi.vercel.app/api/check-xero-connection', {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem('xero_access_token')}`,
+  //         },
+  //       });
+  //       const result = await res.json();
+  //       if (!res.ok) {
+  //         console.error('Xero API error:', res.status);
+  //         return false;
+  //       }
 
-        if (result?.connected) {
-          setUserProfile(result.tenants);
-          setXeroConnected(true);
-        }
-      } catch (err) {
-        console.error('Fetch/network error:', err.message);
-        return false;
-      }
-    }
+  //       if (result?.connected) {
+  //         setUserProfile(result.tenants);
+  //         setXeroConnected(true);
+  //       }
+  //     } catch (err) {
+  //       console.error('Fetch/network error:', err.message);
+  //       return false;
+  //     }
+  //   }
 
-    checkXeroConnection(token);
-  }, []);
+  //   checkXeroConnection(token);
+  // }, []);
 
   const disconnectXero = async () => {
     const accessToken = localStorage.getItem('xero_access_token');

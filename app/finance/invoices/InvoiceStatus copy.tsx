@@ -1,5 +1,6 @@
 import { StatusBadge } from '@/components/chip';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 const getStatusStyle = (status: string) => {
   switch (status?.toLowerCase()) {
@@ -16,50 +17,32 @@ const getStatusStyle = (status: string) => {
   }
 };
 
+async function fetchPoStatus(poId: string) {
+  const res = await fetch(`https://be.techstyles.ai/api/bill/${poId}/status/`);
+  if (!res.ok) {
+    throw new Error('Failed to fetch status');
+  }
+  return res.json(); // expected { status: "paid" }
+}
+
 const PoStatus = ({ po }) => {
-  // 1. Initialize state with the status from the prop
-  const [currentStatus, setCurrentStatus] = useState(po.status);
-  const [isLoading, setIsLoading] = useState(false);
+  const hasXero = Boolean(po.xero_po_id);
 
-  useEffect(() => {
-    const fetchInvoiceStatus = async () => {
-      if (po.xero_po_id) {
-        setIsLoading(true);
-        try {
-          const response = await fetch(`https://be.techstyles.ai/api/bill/${po.xero_po_id}/status/`);
+  const { data, isLoading } = useQuery({
+    queryKey: ['po-status', po.xero_po_id],
+    queryFn: () => fetchPoStatus(po.xero_po_id),
+    enabled: hasXero, // only run when PO has a Xero ID
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
+    refetchOnWindowFocus: false, // don't spam API when switching windows
+  });
 
-          if (!response.ok) {
-            throw new Error('Failed to fetch status');
-          }
+  const status = data?.status || po.status;
 
-          const data = await response.json(); // Assuming API returns { "status": "paid" }
-
-          // 4. Update the component's local state with the new status
-          if (data.status) {
-            setCurrentStatus(data.status);
-          }
-        } catch (error) {
-          console.error('Error fetching invoice status:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setCurrentStatus(po.status);
-      }
-    };
-
-    fetchInvoiceStatus();
-
-    // Rerun this effect if any of these invoice properties change
-  }, [po.id, po.status, po.xero_po_id]);
-
-  // Optionally show a loading state
   if (isLoading) {
     return <StatusBadge status="loading" label="Checking..." className={getStatusStyle('loading')} />;
   }
 
-  // 6. Render the badge with the correct (original or fetched) status
-  return <StatusBadge status={currentStatus} label={currentStatus} className={getStatusStyle(currentStatus)} />;
+  return <StatusBadge status={status} label={status} className={getStatusStyle(status)} />;
 };
 
 export default PoStatus;
