@@ -21,6 +21,7 @@ import {
   getPurchaseOrder,
   updateInvoice,
   updateProductProcurement,
+  updateProductStatusToInternalReview,
   updatePurchaseOrder,
 } from '@/supabase/API';
 import { debounce } from 'lodash';
@@ -275,6 +276,7 @@ const ProcurementTable = ({
         const { matchedProduct, ...updatedProduct } = {
           ...currentProduct,
           xeroPoNumber: data.bill_id,
+          initialStatus: 'Internal Review',
         };
         mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
       }
@@ -289,6 +291,7 @@ const ProcurementTable = ({
           toast.error('Failed to get PO details from response.');
           return;
         }
+
         const inv = e?.data?.[0];
         const lineItems = inv.products.map(p => ({
           description: p.itemName,
@@ -620,11 +623,19 @@ const ProcurementTable = ({
         });
       }
 
-      const { matchedProduct, ...updatedProduct } = {
-        ...currentProduct,
-        xeroInvNumber: data.invoice_id,
-      };
-      mutation.mutate({ product: updatedProduct, projectID: projectID, roomID });
+      // xeroPoNumber match with other product
+      groupedItems?.type(items => {
+        items?.map(item => {
+          if (item.xeroPoNumber == inv.xeroPoNumber) {
+            const { matchedProduct, ...updatedProduct } = {
+              ...item,
+              xeroInvNumber: data.invoice_id,
+            };
+            mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: items?.id });
+          }
+          return;
+        });
+      });
     },
   });
 
