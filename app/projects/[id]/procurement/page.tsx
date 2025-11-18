@@ -383,7 +383,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
 
         const invoicePayload = {
           type: 'ACCPAY',
-          contact: inv.clientName,
+          contact: inv.supplier.company,
           date: formatDateObj(issueDate),
           due_date: formatDateObj(dueAfter30),
           invoice_number: inv.poNumber,
@@ -394,7 +394,9 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           _originalPo: inv,
         };
 
-        createPOMutate(invoicePayload);
+        console.log(invoicePayload);
+
+        // createPOMutate(invoicePayload);
 
         // await Promise.all(
         //   checkedItems.map(item => {
@@ -1335,13 +1337,13 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                     'Create PO'
                   )}
                 </Button>
-
+                {/* 
                 <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent" disabled={!canCreateInvoice}>
                   Create client invoice
                 </Button>
                 <Button variant="outline" size="sm" className="border-greige-500/30 bg-transparent" disabled={!canMarkSupplierPaid}>
                   Set dates
-                </Button>
+                </Button> */}
               </div>
             </div>
           </div>

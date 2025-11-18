@@ -478,7 +478,6 @@ export default function FinancePage() {
       invoice_number: inv.inNumber,
       reference: inv.poNumber?.join(', ') || '',
       currency_code: currency?.code,
-      // status: xeroStatusMap[inv?.status] || 'AUTHORISED',
       status: 'AUTHORISED',
       line_items: lineItems,
 

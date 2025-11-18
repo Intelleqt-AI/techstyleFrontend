@@ -90,7 +90,7 @@ function POCell({ item, room, loadingProductId, handleClickPO }) {
   return (
     <div className="flex flex-col gap-1.5">
       <button className="text-sm text-primary font-normal hover:underline text-left whitespace-nowrap">
-        {isLoading ? 'Loading...' : invoiceNumber}
+        {isLoading ? 'Loading...' : invoiceNumber || 'Unknown'}
       </button>
 
       <POStatusDots poId={true} poSentAt={true} supplierPaidAt={currentStatus === 'PAID'} />

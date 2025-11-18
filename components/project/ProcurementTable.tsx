@@ -301,7 +301,7 @@ const ProcurementTable = ({
 
         const invoicePayload = {
           type: 'ACCPAY',
-          contact: inv.clientName,
+          contact: inv.supplier.company,
           date: formatDateObj(issueDate),
           due_date: formatDateObj(dueAfter30),
           invoice_number: inv.poNumber,

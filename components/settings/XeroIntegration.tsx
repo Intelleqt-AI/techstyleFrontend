@@ -9,31 +9,44 @@ const XeroIntegration = () => {
   const [userProfile, setUserProfile] = useState(null);
 
   const handleConnect = () => {
-    const clientId = '640C611FE83942D7B3A1DF43E410FCD5';
-    // const redirectUri = 'https://xero-backend-pi.vercel.app/api/xero-callback';
-    const redirectUri = 'https://be.techstyles.ai/api/xero/connect/';
-    const scope = 'openid profile email accounting.transactions accounting.contacts offline_access';
-    const state = 'random_xyz';
-
-    // const authUrl = `https://login.xero.com/identity/connect/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=${encodeURIComponent(
-    //   scope
-    // )}&state=${state}`;
-
     const authUrl = 'https://be.techstyles.ai/api/xero/connect/';
 
     const popup = window.open(authUrl, 'XeroAuth', 'width=600,height=700');
 
+    // const handleMessage = event => {
+    //   const { access_token, refresh_token, tenantId } = event.data;
+    //   console.log(event.data);
+
+    //   if (access_token && tenantId) {
+    //     localStorage.setItem('xero_access_token', access_token);
+    //     localStorage.setItem('xero_refresh_token', refresh_token);
+    //     localStorage.setItem('xero_tenant_id', tenantId);
+
+    //     popup.close();
+    //     window.removeEventListener('message', handleMessage);
+    //     window.location.reload();
+    //   }
+    // };
+
     const handleMessage = event => {
-      const { access_token, refresh_token, tenantId } = event.data;
+      if (event.data.type === 'OAUTH_SUCCESS' && event.data.code) {
+        // send the code to your backend
+        // fetch('/api/xero/exchange-code', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify({ code: event.data.code }),
+        // })
+        //   .then(res => res.json())
+        //   .then(({ access_token, refresh_token, tenantId }) => {
+        //     localStorage.setItem('xero_access_token', access_token);
+        //     localStorage.setItem('xero_refresh_token', refresh_token);
+        //     localStorage.setItem('xero_tenant_id', tenantId);
 
-      if (access_token && tenantId) {
-        localStorage.setItem('xero_access_token', access_token);
-        localStorage.setItem('xero_refresh_token', refresh_token);
-        localStorage.setItem('xero_tenant_id', tenantId);
-
-        popup.close();
-        window.removeEventListener('message', handleMessage);
-        window.location.reload();
+        //     popup?.close();
+        //     window.removeEventListener('message', handleMessage);
+        //     window.location.reload();
+        //   });
+        popup?.close();
       }
     };
 

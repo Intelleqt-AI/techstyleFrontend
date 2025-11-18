@@ -5,16 +5,22 @@
   </head>
   <body>
     <script>
-      const params = new URLSearchParams(window.location.hash.slice(1));
-      // const accessToken = params.get('access_token');
-      const accessToken = params.get('code');
+      // Xero sends ?code=..., NOT #code=...
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
 
-      if (accessToken && window.opener) {
-        window.opener.postMessage({ type: 'OAUTH_SUCCESS', accessToken }, window.location.origin);
-        window.close();
+      if (code && window.opener) {
+        // Send the code back to the opener
+        window.opener.postMessage(
+          { type: 'OAUTH_SUCCESS', code },
+          '*' // use origin if you want stricter security
+        );
+
+        // Give the browser a moment to postMessage before closing
+        setTimeout(() => window.close(), 50);
       } else {
         document.body.innerText = 'OAuth Failed or Popup Blocked.';
-        window.close();
+        setTimeout(() => window.close(), 2000); // still close eventually
       }
     </script>
   </body>
