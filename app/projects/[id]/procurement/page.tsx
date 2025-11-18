@@ -394,9 +394,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
           _originalPo: inv,
         };
 
-        console.log(invoicePayload);
-
-        // createPOMutate(invoicePayload);
+        createPOMutate(invoicePayload);
 
         // await Promise.all(
         //   checkedItems.map(item => {
