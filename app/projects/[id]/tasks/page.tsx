@@ -255,8 +255,8 @@ export default function ProjectTasksPage({ params }: { params: { id: string } })
   }
 
   function subtaskProgress(t: UITask) {
-    const total = t.subtasks.length;
-    const done = t.subtasks.filter(s => s?.selected)?.length;
+    const total = t?.subtasks?.length;
+    const done = t?.subtasks?.filter(s => s?.selected)?.length;
     return { done, total };
   }
 

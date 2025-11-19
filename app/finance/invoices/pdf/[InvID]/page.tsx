@@ -18,6 +18,20 @@ const Invoice = ({ params }) => {
     queryFn: getInvoices,
   });
 
+  // useEffect(() => {
+  //   if (!InvoiceLoading && InvoiceData?.data) {
+  //     const filteredData = InvoiceData.data.filter((item: any) => item.id == id);
+  //     setPurchaseOrder(filteredData);
+
+  //     if (filteredData[0]?.inNumber) {
+  //       document.title = `${filteredData[0]?.inNumber}`;
+  //     }
+  //     setTimeout(() => {
+  //       window.print();
+  //     }, 900);
+  //   }
+  // }, [InvoiceData, InvoiceLoading, id]);
+
   useEffect(() => {
     if (!InvoiceLoading && InvoiceData?.data) {
       const filteredData = InvoiceData.data.filter((item: any) => item.id == id);
@@ -26,10 +40,44 @@ const Invoice = ({ params }) => {
       if (filteredData[0]?.inNumber) {
         document.title = `${filteredData[0]?.inNumber}`;
       }
-      setTimeout(() => {
-        window.print();
-      }, 900);
     }
+    const closeWindow = () => {
+      // Works if the page was opened with window.open()
+      if (window.opener) {
+        window.close();
+      } else {
+        // Fallback: navigate away if direct open
+        window.close();
+      }
+    };
+
+    // Fire print dialog when page is ready
+    const printTimer = setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print failed:', err);
+        closeWindow();
+      }
+    }, 500);
+
+    // Close after printing or canceling
+    const handleAfterPrint = () => {
+      closeWindow();
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Safari doesn’t always trigger afterprint, so use fallback
+    const fallbackClose = setTimeout(() => {
+      closeWindow();
+    }, 15000); // close after 15s no matter what
+
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      clearTimeout(printTimer);
+      clearTimeout(fallbackClose);
+    };
   }, [InvoiceData, InvoiceLoading, id]);
 
   // Calculate totals
@@ -154,14 +202,14 @@ const Invoice = ({ params }) => {
               <div className="w-1/12 text-center">{item.QTY}</div>
               <div className="w-3/12 text-right">
                 {purchaseOrder[0]?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {parseFloat(item.amount.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
+                {parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </div>
               <div className="w-3/12 text-right">
                 {purchaseOrder[0]?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {(item.QTY * parseFloat(item.amount.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
+                {(item.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}

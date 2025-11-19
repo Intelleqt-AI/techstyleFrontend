@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CircleArrowDown, Loader, Truck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import logo from '/public/studio.jpeg';
 import placeHolder from '/public/product-placeholder-wp.jpg';
 import { getPurchaseOrder } from '@/supabase/API';
@@ -27,20 +28,54 @@ const PurchaseOrder = ({ params }) => {
     const po = data?.data.find(item => item.id == id);
     setPurchaseOrder(po);
     if (po?.poNumber) {
-      document.title = `${po.poNumber}`;
+      document.title = `${po?.supplier?.company} - ${po.poNumber}`;
     }
-    setTimeout(() => {
-      window.print();
-    }, 1000);
+
+    const closeWindow = () => {
+      // Works if the page was opened with window.open()
+      if (window.opener) {
+        window.close();
+      } else {
+        // Fallback: navigate away if direct open
+        window.close();
+      }
+    };
+
+    // Fire print dialog when page is ready
+    const printTimer = setTimeout(() => {
+      try {
+        window.print();
+      } catch (err) {
+        console.error('Print failed:', err);
+        closeWindow();
+      }
+    }, 500);
+
+    // Close after printing or canceling
+    const handleAfterPrint = () => {
+      closeWindow();
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Safari doesn’t always trigger afterprint, so use fallback
+    const fallbackClose = setTimeout(() => {
+      closeWindow();
+    }, 15000); // close after 15s no matter what
+
+    return () => {
+      window.removeEventListener('afterprint', handleAfterPrint);
+      clearTimeout(printTimer);
+      clearTimeout(fallbackClose);
+    };
   }, [loadingPO, data?.data, id]);
 
-  // Calculate totals
   const calculateTotals = () => {
     const products = purchaseOrder?.products || [];
 
     const subTotalNum =
       products.reduce((total, product) => {
-        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
+        const amount = product?.amount ? parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) : 0;
         return total + amount * product.QTY;
       }, 0) || 0;
 
@@ -145,14 +180,14 @@ const PurchaseOrder = ({ params }) => {
               <div className="w-1/12 text-center">{item.QTY}</div>
               <div className="w-2/12 text-right">
                 {purchaseOrder?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {parseFloat(item.amount.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
+                {parseFloat(item?.amount?.replace(/[^0-9.-]+/g, '')).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </div>
               <div className="w-2/12 text-right">
                 {purchaseOrder?.projectID === '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22' ? 'R ' : '£'}
-                {(item.QTY * parseFloat(item.amount.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
+                {(item.QTY * parseFloat(item?.amount?.replace(/[^0-9.-]+/g, ''))).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}

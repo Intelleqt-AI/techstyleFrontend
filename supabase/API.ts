@@ -57,14 +57,67 @@ export const signOut = async () => {
 };
 
 //Get Time Tracker
+// export const getTimeTracking = async () => {
+//   const { data, error } = await supabase
+//     .from('Time Tracker')
+//     .select(
+//       `
+//       *,
+//       task:task_id (*)
+//     `
+//     )
+//     .range(0, 9999);
+
+//   if (error) throw new Error(error.message);
+//   return { data };
+// };
+
 export const getTimeTracking = async () => {
-  const { data, error } = await supabase.from('Time Tracker').select(`
-    *,
-    task:task_id (*)
-  `);
+  const pageSize = 1000;
+  let allData: any[] = [];
+  let from = 0;
+  let to = pageSize - 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('Time Tracker')
+      .select(
+        `
+        *,
+        task:task_id (*)
+      `
+      )
+      .range(from, to);
+
+    if (error) throw new Error(error.message);
+
+    allData = [...allData, ...data];
+    hasMore = data.length === pageSize;
+
+    from += pageSize;
+    to += pageSize;
+  }
+
+  return { data: allData };
+};
+
+// Get Time Tracker by Creator Email
+export const getTimeTrackingByEmail = async (email: string) => {
+  const { data, error } = await supabase
+    .from('Time Tracker')
+    .select(
+      `
+      *,
+      task:task_id (*)
+    `
+    )
+    .eq('creator', email);
+
   if (error) {
     throw new Error(error.message);
   }
+
   return { data };
 };
 

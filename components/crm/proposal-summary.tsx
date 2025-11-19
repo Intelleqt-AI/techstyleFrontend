@@ -90,7 +90,7 @@ export function ProposalSummary({ data, onToggle }: ProposalSummaryProps) {
                     </span>
                     <span className="font-medium">
                       {currencySymbol}
-                      {item.amount.toLocaleString()}
+                      {item?.amount?.toLocaleString()}
                     </span>
                   </div>
                 </div>

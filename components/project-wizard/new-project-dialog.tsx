@@ -481,7 +481,7 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
               </div>
 
               <div className="space-y-2">
-                <Labeled label="Target End Date">
+                <Labeled label="End Date">
                   <div className="flex items-center gap-2">
                     <Popover>
                       <PopoverTrigger asChild>
@@ -494,7 +494,7 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                          {data?.endDate ? format(toDateFromYMD(data?.endDate), 'PPP') : 'Pick Target End date'}
+                          {data?.endDate ? format(toDateFromYMD(data?.endDate), 'PPP') : 'Pick end date'}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">
@@ -657,7 +657,7 @@ export function NewProjectDialog({ open, onOpenChange, task }: NewProjectDialogP
                                     )}
                                   >
                                     <CalendarIcon className="mr-2 h-4 w-4 text-sm font-medium text-ink" />
-                                    {phase?.endDate ? format(toDateFromYMD(phase?.endDate), 'PPP') : 'Pick start date'}
+                                    {phase?.endDate ? format(toDateFromYMD(phase?.endDate), 'PPP') : 'Pick end date'}
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-0 rounded-xl border border-gray-200 shadow-md" align="start">

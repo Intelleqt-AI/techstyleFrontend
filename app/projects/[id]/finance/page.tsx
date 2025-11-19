@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/chip';
-import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal } from 'lucide-react';
+import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal, CircleCheck } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
-import { addNewChat, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder } from '@/supabase/API';
+import { addNewChat, fetchInvoices, fetchOnlyProject, getInvoices, getPurchaseOrder, updatePurchaseOrder } from '@/supabase/API';
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { createInvoice } from '@/supabase/API';
@@ -62,10 +62,26 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     queryFn: fetchInvoices,
   });
 
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pruchaseOrder'],
+    queryFn: getPurchaseOrder,
+  });
+
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: [`project ${id}`],
     queryFn: () => fetchOnlyProject({ projectID: id }),
     enabled: !!id,
+  });
+
+  // update PO
+  const mutation = useMutation({
+    mutationFn: updatePurchaseOrder,
+    onSuccess: () => {
+      refetch();
+    },
+    onError: () => {
+      toast('Error! Try again');
+    },
   });
 
   useEffect(() => {
@@ -74,18 +90,13 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     if (!client) return;
 
     // filter invoices by client.name or client.surname
-    const filteredInvoices = xeroInvoices.filter(inv => {
+    const filteredInvoices = xeroInvoices?.filter(inv => {
       const contactName = inv.Contact?.Name?.toLowerCase() || '';
       return contactName.includes(client.name?.toLowerCase() || '') || contactName.includes(client.surname?.toLowerCase() || '');
     });
 
     setMyXeroInvoice(filteredInvoices);
   }, [clientData, project, xeroInvoices, clientLoading, projectLoading, XeroLoading]);
-
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ['pruchaseOrder'],
-    queryFn: getPurchaseOrder,
-  });
 
   const {
     data: InvoiceData,
@@ -228,8 +239,8 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   purchaseOrder.forEach(item => {
     const temp =
       item?.products?.reduce((total, product) => {
-        const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, ''));
-        return total + amount * product.QTY;
+        const amount = parseFloat(product?.amount ? product?.amount?.replace(/[^0-9.-]+/g, '') : 0);
+        return total + amount * (product.QTY && product.QTY > 0 ? product.QTY : 1);
       }, 0) || 0;
 
     totalPurchaseOrder += temp;
@@ -308,7 +319,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     });
     return totalInvoiceOrder;
   }, [myXeroInvoice]);
-  
+
   console.log(project);
 
   const financeStats = [
@@ -372,6 +383,15 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
     } else {
       // deleteInvoice.mutate({ id });
     }
+  };
+
+  const handleOpenPO = id => {
+    window.open(`/finance/purchase-order/pdf/${id}`, '_blank', 'noopener,noreferrer');
+    mutation.mutate({ order: { id, isDownloaded: true } });
+  };
+
+  const handleOpenInvoice = id => {
+    window.open(`/finance/invoices/pdf/${id}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -503,8 +523,9 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             />
                           </td>
                           <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">
-                            <Link className="hover:underline" href={`${pathname}/purchase-order/${po.id}`}>
-                              {po.poNumber}
+                            <Link className="hover:underline flex items-center gap-2" href={`${pathname}/purchase-order/${po.id}`}>
+                              <span> {po.poNumber}</span>
+                              {po?.isDownloaded && <CircleCheck size={15} color="green" />}
                             </Link>
                           </td>
                           <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{po?.supplier?.company || '-'}</td>
@@ -521,7 +542,11 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                             {project?.currency?.symbol ? project?.currency?.symbol : '£'}
                             {(
                               po?.products?.reduce((total, product) => {
-                                return total + parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '')) * product.QTY;
+                                return (
+                                  total +
+                                  parseFloat(product?.amount ? product?.amount?.replace(/[^0-9.-]+/g, '') : 0) *
+                                    (product.QTY && product.QTY > 0 ? product.QTY : 1)
+                                );
                               }, 0) || 0
                             ).toLocaleString('en-GB', {
                               minimumFractionDigits: 2,
@@ -550,9 +575,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/purchase-order/pdf/${po.id}`}>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenPO(po.id);
+                                    }}
+                                    className="w-full text-left"
+                                  >
                                     Download PDF
-                                  </Link>
+                                  </button>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>Send Email</DropdownMenuItem>
                                 <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
@@ -628,9 +658,14 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                   </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem>
-                                  <Link className="w-full" href={`/finance/invoices/pdf/${inv.id}`}>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenInvoice(inv.id);
+                                    }}
+                                    className="w-full text-left"
+                                  >
                                     Download PDF
-                                  </Link>
+                                  </button>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleSendToClient(inv)}>Send As Thread</DropdownMenuItem>
                                 {/* <DropdownMenuItem>Mark as Paid</DropdownMenuItem> */}

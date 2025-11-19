@@ -99,19 +99,11 @@ export default function CalendarStudioPage() {
     document.title = 'Studio Calendar | TechStyles';
   }, []);
 
-  const admins = [
-    'david.zeeman@intelleqt.ai',
-    'roxi.zeeman@souqdesign.co.uk',
-    'risalat.shahriar@intelleqt.ai',
-    'dev@intelleqt.ai',
-    'saif@intelleqt.ai',
-  ];
-
   const myTaskList = (arr: any[]) => {
     if (!arr) return [];
     if (!user) return [];
 
-    let filtered = admins.includes(user?.email)
+    let filtered = user?.isAdmin
       ? arr
       : arr.filter(task => {
           const isAssigned =

@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useCurrency } from '@/hooks/useCurrency';
 import Onboarding from '../_component/Onboarding';
 import { useAdmin } from '@/hooks/useAdmin';
+import useUser from '@/hooks/useUser';
 
 const updatetaskList = data => {
   return [
@@ -317,7 +318,7 @@ export default function DashboardPage() {
   const [userTime, setUserTime] = useState(null);
   const { currency, isLoading: currencyLoading } = useCurrency();
   const { users } = useUsers();
-  const { isAdmin, user, userLoading } = useAdmin();
+  const { user } = useUser();
 
   useEffect(() => {
     document.title = 'Dashboard | TechStyles';
@@ -605,7 +606,7 @@ export default function DashboardPage() {
   const myTaskList = tasks => {
     if (!tasks) return;
     if (!user) return [];
-    if (isAdmin) {
+    if (user?.isAdmin) {
       return tasks;
     }
     return tasks?.filter(task => {
@@ -821,7 +822,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {isAdmin && <ScopeToggle scope={scope} onScopeChange={setScope} canSeeStudio={canSeeStudio} />}
+          {user?.isAdmin && <ScopeToggle scope={scope} onScopeChange={setScope} canSeeStudio={canSeeStudio} />}
         </section>
 
         {/* Dashboard Cards */}

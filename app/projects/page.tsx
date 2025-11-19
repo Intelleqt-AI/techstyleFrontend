@@ -15,6 +15,10 @@ import useClient from '@/hooks/useClient';
 import projectCover from '/public/project_cover.jpg';
 import Image from 'next/image';
 import dayjs from 'dayjs';
+import useUser from '@/hooks/useUser';
+
+const otherUser = ['accounts@islandexport.co.za', 'dianef@islandexport.co.za'];
+const otherProject = ['0e517ae6-d0fe-4362-a6f9-d1c1d3109f22', '3d89c8c0-2fed-11f0-8019-958f8e9f687b'];
 
 const getTypeIcon = (type: string) => {
   switch (type) {
@@ -66,16 +70,41 @@ export default function ProjectsPage() {
   const [viewMode, setViewMode] = useState<'board' | 'table'>('board');
   const [project, setProject] = useState([]);
   const [activeTab, setActiveTab] = useState('active');
+  const { user } = useUser();
+  const [data, setData] = useState([]);
 
   useEffect(() => {
     document.title = 'Projects | TechStyles';
   }, []);
 
   // Projects
-  const { data, isLoading, error, refetch } = useQuery({
+  const {
+    data: projectData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['projects'],
     queryFn: fetchProjects,
   });
+
+  const otherProject = [
+    '0e517ae6-d0fe-4362-a6f9-d1c1d3109f22',
+    '3d89c8c0-2fed-11f0-8019-958f8e9f687b',
+    '3fc4c690-7c4a-11f0-b9fa-a30dc6830efa',
+    '92c00750-8ef7-11f0-93f4-b7228a6e6d03',
+    // 'a6aa17fe-a68f-4e9a-8073-9b002e5a8b93',
+  ];
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (otherUser.includes(user?.email)) {
+      const temp = projectData?.filter(item => otherProject.includes(item.id));
+      setData(temp);
+    } else {
+      setData(projectData);
+    }
+  }, [projectData, isLoading, user]);
 
   const {
     data: taskData,

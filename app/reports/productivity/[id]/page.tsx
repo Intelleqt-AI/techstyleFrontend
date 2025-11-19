@@ -102,9 +102,7 @@ const ReportSingleMember = () => {
 
   useEffect(() => {
     if (trackingLoading || !trackingData?.data) return;
-    const processedTasks = trackingData.data
-      .filter(item => item.isActive)
-      .sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
+    const processedTasks = trackingData?.data.sort((a, b) => (a.isPaused === b.isPaused ? 0 : a.isPaused ? 1 : -1));
     const filterByEmail = processedTasks.filter(item => item.creator == member?.email);
     setTracking(filterByEmail);
   }, [trackingData?.data, trackingLoading, member?.email, month]);

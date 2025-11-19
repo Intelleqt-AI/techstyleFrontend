@@ -18,6 +18,7 @@ import useTask from '@/supabase/hook/useTask';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import useUser from '@/hooks/useUser';
+import supabase from '@/supabase/supabaseClient';
 
 // Generate months for the dropdown
 const generateMonthOptions = () => {
@@ -273,9 +274,8 @@ export default function ProductivityReportsPage() {
   const { user } = useUser();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    // const now = new Date();
-    // return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    undefined;
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
   const monthOptions = generateMonthOptions();
   const selectedMonthLabel = monthOptions.find(option => option.value === selectedMonth)?.label || 'Select Month';
@@ -374,17 +374,9 @@ export default function ProductivityReportsPage() {
     queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
-  const admins = [
-    'david.zeeman@intelleqt.ai',
-    'roxi.zeeman@souqdesign.co.uk',
-    'risalat.shahriar@intelleqt.ai',
-    'dev@intelleqt.ai',
-    'saif@intelleqt.ai',
-  ];
-
   const handleProfileVisit = (email, id) => {
     if (!id) return;
-    if (admins.includes(user?.email)) {
+    if (user?.isAdmin) {
       router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
     } else if (user?.email == email) {
       router.push(`/reports/productivity/${id}?month=${selectedMonth}`);
@@ -397,16 +389,37 @@ export default function ProductivityReportsPage() {
 
   function getTrackingByUser(email: string) {
     if (trackingLoading || !trackingData?.data) return [];
-    const processedTasks = trackingData.data.filter(item => item.isActive);
-    const filterByEmail = processedTasks.filter(item => item.creator == email);
+    const filterByEmail = trackingData?.data.filter(item => item.creator == email);
     return filterByEmail;
   }
 
-  const myTaskListCount = (email: string) => {
+  // const myTaskListCount = (email: string) => {
+  //   const tasks: any[] = (taskData as any)?.data || [];
+  //   return tasks.filter((task: any) => {
+  //     const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email == email);
+  //     const isCreator = task.creator == email;
+  //     return isAssigned || isCreator;
+  //   }).length;
+  // };
+
+  const myTaskListCount = (email: string, selectedYear?: number, selectedMonth?: number) => {
     const tasks: any[] = (taskData as any)?.data || [];
+
     return tasks.filter((task: any) => {
-      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email == email);
-      const isCreator = task.creator == email;
+      const isAssigned = task.assigned && Array.isArray(task.assigned) && task.assigned.some((assignee: any) => assignee.email === email);
+
+      const isCreator = task.creator === email;
+      if (selectedYear != null && selectedMonth != null && task.created_at) {
+        const createdDate = new Date(task.created_at);
+        const taskYear = createdDate.getFullYear();
+        const taskMonth = createdDate.getMonth(); // 0-based (Jan = 0)
+
+        // match selected year & month
+        if (taskYear !== selectedYear || taskMonth !== selectedMonth) {
+          return false;
+        }
+      }
+
       return isAssigned || isCreator;
     }).length;
   };
@@ -466,6 +479,7 @@ export default function ProductivityReportsPage() {
     if (!users || !projects) return [];
     return users.map(user => {
       const userTracking = getTrackingByUser(user.email);
+      const totalTask = myTaskListCount(user.email, selectedYear, selectedMonth);
       const totalTime = getFormattedTimeForMonth(userTracking, selectedYear, selectedMonth);
       const userEmail = user.email;
       let totalProjects = 0;
@@ -478,6 +492,7 @@ export default function ProductivityReportsPage() {
         ...user,
         totalProjects,
         totalTime,
+        totalTask,
       };
     });
   }

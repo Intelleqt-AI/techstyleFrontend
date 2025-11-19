@@ -742,7 +742,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
 
             <Popover open={mainOpen} onOpenChange={setMainOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 bg-transparent border-greige-500/30">
+                <Button variant="outline" size="sm" className="h-9 border-greige-500/30">
                   <Filter className="w-4 h-4 mr-2" />
                   Filter
                 </Button>
@@ -830,7 +830,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
             {/* Comment Drawer */}
             <Drawer direction="right">
               <DrawerTrigger asChild>
-                <Button variant="outline" className="border-greige-500/30 bg-transparent">
+                <Button variant="outline" className="border-greige-500/30">
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Comments
                 </Button>
@@ -902,7 +902,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               </DrawerContent>
             </Drawer>
 
-            <div className="flex border w-[140px] rounded-lg py-[7px] items-center gap-1">
+            <div className="flex bg-white border w-[140px] rounded-lg py-[7px] items-center gap-1">
               <Switch
                 title="Toggle Send To Client"
                 checked={project?.sendToClient}
@@ -914,7 +914,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
                   }
                 }}
                 id="timer-toggle"
-                className="scale-[80%] data-[state=checked]:bg-black"
+                className="scale-[80%]  data-[state=checked]:bg-black"
               />
               <span className="text-[14px] font-medium">Client Portal</span>
             </div>

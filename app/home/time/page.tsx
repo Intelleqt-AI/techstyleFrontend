@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { HomeNav } from '@/components/home-nav';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getTimeTracking, ModifyTimeTracker } from '@/supabase/API';
+import { getTimeTracking, getTimeTrackingByEmail, ModifyTimeTracker } from '@/supabase/API';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import useUser from '@/hooks/useUser';
@@ -183,8 +183,9 @@ function getFormattedTimeFromMondayToSaturday(tasks) {
 function getFormattedTimeForCurrentMonth(tasks) {
   const now = new Date();
 
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0));
+  const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+
   lastDay.setHours(23, 59, 59, 999);
 
   const totalMs = tasks.reduce((total, task) => {
@@ -192,9 +193,10 @@ function getFormattedTimeForCurrentMonth(tasks) {
 
     const sessionTime = task.session.reduce((sum, session) => {
       const sessionDate = new Date(session.date);
-      if (sessionDate >= firstDay && sessionDate <= lastDay && typeof session.totalTime === 'number') {
+      if (sessionDate >= firstDay && sessionDate <= lastDay && session.totalTime) {
         return sum + session.totalTime;
       }
+
       return sum;
     }, 0);
 
@@ -203,7 +205,9 @@ function getFormattedTimeForCurrentMonth(tasks) {
 
   const totalMinutes = totalMs / (1000 * 60);
 
-  if (totalMinutes < 60) {
+  if (totalMinutes < 1) {
+    return 'Less than a minute';
+  } else if (totalMinutes < 60) {
     return `${Math.round(totalMinutes)} Minutes`;
   } else {
     const totalHours = totalMinutes / 60;
@@ -264,13 +268,7 @@ function getDailyBreakdown(tasks: any[]): Day[] {
         }, 0);
       }
 
-      // Paused/completed tasks base time
-      let additionalTime = 0;
-      if (task.totalWorkTime && (task.isPaused || !task.isActive)) {
-        additionalTime = Number(task.totalWorkTime);
-      }
-
-      return totalHours + (sessionTime + additionalTime) / (1000 * 60 * 60);
+      return totalHours + sessionTime / (1000 * 60 * 60);
     }, 0);
 
     dailyHours.push({
@@ -301,8 +299,9 @@ export default function HomeTimePage() {
   const { data: project, isLoading } = useProjects();
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({
-    queryKey: ['Time Tracking'],
-    queryFn: getTimeTracking,
+    queryKey: [`Time Tracking ${user?.email}`],
+    queryFn: () => getTimeTrackingByEmail(user?.email),
+    enabled: !!user?.email,
   });
 
   const getTrackingButtonClass = (taskId: string | number) => {
@@ -319,6 +318,7 @@ export default function HomeTimePage() {
       toast('Timer Updated');
       closeModal();
       setValue([0]);
+      setAddValue([0]);
       // Update local state for the specific task
       // setTasks(prev => prev.map(task => (task.id === variables.id ? { ...task, ...variables } : task)));
     },
@@ -336,7 +336,7 @@ export default function HomeTimePage() {
           session: updatedSessions,
           totalWorkTime,
         });
-      }, 1000), // 500ms delay
+      }, 500), // 500ms delay
     [mutation, value, selectedTask]
   );
 
@@ -948,7 +948,7 @@ export default function HomeTimePage() {
                         className={`rounded-md border-neutral-200 bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-800 hover:text-white ${
                           isTimerActive ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
-                        // onClick={() => openTaskModal(task)}
+                        onClick={() => openTaskModal(task)}
                       >
                         Ended
                       </Button>
@@ -1022,7 +1022,7 @@ export default function HomeTimePage() {
                 </div>
 
                 <div className="border-b-[5px] flex items-center justify-between pb-[30px]">
-                  <button onClick={handleResetTracking} className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
+                  {/* <button onClick={handleResetTracking} className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
                     <svg xmlns="http://www.w3.org/2000/svg" width="19" height="18" viewBox="0 0 19 18" fill="none">
                       <path
                         d="M17 9C17 13.1421 13.6421 16.5 9.5 16.5C5.35786 16.5 2 13.1421 2 9C2 4.85786 5.35786 1.5 9.5 1.5C11.9537 1.5 14.1322 2.67833 15.5005 4.5V1.5"
@@ -1033,7 +1033,7 @@ export default function HomeTimePage() {
                       />
                     </svg>
                     <span className="text-[#17181B] text-sm font-medium">Reset</span>
-                  </button>
+                  </button> */}
                   {/* <Popover>
                     <PopoverTrigger asChild>
                       <button className="rounded-[12px] mt-4 flex items-center gap-2 border p-[10px]">
@@ -1218,21 +1218,16 @@ export default function HomeTimePage() {
                       <p className="text-[#787C86] text-[16px] font-medium mt-4">No Captures Yet</p>
                     </div>
                   </div>
-
-                  <div className="flex mt-6 mb-2 items-center justify-between">
-                    <p className="text-[16px] underline font-medium">View Work Diary</p>
-                    <p className="text-[16px] underline font-medium">Add Manual Time</p>
-                  </div>
                 </div>
               </div>
 
-              <div className="flex pb-8 justify-between items-center">
+              {/* <div className="flex pb-8 justify-between items-center">
                 {!selectedTask.isActive && (
                   <Button onClick={handleStartTracking} className="w-full rounded-[10px] py-6">
-                    Start Tracking
+                    Start Trackin
                   </Button>
                 )}
-              </div>
+              </div> */}
             </div>
           </div>
         )}
