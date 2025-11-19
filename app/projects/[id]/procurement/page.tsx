@@ -336,6 +336,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
               const { matchedProduct: _, ...updatedProduct } = {
                 ...product,
                 xeroPoNumber: data.bill_id,
+                initialStatus: 'Internal Review',
               };
 
               await mutationP0Number.mutateAsync({
@@ -434,7 +435,7 @@ export default function ProjectProcurementPage({ params }: { params: { id: strin
       setButtonLoadingPO(false);
       return;
     }
-    mutationUpdateProduct.mutate({ product: approvedItems, projectID });
+    // mutationUpdateProduct.mutate({ product: approvedItems, projectID });
     try {
       const totalOrder = {
         supplier: supplier.data.find(items => items.company.trim() === approvedItems[0]?.matchedProduct?.supplier?.trim()),

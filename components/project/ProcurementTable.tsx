@@ -238,7 +238,6 @@ const ProcurementTable = ({
     onSuccess: () => {
       toast('Status Updated');
       queryClient.refetchQueries('GetAllProduct');
-      setLoadingProductIdForInv(null);
     },
     onError: () => {
       toast('Error! Try again');
@@ -609,13 +608,15 @@ const ProcurementTable = ({
     isPending,
   } = useMutation({
     mutationFn: createXeroInvoice,
-    onSuccess(data, variables, context) {
+
+    onSuccess: async (data, variables) => {
       toast.success(data?.message);
-      // Extract original invoice you want to update (inv)
+
       const inv = variables?._originalInvoice;
-      // Only run second mutation if ID exists
+
+      // update invoice record if invoice_id exists
       if (data?.invoice_id) {
-        mutationInvoice.mutate({
+        await mutationInvoice.mutateAsync({
           invoice: {
             ...inv,
             xero_invoice_id: data.invoice_id,
@@ -623,19 +624,31 @@ const ProcurementTable = ({
         });
       }
 
-      // xeroPoNumber match with other product
-      groupedItems?.type(items => {
-        items?.map(item => {
-          if (item.xeroPoNumber == inv.xeroPoNumber) {
+      // update all products with matching xeroPoNumber
+      const updateItems = [];
+
+      groupedItems?.type?.forEach(items => {
+        items?.product?.forEach(item => {
+          if (item.xeroPoNumber == currentProduct.xeroPoNumber) {
             const { matchedProduct, ...updatedProduct } = {
               ...item,
               xeroInvNumber: data.invoice_id,
             };
-            mutation.mutate({ product: updatedProduct, projectID: projectID, roomID: items?.id });
+            updateItems.push({
+              product: updatedProduct,
+              projectID,
+              roomID: item?.roomID || roomID,
+            });
           }
-          return;
         });
       });
+
+      // sequential updates
+      for (const payload of updateItems) {
+        await mutation.mutateAsync(payload);
+      }
+
+      setLoadingProductIdForInv(null);
     },
   });
 
@@ -644,7 +657,6 @@ const ProcurementTable = ({
     onSuccess: (data, variables, context) => {
       if (data?.data[0]) {
         const inv = data?.data[0];
-        console.log(data?.data[0]);
         const lineItems = inv.products.map(p => ({
           description: p.itemName,
           quantity: p.QTY,

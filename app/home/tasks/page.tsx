@@ -24,7 +24,15 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { TypeChip, StatusBadge } from '@/components/chip';
 import useTask from '@/supabase/hook/useTask';
-import { addTimeTracker, deleteTask, fetchProjects, getTimeTracking, modifyTask, ModifyTimeTracker } from '@/supabase/API';
+import {
+  addTimeTracker,
+  deleteTask,
+  fetchOnlyProject,
+  fetchProjects,
+  getTimeTracking,
+  modifyTask,
+  ModifyTimeTracker,
+} from '@/supabase/API';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import useUser from '@/supabase/hook/useUser';
 import { toast } from 'sonner';
@@ -412,8 +420,8 @@ export default function MyTasksPage() {
   });
 
   const { data: project } = useQuery({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryKey: ['fetchOnlyProject'],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
   // Start Time Tracking

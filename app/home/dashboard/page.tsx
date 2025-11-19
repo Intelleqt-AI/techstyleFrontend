@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Mic, Calendar, Clock, AlertTriangle, DollarSign, TrendingUp, TrendingDown, ArrowUp, Users } from 'lucide-react';
 import { HomeNav } from '@/components/home-nav';
 import useTask from '@/supabase/hook/useTask';
-import { fetchOnlyProject, fetchProjects, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
+import { fetchOnlyProject, getInvoices, getPurchaseOrder, getTimeTracking } from '@/supabase/API';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import useUsers from '@/hooks/useUsers';
@@ -373,8 +373,8 @@ export default function DashboardPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['projects'],
-    queryFn: fetchProjects,
+    queryKey: ['fetchOnlyProject'],
+    queryFn: () => fetchOnlyProject({ projectID: null }),
   });
 
   const { data: trackingData, isLoading: trackingLoading } = useQuery({

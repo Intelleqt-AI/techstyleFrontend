@@ -268,7 +268,7 @@ export default function InboxPage() {
   // Get Project
   const { data: project, isLoading: ProjectLoading } = useQuery({
     queryKey: ['projects'],
-    queryFn: () => fetchProjects(),
+    queryFn: fetchProjects,
   });
 
   function findProjectInText(text) {

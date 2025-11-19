@@ -6,12 +6,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/chip';
 import { FileText, ShoppingCart, Plus, RefreshCw, Search, Filter, MoreHorizontal, CircleCheck } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useQuery } from '@tanstack/react-query';
 import {
   addNewChat,
   createXeroInvoice,
   createXeroPO,
+  deleteInvoices,
+  deletePurchaseOrder,
   fetchInvoices,
   fetchOnlyProject,
   getInvoices,
@@ -73,6 +81,28 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
   } = useQuery({
     queryKey: ['xeroInvoices'],
     queryFn: fetchInvoices,
+  });
+
+  const deletePO = useMutation({
+    mutationFn: deletePurchaseOrder,
+    onSuccess: () => {
+      toast.success('PO Deleted');
+      handleRefetch();
+    },
+    onError: error => {
+      toast.error(error);
+    },
+  });
+
+  const deleteInvoice = useMutation({
+    mutationFn: deleteInvoices,
+    onSuccess: () => {
+      toast.success('Invoice Deleted');
+      handleRefetch();
+    },
+    onError: error => {
+      toast.error(error);
+    },
   });
 
   const { data, isLoading, refetch } = useQuery({
@@ -498,9 +528,9 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
 
   const handleDelete = id => {
     if (isPo) {
-      // deletePO.mutate({ orderID: id });
+      deletePO.mutate({ orderID: id });
     } else {
-      // deleteInvoice.mutate({ id });
+      deleteInvoice.mutate({ id });
     }
   };
 
@@ -550,7 +580,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
+            {/* <Button
               className="bg-gray-900 text-white hover:bg-gray-800"
               onClick={handleInvoice}
               disabled={checkedItems.length === 0 || buttonLoadingPO}
@@ -561,7 +591,7 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
             <Button variant="outline" onClick={handleSync} disabled={InvoiceLoading || isLoading || customLoading}>
               <RefreshCw className="w-4 h-4 mr-2" />
               {customLoading ? 'Syncing...' : 'Sync with Xero'}
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -743,11 +773,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                     Edit
                                   </Link>
                                 </DropdownMenuItem>
-                                {/* <DropdownMenuItem
-                                  className="text-red-600 cursor-pointer"
-                                  onClick={() => openDeleteModal(po, "po")}>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={() => openDeleteModal(po, 'po')}>
                                   Delete
-                                </DropdownMenuItem> */}
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>
@@ -857,6 +886,10 @@ export default function ProjectFinancePage({ params }: { params: { id: string } 
                                   <Link className="w-full" href={`/finance/invoices/${inv.id}`}>
                                     Edit
                                   </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-red-600" onClick={() => openDeleteModal(inv, 'inv')}>
+                                  Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
