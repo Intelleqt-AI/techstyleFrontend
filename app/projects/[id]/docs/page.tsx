@@ -108,7 +108,7 @@ function formatDate(dateString?: string) {
 
 export default function ProjectDocsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const [activePane, setActivePane] = React.useState<'notes' | 'files'>('notes');
+  const [activePane, setActivePane] = React.useState<'notes' | 'files'>('files');
   const [sideOpen, setSideOpen] = React.useState(false);
   const [selectedNote, setSelectedNote] = React.useState<Note | undefined>(undefined);
   const [currentPath] = React.useState('');
@@ -137,6 +137,7 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
     name: string;
     isFolder: boolean;
   } | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   // Fetch files/folders
   const {
@@ -612,6 +613,30 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
   //   });
   // };
 
+  const filteredFolders = React.useMemo(() => {
+    if (!searchQuery.trim()) return derivedFolders;
+
+    return derivedFolders.filter(folder => folder.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [searchQuery, derivedFolders]);
+
+  const filteredFiles = React.useMemo(() => {
+    if (!searchQuery.trim()) return derivedFiles;
+
+    return derivedFiles.filter(file => file.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [searchQuery, derivedFiles]);
+
+  const filterLinks = React.useMemo(() => {
+    if (linkLoading) return [];
+
+    const list = (data ?? []).filter(item => item.path === ''); // ⬅️ Only items with empty path
+
+    if (!searchQuery.trim()) return list;
+
+    const q = searchQuery.toLowerCase();
+
+    return list.filter(item => item.name?.toLowerCase().includes(q) || item.link?.toLowerCase().includes(q));
+  }, [searchQuery, data, linkLoading]);
+
   return (
     <div className="flex-1 bg-gray-50 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -625,7 +650,13 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
                 aria-hidden="true"
               />
-              <Input placeholder="Search documents & notes…" className="w-72 pl-9" />
+              {/* Search Input */}
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search documents & notes…"
+                className="w-72 pl-9"
+              />
             </div>
             <Button variant="outline" size="sm" className="hidden sm:inline-flex bg-transparent">
               <Filter className="mr-2 h-4 w-4" />
@@ -683,7 +714,7 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
         <div>
           <h3 className="mb-4 text-sm font-medium text-neutral-900">{'Folders'}</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {derivedFolders.map(folder => {
+            {filteredFolders.map(folder => {
               return (
                 <div
                   key={folder.id}
@@ -760,7 +791,7 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
                 </div>
               );
             })}
-            {derivedFiles.map(file => {
+            {filteredFiles.map(file => {
               // Build file URL from Supabase (Next.js style env var)
               const fileUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/Docs/${params.id}/${file.id}`;
 
@@ -856,79 +887,71 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
               );
             })}
             {/* // LinksSection component */}
-            {data &&
-              data
-                .filter(item => item.path == '/')
-                .map(link => {
-                  const fileName = link.name || link.link?.split('/').pop() || 'Untitled Link';
+            {filterLinks.map(link => {
+              const fileName = link.name || link.link?.split('/').pop() || 'Untitled Link';
 
-                  return (
-                    <div
-                      key={link.link}
-                      onClick={() => window.open(link.link, '_blank')}
-                      className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
-                      aria-label={`Open ${fileName}`}
-                    >
-                      <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            {/* Link Info */}
-                            <div className="flex items-center gap-3">
-                              <LinkIcon className="h-5 w-5 " aria-hidden="true" />
-                              <div>
-                                <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
-                                  {fileName}
-                                  <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Link</span>
-                                </h4>
-                                {/* <p className="mt-1 text-xs text-neutral-500">
-                                Created{" "}
-                                {link.create_time
-                                  ? formatDate(link.create_time)
-                                  : "-"}
-                              </p> */}
-                                <p className="mt-1 text-xs text-neutral-400 truncate max-w-[200px]">{link.link}</p>
-                              </div>
-                            </div>
+              return (
+                <div
+                  key={link.create_time}
+                  onClick={() => window.open(link.link, '_blank')}
+                  className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-300"
+                  aria-label={`Open ${fileName}`}
+                >
+                  <Card className="cursor-pointer rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        {/* Link Info */}
+                        <div className="flex items-center gap-3">
+                          <LinkIcon className="h-5 w-5 " aria-hidden="true" />
+                          <div>
+                            <h4 className="font-medium text-neutral-900 truncate max-w-[180px]">
+                              {fileName}
+                              <span className="ml-2 text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Link</span>
+                            </h4>
 
-                            {/* Link Options */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
-                                  aria-label="Link actions"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    window.open(link.link, '_blank');
-                                  }}
-                                >
-                                  Open Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    handeDeleteLink(link.create_time);
-                                  }}
-                                >
-                                  Delete Link
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    navigator.clipboard.writeText(link.link);
-                                    // Add toast notification here if needed
-                                  }}
-                                >
-                                  Copy Link
-                                </DropdownMenuItem>
-                                {/* <DropdownMenuItem
+                            <p className="mt-1 text-xs text-neutral-400 truncate max-w-[200px]">{link.link}</p>
+                          </div>
+                        </div>
+
+                        {/* Link Options */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-neutral-400 hover:text-neutral-600"
+                              aria-label="Link actions"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.stopPropagation();
+                                window.open(link.link, '_blank');
+                              }}
+                            >
+                              Open Link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.stopPropagation();
+                                handeDeleteLink(link.create_time);
+                              }}
+                            >
+                              Delete Link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={e => {
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(link.link);
+                                // Add toast notification here if needed
+                              }}
+                            >
+                              Copy Link
+                            </DropdownMenuItem>
+                            {/* <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation();
                     // Optional: Add rename functionality for links
@@ -937,14 +960,14 @@ export default function ProjectDocsPage({ params }: { params: { id: string } }) 
                 >
                   Rename Link
                 </DropdownMenuItem> */}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  );
-                })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
 
             {/*Rename Folder Modal */}
             <Modal
