@@ -32,6 +32,12 @@ const ReportSingleMember = () => {
     queryFn: getTimeTracking,
   });
 
+  function getTrackingByUser(email: string) {
+    const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
+    // const filterByEmail = trackingData;
+    return filterByEmail;
+  }
+
   function getFormattedTimeForMonth(tasks, monthParam) {
     const now = new Date();
 

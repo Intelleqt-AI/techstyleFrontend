@@ -84,10 +84,12 @@ const MemberProjectBreakdown = ({ trackingData, trackingLoading, user, month }: 
   }
 
   function getTrackingByUser(email: string) {
-    // const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
-    const filterByEmail = trackingData;
+    const filterByEmail = (trackingData as any[])?.filter((item: any) => item.creator == email);
+    // const filterByEmail = trackingData;
     return filterByEmail;
   }
+
+  console.log('trackingData', trackingData);
 
   function logAugustSessions() {
     const tasks = getTrackingByUser(user?.email);
