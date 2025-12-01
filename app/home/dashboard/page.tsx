@@ -346,8 +346,8 @@ export default function DashboardPage() {
     InvoiceData?.data?.forEach(item => {
       const temp =
         item?.products?.reduce((total, product) => {
-          const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
-          return total + amount * (product.QTY || 0);
+          const amount = parseFloat(product?.amount?.replace(/[^0-9.-]+/g, '') || '0');
+          return total + amount * (product?.QTY || 1);
         }, 0) || 0;
 
       totalInvoiceOrder += temp;
@@ -358,7 +358,7 @@ export default function DashboardPage() {
       const temp =
         item?.products?.reduce((total, product) => {
           const amount = parseFloat(product.amount?.replace(/[^0-9.-]+/g, '') || '0');
-          return total + amount * (product.QTY || 0);
+          return total + amount * (product.QTY || 1);
         }, 0) || 0;
 
       totalPurchaseOrder += temp;
