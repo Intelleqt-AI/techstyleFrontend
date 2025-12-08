@@ -306,6 +306,7 @@ export default function ProjectFolderPage({ params }: { params: { id: string; fo
           id: Math.random().toString(36).substring(2),
         });
       }) as any[];
+      console.log(processedFiles);
       setFile(prev => [...prev, ...processedFiles]);
       setError('');
     }
@@ -324,6 +325,7 @@ export default function ProjectFolderPage({ params }: { params: { id: string; fo
   };
 
   const handleSaveRename = (index: number) => {
+    console.log(index, file);
     const singleFile = file[index] as any;
     const lastDot = singleFile?.name?.lastIndexOf('.');
     const extension = lastDot > 0 ? singleFile.name.substring(lastDot) : '';

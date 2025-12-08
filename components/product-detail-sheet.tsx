@@ -84,10 +84,7 @@ function StatCard({ label, value, className }: { label: string; value?: React.Re
 export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetailSheetProps) {
   const data = {
     ...product,
-    images: {
-      ...product?.images,
-      ...product?.imageURL,
-    },
+    imagesAll: [...(product?.images ?? []), ...(product?.imageURL ?? [])],
   };
 
   const [activeIdx, setActiveIdx] = React.useState(0);
@@ -112,8 +109,10 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
     },
   });
 
+  console.log(product, data);
+
   // Create a fallback image array if none provided
-  const activeImage = data?.images[activeIdx] ?? errorImage;
+  const activeImage = data?.imagesAll[activeIdx] ?? errorImage;
 
   function copyUrl() {
     if (!data?.product_url) return;
@@ -213,11 +212,11 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                   </div>
                 </div>
 
-                {data?.images?.length > 1 && (
+                {data?.imagesAll?.length > 1 && (
                   <div className="mt-3 flex gap-3 overflow-x-auto">
-                    {data?.images?.map((img, idx) => (
+                    {data?.imagesAll?.map((img, idx) => (
                       <button
-                        key={img.src + idx}
+                        key={img + idx}
                         type="button"
                         onClick={() => setActiveIdx(idx)}
                         className={cn(
@@ -226,7 +225,7 @@ export function ProductDetailSheet({ open, onOpenChange, product }: ProductDetai
                         )}
                         aria-label={`Show image ${idx + 1}`}
                       >
-                        <Image src={img} className="h-full w-full object-cover" />
+                        <Image width={200} height={200} src={img} className="h-full w-full object-cover" />
                       </button>
                     ))}
                   </div>
