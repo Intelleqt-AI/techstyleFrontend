@@ -397,17 +397,17 @@ const ProcurementTable = ({
                               aria-label={`View ${item.name}`}
                               title={`View ${item.name}`}
                             >
-                              {item?.matchedProduct?.imageURL?.length > 0 ? (
+                              {item?.matchedProduct?.images?.length > 0 ? (
                                 <ProductImage
                                   className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
                                   alt={item?.matchedProduct?.name || 'Product image'}
-                                  src={item?.matchedProduct?.imageURL?.[0]}
+                                  src={item?.matchedProduct?.images?.[0]}
                                 />
-                              ) : item?.matchedProduct?.images.length > 0 ? (
+                              ) : item?.matchedProduct?.imageURL?.length > 0 ? (
                                 <ProductImage
                                   className="w-10 h-10 rounded-lg object-cover border border-greige-500/30 bg-white"
                                   alt={item?.name}
-                                  src={item?.matchedProduct?.images[0]}
+                                  src={item?.matchedProduct?.imageURL?.[0]}
                                 />
                               ) : (
                                 <ProductImage
